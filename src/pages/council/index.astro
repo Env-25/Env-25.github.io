@@ -1,0 +1,134 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { getMembers } from "../../utils/council";
+import "../../styles/council.css";
+
+const year = "2026";
+const members = getMembers(year);
+---
+<BaseLayout title="Council — UBC CHBE">
+  <!-- Hero -->
+  <section class="council-hero">
+    <img src="/home/index.png" alt="" class="council-hero-bg" />
+    <div class="council-hero-overlay"></div>
+    <div class="council-hero-content">
+      <h1 class="council-hero-title">CHBE Council</h1>
+      <div class="year-row">
+        <select class="year-select" id="yearSelect">
+          <option value="2026" selected>2026</option>
+        </select>
+      </div>
+    </div>
+  </section>
+
+  <!-- Search + Grid -->
+  <section class="council-section">
+    <!-- Search Bar -->
+    <div class="council-search-wrap">
+      <div class="council-search-inner">
+        <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <input
+          type="search"
+          id="councilSearch"
+          class="council-search-input"
+          placeholder="Search by name or position…"
+          autocomplete="off"
+          spellcheck="false"
+        />
+        <button class="search-clear" id="searchClear" aria-label="Clear search" hidden>✕</button>
+      </div>
+      <p class="search-count" id="searchCount"></p>
+    </div>
+
+    <!-- Grid -->
+    <div class="council-grid" id="councilGrid">
+      {members.map((member, i) => (
+        <a
+          href={`/council/${member.slug}`}
+          class="council-card"
+          data-name={member.Name}
+          data-title={member.Title}
+        >
+          <div class="card-img-wrap">
+            <img
+              src={`/council/${year}/images/${member.Image}`}
+              alt={member.Name}
+              class="card-img"
+              loading={i < 3 ? "eager" : "lazy"}
+            />
+          </div>
+          <div class="card-info">
+            <p class="card-name">{member.Name}</p>
+            <p class="card-title">{member.Title}</p>
+          </div>
+        </a>
+      ))}
+    </div>
+
+    <p class="no-results" id="noResults" hidden>No members match your search.</p>
+  </section>
+</BaseLayout>
+
+<!-- Fuse.js + search logic -->
+<script>
+  import Fuse from "fuse.js";
+
+  const grid = document.getElementById("councilGrid")!;
+  const input = document.getElementById("councilSearch") as HTMLInputElement;
+  const clearBtn = document.getElementById("searchClear") as HTMLButtonElement;
+  const countEl = document.getElementById("searchCount")!;
+  const noResults = document.getElementById("noResults")!;
+
+  // Build data array from rendered cards
+  const cards = Array.from(grid.querySelectorAll<HTMLAnchorElement>(".council-card"));
+  const data = cards.map((card) => ({
+    el: card,
+    name: card.dataset.name ?? "",
+    title: card.dataset.title ?? "",
+  }));
+
+  const fuse = new Fuse(data, {
+    keys: [
+      { name: "name", weight: 0.7 },
+      { name: "title", weight: 0.3 },
+    ],
+    threshold: 0.35,
+    includeScore: true,
+  });
+
+  function applyFilter(query: string) {
+  const q = query.trim();
+  clearBtn.hidden = q.length === 0;
+
+  if (!q) {
+    cards.forEach((c) => (c.hidden = false));
+    countEl.textContent = "";
+    countEl.classList.remove("visible");
+    noResults.hidden = true;
+    return;
+  }
+
+  const results = fuse.search(q);
+  const matched = new Set(results.map((r) => r.item.el));
+
+  let visible = 0;
+  cards.forEach((card) => {
+    card.hidden = !matched.has(card);
+    if (!card.hidden) visible++;
+  });
+
+  noResults.hidden = visible > 0;
+  countEl.textContent = `${visible} result${visible !== 1 ? "s" : ""}`;
+  countEl.classList.add("visible");
+}
+
+
+  input.addEventListener("input", () => applyFilter(input.value));
+  clearBtn.addEventListener("click", () => {
+    input.value = "";
+    input.focus();
+    applyFilter("");
+  });
+</script>

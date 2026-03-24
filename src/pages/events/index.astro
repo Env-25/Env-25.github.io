@@ -1,0 +1,236 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { getEvents } from "../../utils/events";
+import "../../styles/events.css";
+
+let events: import("../../utils/events").ChbeEvent[] = [];
+let loadError = false;
+
+try {
+  events = getEvents();
+} catch {
+  loadError = true;
+}
+---
+<BaseLayout title="Events — UBC CHBE">
+
+  <!-- Hero -->
+  <section class="events-hero">
+    <img src="/home/index.png" alt="" class="events-hero-bg" />
+    <div class="events-hero-overlay"></div>
+    <div class="events-hero-content">
+      <h1 class="events-hero-title">CHBE Events</h1>
+      <div class="events-hero-actions">
+        <button class="events-action-btn" disabled title="Coming soon">
+          + Subscribe to Calendar
+        </button>
+        <button class="events-action-btn" disabled title="Coming soon">
+          ✉ Subscribe to Email Updates
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Grid or Empty State -->
+  <section class="events-section">
+    {(loadError || events.length === 0) ? (
+      <div class="events-empty">
+        <p class="empty-title">No upcoming events.</p>
+        <p class="empty-sub">Check back regularly — we're always planning something new.</p>
+        <p class="empty-sub">
+          Follow us on social media or
+          <button class="empty-subscribe-btn" disabled title="Coming soon">subscribe to email updates</button>
+          to stay in the loop.
+        </p>
+      </div>
+    ) : (
+      <>
+        <!-- Search + Filter Bar -->
+        <div class="events-search-wrap">
+          <div class="events-search-row">
+            <!-- Text search -->
+            <div class="events-search-inner">
+              <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+              <input
+                type="search"
+                id="eventsSearch"
+                class="events-search-input"
+                placeholder="Search by name or location…"
+                autocomplete="off"
+                spellcheck="false"
+              />
+              <button class="search-clear" id="searchClear" aria-label="Clear search" hidden>✕</button>
+            </div>
+
+            <!-- Date range -->
+            <div class="events-date-range">
+              <div class="date-field">
+                <label for="dateFrom" class="date-label">From</label>
+                <input type="date" id="dateFrom" class="date-input" />
+              </div>
+              <span class="date-sep">—</span>
+              <div class="date-field">
+                <label for="dateTo" class="date-label">To</label>
+                <input type="date" id="dateTo" class="date-input" />
+              </div>
+              <button class="date-clear-btn" id="dateClear" hidden>Clear dates</button>
+            </div>
+          </div>
+
+          <p class="search-count" id="searchCount"></p>
+        </div>
+
+        <!-- Grid -->
+        <div class="events-grid" id="eventsGrid">
+          {events.map((event, i) => (
+            <a
+              href={`/events/${event.slug}`}
+              class="event-card"
+              data-name={event.Name}
+              data-location={event.Location}
+              data-date={event.Date}
+            >
+              <div class="event-img-wrap">
+                <img
+                  src={`/events/images/${event.Image}`}
+                  alt={event.Name}
+                  class="event-img"
+                  loading={i < 3 ? "eager" : "lazy"}
+                />
+              </div>
+              <div class="event-info">
+                <p class="event-name">{event.Name}</p>
+                <p class="event-meta">📅 {event.Date}</p>
+                <p class="event-meta">🕐 {event.Time}</p>
+                <p class="event-meta">📍 {event.Location}</p>
+                {event.CalendarLink ? (
+                  <a
+                    href={event.CalendarLink}
+                    class="event-cal-btn"
+                    target="_blank"
+                    rel="noopener"
+                    onclick="event.stopPropagation()"
+                  >
+                    + Add to Calendar
+                  </a>
+                ) : (
+                  <button class="event-cal-btn disabled" disabled>
+                    + Add to Calendar
+                  </button>
+                )}
+              </div>
+            </a>
+          ))}
+        </div>
+
+        <p class="no-results" id="noResults" hidden>No events match your search.</p>
+      </>
+    )}
+  </section>
+
+</BaseLayout>
+
+<script>
+  import Fuse from "fuse.js";
+
+  const grid = document.getElementById("eventsGrid");
+  if (grid) {
+    const input = document.getElementById("eventsSearch") as HTMLInputElement;
+    const clearBtn = document.getElementById("searchClear") as HTMLButtonElement;
+    const dateFrom = document.getElementById("dateFrom") as HTMLInputElement;
+    const dateTo = document.getElementById("dateTo") as HTMLInputElement;
+    const dateClear = document.getElementById("dateClear") as HTMLButtonElement;
+    const countEl = document.getElementById("searchCount")!;
+    const noResults = document.getElementById("noResults")!;
+
+    const cards = Array.from(grid.querySelectorAll<HTMLAnchorElement>(".event-card"));
+
+    const data = cards.map((card) => ({
+      el: card,
+      name: card.dataset.name ?? "",
+      location: card.dataset.location ?? "",
+      // Parse date stored as "Month D, YYYY" or ISO — normalise to Date for comparison
+      date: card.dataset.date ?? "",
+    }));
+
+    const fuse = new Fuse(data, {
+      keys: [
+        { name: "name", weight: 0.6 },
+        { name: "location", weight: 0.4 },
+      ],
+      threshold: 0.35,
+      includeScore: true,
+    });
+
+    // Parse a date string like "March 24, 2026" or "2026-03-24" into a comparable Date
+    function parseDate(str: string): Date | null {
+      if (!str) return null;
+      const d = new Date(str);
+      return isNaN(d.getTime()) ? null : d;
+    }
+
+    function applyFilters() {
+      const q = input.value.trim();
+      const from = dateFrom.value ? new Date(dateFrom.value) : null;
+      const to = dateTo.value ? new Date(dateTo.value) : null;
+
+      // Adjust "to" to end of day
+      if (to) to.setHours(23, 59, 59, 999);
+
+      clearBtn.hidden = q.length === 0;
+      dateClear.hidden = !dateFrom.value && !dateTo.value;
+
+      // Fuzzy text matches
+      const textMatched: Set<HTMLAnchorElement> | null = q
+        ? new Set(fuse.search(q).map((r) => r.item.el))
+        : null;
+
+      let visible = 0;
+      data.forEach(({ el, date }) => {
+        const passesText = textMatched === null || textMatched.has(el);
+
+        let passesDate = true;
+        if (from || to) {
+          const d = parseDate(date);
+          if (!d) {
+            passesDate = false;
+          } else {
+            if (from && d < from) passesDate = false;
+            if (to && d > to) passesDate = false;
+          }
+        }
+
+        el.hidden = !(passesText && passesDate);
+        if (!el.hidden) visible++;
+      });
+
+      noResults.hidden = visible > 0;
+
+      if (q || dateFrom.value || dateTo.value) {
+        countEl.textContent = `${visible} result${visible !== 1 ? "s" : ""}`;
+        countEl.classList.add("visible");
+      } else {
+        countEl.textContent = "";
+        countEl.classList.remove("visible");
+      }
+    }
+
+    input.addEventListener("input", applyFilters);
+    dateFrom.addEventListener("change", applyFilters);
+    dateTo.addEventListener("change", applyFilters);
+
+    clearBtn.addEventListener("click", () => {
+      input.value = "";
+      input.focus();
+      applyFilters();
+    });
+
+    dateClear.addEventListener("click", () => {
+      dateFrom.value = "";
+      dateTo.value = "";
+      applyFilters();
+    });
+  }
+</script>

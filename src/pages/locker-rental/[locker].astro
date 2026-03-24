@@ -1,0 +1,179 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { getLockers, getLockerBySlug } from "../../utils/lockers";
+import "../../styles/locker-rental.css";
+
+export async function getStaticPaths() {
+  return getLockers().map((l) => ({ params: { locker: l.slug } }));
+}
+
+const { locker: slug } = Astro.params;
+const locker = getLockerBySlug(slug!);
+if (!locker) return Astro.redirect("/locker-rental");
+
+const allImages = [locker.Cover_photo, ...locker.Add_photos];
+const toCm = (i: number) => (i * 2.54).toFixed(1);
+
+const levels = [
+  { label: "Top",    count: locker.Availability_Top },
+  { label: "Mid",    count: locker.Availability_Mid },
+  { label: "Bottom", count: locker.Availability_Bottom },
+];
+---
+<BaseLayout title={`${locker.Name} — CHBE Locker Rental`} hideNav={true}>
+  <div class="locker-item-page">
+
+    <!-- Topbar -->
+    <div class="item-topbar">
+      <a href="/locker-rental" class="item-back-btn">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 18 9 12 15 6"/>
+        </svg>
+        Back to Lockers
+      </a>
+      <a href="/" class="item-home-btn">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z"/>
+          <polyline points="9 21 9 12 15 12 15 21"/>
+        </svg>
+        Home
+      </a>
+    </div>
+
+    <!-- Breadcrumb -->
+    <nav class="item-breadcrumb">
+      <a href="/locker-rental">Lockers</a>
+      <span>›</span>
+      <span>{locker.Location}</span>
+      <span>›</span>
+      <span>{locker.Name}</span>
+    </nav>
+
+    <div class="item-layout">
+
+      <!-- Gallery -->
+      <div class="item-gallery">
+        <div class="gallery-thumbs">
+          {allImages.map((img, i) => (
+            <button class={`thumb-btn${i === 0 ? " active" : ""}`} data-img={`/lockers/images/${img}`} aria-label={`View ${i + 1}`}>
+              <img src={`/lockers/images/${img}`} alt={`${locker.Name} view ${i + 1}`} loading="lazy" />
+            </button>
+          ))}
+        </div>
+        <div class="gallery-main">
+          <img id="mainImage" src={`/lockers/images/${locker.Cover_photo}`} alt={locker.Name} class="gallery-main-img" />
+        </div>
+      </div>
+
+      <!-- Info -->
+      <div class="item-info">
+        <p class="item-location">{locker.Location}</p>
+        <h1 class="item-name">{locker.Name}</h1>
+
+        <div class="item-meta-row">
+          <p class="item-price">
+            ${locker.Price.toFixed(2)}
+            <span class="item-price-note">CAD / {locker.Rental_Term === "Semester" ? "sem" : "yr"}</span>
+          </p>
+          <span class={`avail-tag-large ${locker.totalAvailable > 0 ? "avail" : "rented"}`}>
+            {locker.totalAvailable > 0 ? `${locker.totalAvailable} Available` : "Fully Rented"}
+          </span>
+        </div>
+
+        <div class="item-divider"></div>
+        <p class="item-desc">{locker.Desc}</p>
+        <div class="item-divider"></div>
+
+        <!-- Specs -->
+        <div class="item-specs">
+          <div class="spec-row">
+            <span class="spec-key">Size</span>
+            <span class="spec-val">
+              {locker.Size} in &nbsp;·&nbsp;
+              {toCm(locker.width)} × {toCm(locker.height)} × {toCm(locker.depth)} cm
+            </span>
+          </div>
+          <div class="spec-row">
+            <span class="spec-key">Building</span>
+            <span class="spec-val">{locker.Location}</span>
+          </div>
+          <div class="spec-row">
+            <span class="spec-key">Rental Term</span>
+            <span class="spec-val">{locker.Rental_Term}</span>
+          </div>
+          <div class="spec-row">
+            <span class="spec-key">Lock Included</span>
+            <span class="spec-val">{locker.Lock_Included ? "✓ Yes" : "✗ No — bring your own"}</span>
+          </div>
+        </div>
+
+        <div class="item-divider"></div>
+
+        <!-- Level availability -->
+        <div class="level-avail-block">
+          <p class="option-label">Availability by Level</p>
+          <div class="level-avail-detail">
+            {levels.map(({ label, count }) => (
+              <div class={`level-detail-row ${count > 0 ? "open" : "full"}`}>
+                <span class="level-detail-name">{label}</span>
+                <div class="level-detail-bar-wrap">
+                  <div
+                    class="level-detail-bar"
+                    style={`width: ${Math.min(count * 20, 100)}%`}
+                  ></div>
+                </div>
+                <span class="level-detail-count">{count} left</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div class="item-divider"></div>
+
+        <!-- Reserve button -->
+        <button class="purchase-btn" disabled>
+          {locker.totalAvailable > 0 ? "Reserve Locker (Coming Soon)" : "Currently Fully Rented"}
+        </button>
+        <p class="purchase-note">Online reservations coming soon — contact us to inquire.</p>
+
+        <div class="item-divider"></div>
+
+        <!-- Size guide -->
+        <details class="size-chart">
+          <summary>Size guide</summary>
+          <p class="size-chart-intro">All dimensions are Width × Height × Depth.</p>
+          <table class="size-table">
+            <thead>
+              <tr><th>Size (in)</th><th>Width</th><th>Height</th><th>Depth</th></tr>
+            </thead>
+            <tbody>
+              {["8x12x24","10x12x18","12x18x18","12x18x24","14x20x30"].map((s) => {
+                const [w,h,d] = s.split("x").map(Number);
+                return (
+                  <tr class={locker.Size === s ? "size-row-active" : ""}>
+                    <td>{s}</td>
+                    <td>{w} in / {(w*2.54).toFixed(1)} cm</td>
+                    <td>{h} in / {(h*2.54).toFixed(1)} cm</td>
+                    <td>{d} in / {(d*2.54).toFixed(1)} cm</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </details>
+      </div>
+    </div>
+  </div>
+</BaseLayout>
+
+<script>
+  const thumbBtns = document.querySelectorAll<HTMLButtonElement>(".thumb-btn");
+  const mainImg   = document.getElementById("mainImage") as HTMLImageElement;
+  thumbBtns.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      thumbBtns.forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+      mainImg.src = btn.dataset.img!;
+    });
+  });
+</script>

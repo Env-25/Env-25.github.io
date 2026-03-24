@@ -1,0 +1,9 @@
+ID,Name,Type,Desc,Price,Sizes_Stock,Cover_image,Additional_images
+1,Classic CHBE Hoodie,Hoodie,"Cozy pullover hoodie with embroidered CHBE logo. Made from 80% cotton 20% polyester fleece.",42.00,"XS:10|S:15|M:8|L:5|XL:2|XXL:0",product.jpg,product.jpg|product.jpg|product.jpg
+2,CHBE Crewneck,Crewneck,"Heavyweight crewneck sweatshirt with screen-printed design. Perfect for the lab or lecture hall.",38.00,"XS:0|S:6|M:12|L:10|XL:4|XXL:1",product.jpg,product.jpg|product.jpg
+3,CHBE T-Shirt,T-Shirt,"Lightweight 100% cotton tee with CHBE crest on the chest.",22.00,"XS:20|S:18|M:25|L:20|XL:10|XXL:5",product.jpg,product.jpg|product.jpg|product.jpg
+4,CHBE Zip-Up,Hoodie,"Full zip hoodie with CHBE wordmark down the sleeve. Features two front pockets.",45.00,"XS:3|S:7|M:0|L:0|XL:6|XXL:2",product.jpg,product.jpg
+5,CHBE Tote Bag,Accessory,"Canvas tote bag with CHBE logo. Great for carrying lab reports or groceries.",18.00,"One Size:30",product.jpg,product.jpg|product.jpg
+6,CHBE Water Bottle,Accessory,"Stainless steel insulated 750ml bottle with CHBE logo laser engraved.",35.00,"One Size:15",product.jpg,product.jpg|product.jpg
+7,CHBE Baseball Cap,Accessory,"Adjustable structured cap with embroidered CHBE logo.",28.00,"One Size:12",product.jpg,product.jpg
+8,CHBE Long Sleeve,T-Shirt,"Long sleeve cotton tee with small chest logo and large back graphic.",26.00,"XS:5|S:9|M:11|L:8|XL:3|XXL:0",product.jpg,product.jpg|product.jpg

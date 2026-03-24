@@ -1,0 +1,37 @@
+/* global.css */
+@font-face {
+  font-family: "RocaTwo-Bl";
+  src: url("/fonts/RocaTwo-Bl.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Telegraf";
+  src: url("/fonts/Telegraf.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+
+
+:root {
+  --clr-dark-teal:   #3a4b4a;
+  --clr-forest:      #4a8550;
+  --clr-teal:        #72a691;
+  --clr-cream:       #fdf9ef;
+  --clr-purple-1:    #9b7b9b;
+  --clr-purple-2:    #a490a4;
+  --font-heading: "RocaTwo-Bl", sans-serif;
+  --font-body:    "Telegraf", sans-serif;
+  --nav-height:      72px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body { font-family: var(--font-body); background: var(--clr-cream); color: var(--clr-dark-teal); }
+a { color: inherit; text-decoration: none; }
+img { max-width: 100%; display: block; }
+ul { list-style: none; }

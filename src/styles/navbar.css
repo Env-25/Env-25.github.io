@@ -1,0 +1,91 @@
+.navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 1000;
+  min-height: 72px;
+  display: flex;
+  align-items: center;
+  background: transparent;
+  transition: background 0.35s ease, min-height 0.35s ease, box-shadow 0.35s ease;
+}
+
+.navbar.scrolled {
+  min-height: 56px;
+  background: var(--clr-dark-teal);
+  box-shadow: 0 2px 24px rgba(0, 0, 0, 0.35);
+}
+
+.navbar-inner {
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5rem;
+}
+
+.nav-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  text-decoration: none;
+}
+
+.nav-logo {
+  height: 40px;
+  width: auto;
+  display: block;
+  transition: height 0.35s ease;
+}
+.navbar.scrolled .nav-logo { height: 32px; }
+
+.nav-name {
+  font-family: "Telegraf", sans-serif;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+}
+
+.nav-links a {
+  font-family: "Telegraf", sans-serif;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.88);
+  position: relative;
+  padding-bottom: 3px;
+  transition: color 0.2s;
+}
+
+.nav-links a::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: var(--clr-teal);
+  transition: width 0.25s ease;
+}
+.nav-links a:hover { color: #fff; }
+.nav-links a:hover::after { width: 100%; }
+
+@media (max-width: 900px) {
+  .navbar-inner { gap: 2rem; padding: 0 1.25rem; }
+  .nav-links { gap: 1rem; }
+  .nav-links a { font-size: 0.7rem; }
+  .nav-name { font-size: 1rem; }
+}

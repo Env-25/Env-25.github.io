@@ -1,0 +1,26 @@
+---
+import "../styles/navbar.css";
+---
+<nav class="navbar" id="navbar">
+  <div class="navbar-inner">
+    <a href="/" class="nav-brand">
+      <img src="/logos/logo-round.png" alt="CHBE Council" class="nav-logo" />
+      <span class="nav-name">CHBE Council</span>
+    </a>
+    <div class="nav-links">
+      <!-- <a href="/">Home</a> -->
+      <a href="/council">Council</a>
+      <a href="/events">Events</a>
+      <a href="/merch">Merch</a>
+      <a href="/locker-rental">Lockers</a>
+      <a href="/contact">Contact</a>
+    </div>
+  </div>
+</nav>
+
+<script>
+  const navbar = document.getElementById("navbar") as HTMLElement;
+  window.addEventListener("scroll", () => {
+    navbar.classList.toggle("scrolled", window.scrollY > 80);
+  }, { passive: true });
+</script>

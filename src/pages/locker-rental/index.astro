@@ -1,0 +1,397 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { getLockers, getLockerLocations, getLockerSizes, getLockerTerms } from "../../utils/lockers";
+import "../../styles/locker.css";
+
+const lockers   = getLockers();
+const locations = getLockerLocations();
+const sizes     = getLockerSizes();
+const terms     = getLockerTerms();
+---
+<BaseLayout title="Locker Rental — UBC CHBE">
+
+  <section class="lockers-hero">
+    <img src="/home/index.png" alt="" class="lockers-hero-bg" />
+    <div class="lockers-hero-overlay"></div>
+    <div class="lockers-hero-content">
+      <h1 class="lockers-hero-title">Locker Rental</h1>
+      <p class="lockers-hero-sub">Reserve a locker for the academic year.</p>
+    </div>
+  </section>
+
+  <section class="lockers-section">
+    <div class="lockers-layout">
+
+      <!-- Sidebar -->
+      <aside class="lockers-sidebar">
+
+        <div class="sidebar-block">
+          <p class="sidebar-heading">Search</p>
+          <div class="locker-search-inner">
+            <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <input type="search" id="lockerSearch" class="locker-search-input" placeholder="Name or location…" autocomplete="off" spellcheck="false" />
+            <button class="search-clear" id="searchClear" aria-label="Clear" hidden>✕</button>
+          </div>
+        </div>
+
+        <!-- Building multi-select -->
+        <div class="sidebar-block">
+          <p class="sidebar-heading">Building</p>
+          <div class="location-dropdown-wrap">
+            <button class="location-dropdown-trigger" id="locationTrigger" aria-expanded="false">
+              <span id="locationTriggerLabel">All buildings</span>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
+            <div class="location-dropdown-menu" id="locationMenu">
+              {locations.map((loc) => (
+                <label class="location-option">
+                  <input type="checkbox" class="loc-checkbox" value={loc} />
+                  <span>{loc}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        </div>
+
+                <!-- Price range -->
+        <div class="sidebar-block">
+          <p class="sidebar-heading">Price Range</p>
+          <div class="price-slider-wrap">
+            <div class="price-display">
+              <span id="priceMinLabel">$0</span>
+              <span id="priceMaxLabel">$50</span>
+            </div>
+            <div class="dual-slider-track">
+              <div class="dual-slider-fill" id="sliderFill"></div>
+              <input type="range" id="priceMin" class="dual-range" min="0" max="50" value="0" step="1" />
+              <input type="range" id="priceMax" class="dual-range" min="0" max="50" value="50" step="1" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Size -->
+        <div class="sidebar-block">
+          <p class="sidebar-heading">Size <span class="sidebar-hint">(W×H×D in)</span></p>
+          <div class="filter-btn-group" id="sizeFilters">
+            <button class="filter-btn active" data-size="all">All</button>
+            {sizes.map((s) => <button class="filter-btn" data-size={s}>{s}</button>)}
+          </div>
+        </div>
+
+        <!-- Rental term -->
+        <div class="sidebar-block">
+          <p class="sidebar-heading">Rental Term</p>
+          <div class="filter-btn-group" id="termFilters">
+            <button class="filter-btn active" data-term="all">All</button>
+            {terms.map((t) => <button class="filter-btn" data-term={t}>{t}</button>)}
+          </div>
+        </div>
+
+        <!-- Lock included -->
+        <div class="sidebar-block">
+          <p class="sidebar-heading">Lock Included</p>
+          <div class="filter-btn-group" id="lockFilters">
+            <button class="filter-btn active" data-lock="all">All</button>
+            <button class="filter-btn" data-lock="yes">Yes</button>
+            <button class="filter-btn" data-lock="no">No</button>
+          </div>
+        </div>
+
+        <!-- Level -->
+        <div class="sidebar-block">
+          <p class="sidebar-heading">Level</p>
+          <div class="filter-btn-group" id="levelFilters">
+            <button class="filter-btn active" data-level="all">All</button>
+            <button class="filter-btn" data-level="top">Top</button>
+            <button class="filter-btn" data-level="mid">Mid</button>
+            <button class="filter-btn" data-level="bottom">Bottom</button>
+          </div>
+        </div>
+
+        <!-- Availability -->
+        <div class="sidebar-block">
+          <label class="stock-toggle">
+            <input type="checkbox" id="availOnly" />
+            <span class="stock-toggle-label">Available only</span>
+          </label>
+        </div>
+
+
+
+        <button class="sidebar-reset" id="resetFilters">Reset all filters</button>
+      </aside>
+
+      <!-- Main -->
+      <div class="lockers-main">
+        <div class="lockers-results-row">
+          <p class="search-count" id="searchCount"></p>
+        </div>
+
+        <div class="lockers-grid" id="lockersGrid">
+          {lockers.map((locker) => (
+            <a
+              href={`/locker-rental/${locker.slug}`}
+              class="locker-card"
+              data-name={locker.Name}
+              data-location={locker.Location}
+              data-size={locker.Size}
+              data-term={locker.Rental_Term}
+              data-lock={locker.Lock_Included ? "yes" : "no"}
+              data-avail-top={locker.Availability_Top}
+              data-avail-mid={locker.Availability_Mid}
+              data-avail-bottom={locker.Availability_Bottom}
+              data-total={locker.totalAvailable}
+              data-price={locker.Price}
+            >
+              <div class="locker-card-img-wrap">
+                {locker.totalAvailable === 0 && <span class="rented-badge">Fully Rented</span>}
+                <img
+                  src={`/lockers/images/${locker.Cover_photo}`}
+                  alt={locker.Name}
+                  class="locker-card-img"
+                  loading="lazy"
+                />
+              </div>
+              <div class="locker-card-info">
+                <p class="locker-card-location">{locker.Location}</p>
+                <p class="locker-card-name">{locker.Name}</p>
+
+                <div class="locker-card-meta-row">
+                  <!-- Price -->
+                  <span class="locker-card-price">
+                    ${locker.Price.toFixed(2)}
+                    <span class="locker-price-period">/{locker.Rental_Term === "Semester" ? "sem" : "yr"}</span>
+                  </span>
+
+                  <!-- Lock icon -->
+                  {locker.Lock_Included ? (
+                    <span class="lock-icon lock-yes" title="Lock included">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                      </svg>
+                    </span>
+                  ) : (
+                    <span class="lock-icon lock-no" title="No lock included">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                        <path d="M7 11V7a5 5 0 0 1 9.9-1"/>
+                      </svg>
+                    </span>
+                  )}
+                </div>
+
+                <!-- Availability by level -->
+                <div class="level-avail-row">
+                  <span class={`level-pip ${locker.Availability_Top > 0 ? "open" : "full"}`}>
+                    T: {locker.Availability_Top}
+                  </span>
+                  <span class={`level-pip ${locker.Availability_Mid > 0 ? "open" : "full"}`}>
+                    M: {locker.Availability_Mid}
+                  </span>
+                  <span class={`level-pip ${locker.Availability_Bottom > 0 ? "open" : "full"}`}>
+                    B: {locker.Availability_Bottom}
+                  </span>
+                </div>
+
+                <!-- Term -->
+                <span class="term-tag">{locker.Rental_Term}</span>
+              </div>
+            </a>
+          ))}
+        </div>
+
+        <p class="no-results" id="noResults" hidden>No lockers match your filters.</p>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  import Fuse from "fuse.js";
+
+  const grid  = document.getElementById("lockersGrid")!;
+  const cards = Array.from(grid.querySelectorAll<HTMLAnchorElement>(".locker-card"));
+
+  const data = cards.map((card) => ({
+    el:       card,
+    name:     card.dataset.name     ?? "",
+    location: card.dataset.location ?? "",
+    size:     card.dataset.size     ?? "",
+    term:     card.dataset.term     ?? "",
+    lock:     card.dataset.lock     ?? "",
+    top:      parseInt(card.dataset.availTop    ?? "0"),
+    mid:      parseInt(card.dataset.availMid    ?? "0"),
+    bottom:   parseInt(card.dataset.availBottom ?? "0"),
+    total:    parseInt(card.dataset.total ?? "0"),
+    price:    parseFloat(card.dataset.price ?? "0"),
+  }));
+
+  const fuse = new Fuse(data, {
+    keys: [
+      { name: "name",     weight: 0.5 },
+      { name: "location", weight: 0.5 },
+    ],
+    threshold: 0.35,
+    includeScore: true,
+  });
+
+  let activeSize  = "all";
+  let activeTerm  = "all";
+  let activeLock  = "all";
+  let activeLevel = "all";
+  let availOnly   = false;
+  let selectedLocs = new Set<string>();
+  let priceMin = 0;
+  let priceMax = 50;
+
+  const searchInput    = document.getElementById("lockerSearch")     as HTMLInputElement;
+  const searchClear    = document.getElementById("searchClear")      as HTMLButtonElement;
+  const sizeButtons    = document.querySelectorAll<HTMLButtonElement>("[data-size]");
+  const termButtons    = document.querySelectorAll<HTMLButtonElement>("[data-term]");
+  const lockButtons    = document.querySelectorAll<HTMLButtonElement>("[data-lock]");
+  const levelButtons   = document.querySelectorAll<HTMLButtonElement>("[data-level]");
+  const availCheck     = document.getElementById("availOnly")        as HTMLInputElement;
+  const locCheckboxes  = document.querySelectorAll<HTMLInputElement>(".loc-checkbox");
+  const locTrigger     = document.getElementById("locationTrigger")  as HTMLButtonElement;
+  const locTriggerLabel = document.getElementById("locationTriggerLabel")!;
+  const locMenu        = document.getElementById("locationMenu")!;
+  const priceMinEl     = document.getElementById("priceMin")         as HTMLInputElement;
+  const priceMaxEl     = document.getElementById("priceMax")         as HTMLInputElement;
+  const priceMinLabel  = document.getElementById("priceMinLabel")!;
+  const priceMaxLabel  = document.getElementById("priceMaxLabel")!;
+  const sliderFill     = document.getElementById("sliderFill")!;
+  const countEl        = document.getElementById("searchCount")!;
+  const noResults      = document.getElementById("noResults")!;
+  const resetBtn       = document.getElementById("resetFilters")!;
+
+// Dropdown toggle
+locTrigger.addEventListener("click", () => {
+  const isOpen = locMenu.classList.contains("open");
+  locMenu.classList.toggle("open", !isOpen);
+  locTrigger.setAttribute("aria-expanded", String(!isOpen));
+});
+
+// Close on outside click
+document.addEventListener("click", (e) => {
+  if (!locTrigger.contains(e.target as Node) && !locMenu.contains(e.target as Node)) {
+    locMenu.classList.remove("open");
+    locTrigger.setAttribute("aria-expanded", "false");
+  }
+});
+
+  function updateLocationLabel() {
+    locTriggerLabel.textContent =
+      selectedLocs.size === 0 ? "All buildings" :
+      selectedLocs.size === 1 ? [...selectedLocs][0] :
+      `${selectedLocs.size} buildings selected`;
+  }
+  locCheckboxes.forEach((cb) => {
+    cb.addEventListener("change", () => {
+      if (cb.checked) selectedLocs.add(cb.value);
+      else selectedLocs.delete(cb.value);
+      updateLocationLabel();
+      applyFilters();
+    });
+  });
+
+  function updateSliderFill() {
+    const range = parseInt(priceMinEl.max) - parseInt(priceMinEl.min);
+    sliderFill.style.left  = `${(priceMin / range) * 100}%`;
+    sliderFill.style.right = `${100 - (priceMax / range) * 100}%`;
+  }
+
+  function makeToggle(buttons: NodeListOf<HTMLButtonElement>, key: string, setter: (v: string) => void) {
+    buttons.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        buttons.forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        setter((btn as any).dataset[key]!);
+        applyFilters();
+      });
+    });
+  }
+
+  makeToggle(sizeButtons,  "size",  (v) => activeSize  = v);
+  makeToggle(termButtons,  "term",  (v) => activeTerm  = v);
+  makeToggle(lockButtons,  "lock",  (v) => activeLock  = v);
+  makeToggle(levelButtons, "level", (v) => activeLevel = v);
+
+  availCheck.addEventListener("change", () => { availOnly = availCheck.checked; applyFilters(); });
+
+  priceMinEl.addEventListener("input", () => {
+    let min = parseInt(priceMinEl.value), max = parseInt(priceMaxEl.value);
+    if (min > max - 1) { min = max - 1; priceMinEl.value = String(min); }
+    priceMin = min; priceMinLabel.textContent = `$${min}`;
+    updateSliderFill(); applyFilters();
+  });
+  priceMaxEl.addEventListener("input", () => {
+    let min = parseInt(priceMinEl.value), max = parseInt(priceMaxEl.value);
+    if (max < min + 1) { max = min + 1; priceMaxEl.value = String(max); }
+    priceMax = max; priceMaxLabel.textContent = `$${max}`;
+    updateSliderFill(); applyFilters();
+  });
+
+  searchInput.addEventListener("input", applyFilters);
+  searchClear.addEventListener("click", () => { searchInput.value = ""; searchInput.focus(); applyFilters(); });
+
+  function applyFilters() {
+    const q = searchInput.value.trim();
+    searchClear.hidden = q.length === 0;
+
+    const textMatched: Set<HTMLAnchorElement> | null = q
+      ? new Set(fuse.search(q).map((r) => r.item.el))
+      : null;
+
+    let visible = 0;
+    data.forEach(({ el, location, size, term, lock, top, mid, bottom, total, price }) => {
+      const passText  = textMatched === null || textMatched.has(el);
+      const passLoc   = selectedLocs.size === 0 || selectedLocs.has(location);
+      const passSize  = activeSize  === "all" || size  === activeSize;
+      const passTerm  = activeTerm  === "all" || term  === activeTerm;
+      const passLock  = activeLock  === "all" || lock  === activeLock;
+      const passLevel = activeLevel === "all"
+        || (activeLevel === "top"    && top    > 0)
+        || (activeLevel === "mid"    && mid    > 0)
+        || (activeLevel === "bottom" && bottom > 0);
+      const passAvail = !availOnly || total > 0;
+      const passPrice = price >= priceMin && price <= priceMax;
+
+      el.hidden = !(passText && passLoc && passSize && passTerm && passLock && passLevel && passAvail && passPrice);
+      if (!el.hidden) visible++;
+    });
+
+    noResults.hidden = visible > 0;
+    const any = q || selectedLocs.size > 0 || activeSize !== "all" || activeTerm !== "all"
+      || activeLock !== "all" || activeLevel !== "all" || availOnly || priceMin > 0 || priceMax < 50;
+    countEl.textContent = any ? `${visible} locker${visible !== 1 ? "s" : ""}` : "";
+    countEl.classList.toggle("visible", !!any);
+  }
+
+  resetBtn.addEventListener("click", () => {
+    searchInput.value = "";
+    activeSize = activeTerm = activeLock = activeLevel = "all";
+    availOnly = false; selectedLocs.clear();
+    priceMin = 0; priceMax = 50;
+    priceMinEl.value = "0"; priceMaxEl.value = "50";
+    priceMinLabel.textContent = "$0"; priceMaxLabel.textContent = "$50";
+    availCheck.checked = false;
+    locCheckboxes.forEach((cb) => (cb.checked = false));
+    updateLocationLabel();
+    [sizeButtons, termButtons, lockButtons, levelButtons].forEach((group) =>
+      group.forEach((b) => {
+        const key = Object.keys((b as any).dataset)[0];
+        b.classList.toggle("active", (b as any).dataset[key] === "all");
+      })
+    );
+    updateSliderFill();
+    applyFilters();
+  });
+
+  updateSliderFill();
+  applyFilters();
+</script>

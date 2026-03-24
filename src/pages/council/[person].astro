@@ -1,0 +1,65 @@
+---
+import { getMembers, nameToSlug } from "../../utils/council";
+import "../../styles/council-member.css";
+import "../../styles/global.css";
+
+const year = "2026";
+
+export async function getStaticPaths() {
+  const { getMembers, nameToSlug } = await import("../../utils/council");
+  const members = getMembers("2026");
+  return members.map((member) => ({
+    params: { person: nameToSlug(member.Name) },
+    props: { member },
+  }));
+}
+
+const { member } = Astro.props;
+---
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="preload" href="/fonts/RocaTwo-Bl.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/Telegraf.woff2" as="font" type="font/woff2" crossorigin />
+    <title>{member.Name} — CHBE Council</title>
+  </head>
+  <body class="member-body">
+
+    <!-- Top Nav -->
+    <div class="member-topnav">
+      <a href="/council" class="topnav-btn">← Back to Council</a>
+      <a href="/" class="topnav-btn">Home</a>
+    </div>
+
+    <!-- Member Layout -->
+    <div class="member-layout">
+      <div class="member-img-wrap">
+        <img
+          src={`/council/${year}/images/${member.Image}`}
+          alt={member.Name}
+          class="member-img"
+        />
+      </div>
+      <div class="member-info">
+        <span class="member-eyebrow">{member.Title}</span>
+        <h1 class="member-name">{member.Name}</h1>
+        <p class="member-bio">{member.Bio}</p>
+        <div class="member-links">
+          {member.Contact && (
+            <a href={`mailto:${member.Contact}`} class="member-link email-link">
+              ✉ Email
+            </a>
+          )}
+          {member.LinkedIn && (
+            <a href={member.LinkedIn} target="_blank" rel="noopener" class="member-link linkedin-link">
+              LinkedIn
+            </a>
+          )}
+        </div>
+      </div>
+    </div>
+
+  </body>
+</html>

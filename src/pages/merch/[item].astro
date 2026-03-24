@@ -1,0 +1,205 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { getMerch, getMerchBySlug } from "../../utils/merch";
+import "../../styles/merch-item.css";
+
+export async function getStaticPaths() {
+  const items = getMerch();
+  return items.map((item) => ({ params: { item: item.slug } }));
+}
+
+const { item: slug } = Astro.params;
+const product = getMerchBySlug(slug!);
+if (!product) return Astro.redirect("/merch");
+
+const allImages = [product.Cover_image, ...product.Additional_images];
+---
+<BaseLayout title={`${product.Name} — CHBE Merch`} hideNav={true}>
+  <div class="item-page">
+
+    <!-- Top nav bar -->
+    <div class="item-topbar">
+      <a href="/merch" class="item-back-btn">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 18 9 12 15 6"/>
+        </svg>
+        Back to Merch
+      </a>
+      <a href="/" class="item-home-btn">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z"/>
+          <polyline points="9 21 9 12 15 12 15 21"/>
+        </svg>
+        Home
+      </a>
+    </div>
+
+    <!-- Breadcrumb -->
+    <nav class="item-breadcrumb">
+      <a href="/merch">Merch</a>
+      <span>›</span>
+      <span>{product.Type}</span>
+      <span>›</span>
+      <span>{product.Name}</span>
+    </nav>
+
+    <div class="item-layout">
+
+      <!-- Image Gallery -->
+      <div class="item-gallery">
+        <div class="gallery-thumbs" id="galleryThumbs">
+          {allImages.map((img, i) => (
+            <button
+              class={`thumb-btn${i === 0 ? " active" : ""}`}
+              data-img={`/merch/images/${img}`}
+              aria-label={`View image ${i + 1}`}
+            >
+              <img src={`/merch/images/${img}`} alt={`${product.Name} view ${i + 1}`} loading="lazy" />
+            </button>
+          ))}
+        </div>
+        <div class="gallery-main">
+          <img
+            id="mainImage"
+            src={`/merch/images/${product.Cover_image}`}
+            alt={product.Name}
+            class="gallery-main-img"
+          />
+        </div>
+      </div>
+
+      <!-- Product Info -->
+      <div class="item-info">
+        <p class="item-type">{product.Type}</p>
+        <h1 class="item-name">{product.Name}</h1>
+        <p class="item-price">${product.Price.toFixed(2)} <span class="item-price-note">CAD</span></p>
+
+        <div class="item-divider"></div>
+
+        <p class="item-desc">{product.Desc}</p>
+
+        <div class="item-divider"></div>
+
+        <!-- Size selector -->
+        <div class="item-option-block">
+          <p class="option-label">Size <span id="selectedSizeLabel" class="selected-value"></span></p>
+          <div class="size-btn-group" id="sizeGroup">
+            {product.Sizes_Stock.map(({ size, stock }) => (
+              <button
+                class={`size-btn${stock === 0 ? " out" : ""}`}
+                data-size={size}
+                data-stock={stock}
+                disabled={stock === 0}
+                title={stock === 0 ? "Out of stock" : `${stock} left`}
+              >
+                {size}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <!-- Quantity selector -->
+        <div class="item-option-block" id="qtyBlock" style="display:none">
+          <p class="option-label">Quantity</p>
+          <div class="qty-row">
+            <button class="qty-btn" id="qtyDown">−</button>
+            <span class="qty-value" id="qtyValue">1</span>
+            <button class="qty-btn" id="qtyUp">+</button>
+            <span class="qty-stock-note" id="qtyStockNote"></span>
+          </div>
+        </div>
+
+        <!-- Purchase -->
+        <button class="purchase-btn" id="purchaseBtn" disabled>
+          Select a size to purchase
+        </button>
+
+        <p class="purchase-note">Purchases coming soon — stay tuned!</p>
+
+        <div class="item-divider"></div>
+
+        <!-- Size chart -->
+        {product.allSizes.some(s => ["XS","S","M","L","XL","XXL"].includes(s)) && (
+          <details class="size-chart">
+            <summary>Size guide</summary>
+            <table class="size-table">
+              <thead>
+                <tr><th>Size</th><th>Chest (in)</th><th>Length (in)</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>XS</td><td>32–34</td><td>26</td></tr>
+                <tr><td>S</td><td>35–37</td><td>27</td></tr>
+                <tr><td>M</td><td>38–40</td><td>28</td></tr>
+                <tr><td>L</td><td>41–43</td><td>29</td></tr>
+                <tr><td>XL</td><td>44–46</td><td>30</td></tr>
+                <tr><td>XXL</td><td>47–49</td><td>31</td></tr>
+              </tbody>
+            </table>
+          </details>
+        )}
+      </div>
+    </div>
+  </div>
+</BaseLayout>
+
+<script>
+  const thumbBtns = document.querySelectorAll<HTMLButtonElement>(".thumb-btn");
+  const mainImg = document.getElementById("mainImage") as HTMLImageElement;
+
+  thumbBtns.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      thumbBtns.forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+      mainImg.src = btn.dataset.img!;
+    });
+  });
+
+  const sizeBtns = document.querySelectorAll<HTMLButtonElement>(".size-btn:not(.out)");
+  const selectedSizeLabel = document.getElementById("selectedSizeLabel")!;
+  const qtyBlock = document.getElementById("qtyBlock")!;
+  const qtyValue = document.getElementById("qtyValue")!;
+  const qtyStockNote = document.getElementById("qtyStockNote")!;
+  const qtyDown = document.getElementById("qtyDown") as HTMLButtonElement;
+  const qtyUp = document.getElementById("qtyUp") as HTMLButtonElement;
+  const purchaseBtn = document.getElementById("purchaseBtn") as HTMLButtonElement;
+
+  let selectedStock = 0;
+  let qty = 1;
+
+  sizeBtns.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      sizeBtns.forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+      const size = btn.dataset.size!;
+      selectedStock = parseInt(btn.dataset.stock ?? "0");
+      qty = 1;
+
+      selectedSizeLabel.textContent = `— ${size}`;
+      qtyValue.textContent = "1";
+      qtyStockNote.textContent = `${selectedStock} in stock`;
+      qtyBlock.style.display = "";
+      qtyDown.disabled = true;
+      qtyUp.disabled = selectedStock <= 1;
+      purchaseBtn.disabled = true;
+      purchaseBtn.textContent = "Purchase (Coming Soon)";
+    });
+  });
+
+  qtyDown.addEventListener("click", () => {
+    if (qty > 1) {
+      qty--;
+      qtyValue.textContent = String(qty);
+      qtyDown.disabled = qty <= 1;
+      qtyUp.disabled = qty >= selectedStock;
+    }
+  });
+
+  qtyUp.addEventListener("click", () => {
+    if (qty < selectedStock) {
+      qty++;
+      qtyValue.textContent = String(qty);
+      qtyDown.disabled = qty <= 1;
+      qtyUp.disabled = qty >= selectedStock;
+    }
+  });
+</script>

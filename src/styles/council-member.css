@@ -1,0 +1,143 @@
+.member-body {
+  font-family: "Telegraf", sans-serif;
+  background: var(--clr-cream, #fdf9ef);
+  color: #3a4b4a;
+  min-height: 100vh;
+}
+
+/* ── Top Nav ── */
+.member-topnav {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.5rem 3rem;
+  background: var(--clr-dark-teal, #3a4b4a);
+}
+
+.topnav-btn {
+  font-family: "Telegraf", sans-serif;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.75);
+  padding: 0.5rem 1.25rem;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  transition: color 0.2s, border-color 0.2s;
+  text-decoration: none;
+}
+.topnav-btn:hover {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
+/* ── Layout ── */
+.member-layout {
+  display: flex;
+  align-items: flex-start;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 5rem 3rem;
+  gap: 5rem;
+}
+
+/* ── Image ── */
+.member-img-wrap {
+  flex: 0 0 340px;
+  aspect-ratio: 3 / 4;
+  overflow: hidden;
+  background: #72a691;
+}
+
+.member-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* ── Info ── */
+.member-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding-top: 0.5rem;
+}
+
+.member-eyebrow {
+  font-family: "Telegraf", sans-serif;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: #4a8550;
+}
+
+.member-name {
+  font-family: "RocaTwo-Bl", sans-serif;
+  font-size: clamp(2.25rem, 4vw, 3.5rem);
+  font-weight: 700;
+  color: #3a4b4a;
+  line-height: 1.05;
+}
+
+.member-bio {
+  font-family: "Telegraf", sans-serif;
+  font-size: 1rem;
+  line-height: 1.8;
+  color: rgba(58, 75, 74, 0.8);
+  max-width: 560px;
+}
+
+/* ── Links ── */
+.member-links {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+.member-link {
+  font-family: "Telegraf", sans-serif;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 0 1.5rem;
+  height: 42px;
+  min-width: 140px;
+  white-space: nowrap;
+  border: 2px solid;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s, color 0.2s;
+}
+
+
+.email-link {
+  color: #3a4b4a;
+  border-color: #3a4b4a;
+}
+.email-link:hover {
+  background: #3a4b4a;
+  color: #fdf9ef;
+}
+
+.linkedin-link {
+  color: #4a8550;
+  border-color: #4a8550;
+}
+.linkedin-link:hover {
+  background: #4a8550;
+  color: #fff;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .member-layout { flex-direction: column; padding: 3rem 1.5rem; gap: 2rem; }
+  .member-img-wrap { flex: none; width: 100%; max-width: 320px; }
+  .member-topnav { padding: 1rem 1.5rem; }
+}

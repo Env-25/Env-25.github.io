@@ -1,0 +1,508 @@
+/* lockers.css — Locker rental listing page styles */
+
+/* ── Hero ── */
+.lockers-hero {
+  position: relative;
+  height: 38vh;
+  min-height: 280px;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+}
+.lockers-hero-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: blur(10px);
+  transform: scale(1.08);
+}
+.lockers-hero-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(20, 30, 30, 0.65);
+}
+.lockers-hero-content {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-bottom: 2.5rem;
+  padding-top: var(--nav-height, 72px);
+  gap: 0.6rem;
+  text-align: center;
+}
+.lockers-hero-title {
+  font-family: "RocaTwo-Bl", sans-serif;
+  font-size: clamp(2.5rem, 6vw, 5rem);
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.05em;
+  line-height: 1;
+}
+.lockers-hero-sub {
+  font-family: "Telegraf", sans-serif;
+  font-size: 0.95rem;
+  letter-spacing: 0.1em;
+  color: rgba(255,255,255,0.65);
+  text-transform: uppercase;
+}
+
+/* ── Page layout ── */
+.lockers-section {
+  background: var(--clr-cream);
+  padding: 3rem 2rem 5rem;
+}
+.lockers-layout {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 3rem;
+  align-items: start;
+}
+
+/* ── Sidebar ── */
+.lockers-sidebar {
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: calc(var(--nav-height, 72px) + 1.5rem);
+  min-width: 0;
+}
+.sidebar-block {
+  padding: 1.25rem 0;
+  border-bottom: 1px solid rgba(0,60,55,0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+}
+.sidebar-heading {
+  font-family: "Telegraf", sans-serif;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--clr-forest);
+  opacity: 0.6;
+}
+.sidebar-hint {
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  opacity: 0.7;
+}
+
+/* ── Search ── */
+.locker-search-inner { position: relative; }
+.search-icon {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0.9rem;
+  height: 0.9rem;
+  color: var(--clr-forest);
+  pointer-events: none;
+}
+.locker-search-input {
+  width: 100%;
+  padding: 0.55rem 2rem 0.55rem 2.1rem;
+  font-family: "Telegraf", sans-serif;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--clr-dark-teal);
+  background: #fff;
+  border: 1.5px solid rgba(0,60,55,0.2);
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.locker-search-input:focus {
+  border-color: var(--clr-teal);
+  box-shadow: 0 0 0 3px rgba(0,120,110,0.1);
+}
+.locker-search-input::placeholder { color: rgba(0,60,55,0.35); font-weight: 500; }
+.locker-search-input::-webkit-search-cancel-button { display: none; }
+.search-clear {
+  position: absolute;
+  right: 0.6rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.7rem;
+  color: var(--clr-forest);
+  opacity: 0.5;
+  padding: 0.15rem;
+  line-height: 1;
+  transition: opacity 0.15s;
+}
+.search-clear:hover { opacity: 1; }
+
+/* ── Location dropdown ── */
+.location-dropdown-wrap {
+  position: relative;
+  min-width: 0; /* essential — lets children shrink */
+}
+.location-dropdown-trigger {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  font-family: "Telegraf", sans-serif;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--clr-dark-teal);
+  background: #fff;
+  border: 1.5px solid rgba(0,60,55,0.2);
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  transition: border-color 0.15s;
+  overflow: hidden; /* clip anything that overflows */
+}
+.location-dropdown-trigger:hover { border-color: var(--clr-teal); }
+.location-dropdown-trigger[aria-expanded="true"] svg { transform: rotate(180deg); }
+
+#locationTriggerLabel {
+  flex: 1 1 0;      /* grow to fill, shrink to zero */
+  min-width: 0;     /* allows shrinking below content width */
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  text-align: left;
+}
+
+.location-dropdown-trigger svg {
+  flex: 0 0 14px;   /* fixed 14px, never grows or shrinks */
+  width: 14px;
+  height: 14px;
+  margin-left: 0.5rem;
+  transition: transform 0.2s;
+}
+.location-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: #fff;
+  border: 1.5px solid rgba(0,60,55,0.2);
+  z-index: 10;
+  display: none;          /* hidden by default */
+  flex-direction: column;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.location-dropdown-menu.open {
+  display: flex;          /* shown when JS adds .open */
+}
+
+.location-option {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem 0.75rem;
+  cursor: pointer;
+  font-family: "Telegraf", sans-serif;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--clr-dark-teal);
+  transition: background 0.12s;
+  min-width: 0;
+}
+.location-option:hover { background: rgba(0,60,55,0.05); }
+.location-option input[type="checkbox"] {
+  flex: 0 0 14px;
+  width: 14px;
+  height: 14px;
+  accent-color: var(--clr-dark-teal);
+  cursor: pointer;
+}
+.location-option span {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* ── Filter buttons ── */
+.filter-btn-group { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.filter-btn {
+  font-family: "Telegraf", sans-serif;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--clr-dark-teal);
+  background: #fff;
+  border: 1.5px solid rgba(0,60,55,0.2);
+  padding: 0.3rem 0.65rem;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.filter-btn:hover { border-color: var(--clr-teal); }
+.filter-btn.active {
+  background: var(--clr-dark-teal);
+  color: var(--clr-cream);
+  border-color: var(--clr-dark-teal);
+}
+
+/* ── Price slider ── */
+.price-slider-wrap { display: flex; flex-direction: column; gap: 0.25rem; }
+.price-display {
+  display: flex;
+  justify-content: space-between;
+  font-family: "Telegraf", sans-serif;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--clr-dark-teal);
+}
+.dual-slider-track {
+  position: relative;
+  height: 4px;
+  background: rgba(0,60,55,0.15);
+  margin: 0.75rem 0 0.5rem;
+}
+.dual-slider-fill {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  background: var(--clr-teal);
+}
+.dual-range {
+  position: absolute;
+  top: -7px;
+  width: 100%;
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  pointer-events: none;
+  height: 18px;
+}
+.dual-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--clr-dark-teal);
+  border: 2px solid var(--clr-cream);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+  pointer-events: all;
+  cursor: pointer;
+}
+.dual-range::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--clr-dark-teal);
+  border: 2px solid var(--clr-cream);
+  pointer-events: all;
+  cursor: pointer;
+}
+
+/* ── Available only toggle ── */
+.stock-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  cursor: pointer;
+}
+.stock-toggle input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--clr-dark-teal);
+  cursor: pointer;
+}
+.stock-toggle-label {
+  font-family: "Telegraf", sans-serif;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--clr-dark-teal);
+}
+
+/* ── Reset button ── */
+.sidebar-reset {
+  margin-top: 1.25rem;
+  font-family: "Telegraf", sans-serif;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--clr-forest);
+  background: none;
+  border: none;
+  cursor: pointer;
+  opacity: 0.5;
+  text-decoration: underline;
+  padding: 0;
+  text-align: left;
+  transition: opacity 0.15s;
+}
+.sidebar-reset:hover { opacity: 1; }
+
+/* ── Main content ── */
+.lockers-main { min-width: 0; }
+.lockers-results-row { min-height: 1.4rem; margin-bottom: 1.5rem; }
+.search-count {
+  font-family: "Telegraf", sans-serif;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--clr-forest);
+  opacity: 0.6;
+  visibility: hidden;
+  min-height: 1em;
+}
+.search-count.visible { visibility: visible; }
+
+/* ── Grid ── */
+.lockers-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2.5rem 2rem;
+}
+
+/* ── Card ── */
+.locker-card {
+  display: flex;
+  flex-direction: column;
+  text-decoration: none;
+  color: var(--clr-dark-teal);
+  transition: transform 0.25s ease;
+}
+.locker-card:hover { transform: translateY(-5px); }
+.locker-card:hover .locker-card-img { filter: brightness(0.88); }
+.locker-card[hidden] { display: none; }
+
+.locker-card-img-wrap {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  background: #e8e4df;
+}
+.rented-badge {
+  position: absolute;
+  top: 0.6rem;
+  left: 0.6rem;
+  z-index: 1;
+  font-family: "Telegraf", sans-serif;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  background: rgba(20,30,30,0.75);
+  color: #fff;
+  padding: 0.25rem 0.5rem;
+}
+.locker-card-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: filter 0.25s ease;
+}
+
+/* ── Card info ── */
+.locker-card-info {
+  padding: 0.75rem 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+.locker-card-location {
+  font-family: "Telegraf", sans-serif;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--clr-forest);
+  opacity: 0.65;
+}
+.locker-card-name {
+  font-family: "RocaTwo-Bl", sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--clr-dark-teal);
+}
+
+/* ── Card meta row (price + lock icon) ── */
+.locker-card-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 0.25rem;
+}
+.locker-card-price {
+  font-family: "Telegraf", sans-serif;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--clr-dark-teal);
+}
+.locker-price-period { font-size: 0.72rem; font-weight: 400; opacity: 0.6; }
+
+.lock-icon svg { width: 15px; height: 15px; display: block; }
+.lock-yes svg  { stroke: #2d6a4f; }
+.lock-no svg   { stroke: rgba(58,75,74,0.35); }
+
+/* ── Level availability pips ── */
+.level-avail-row {
+  display: flex;
+  gap: 0.35rem;
+  margin-top: 0.4rem;
+  flex-wrap: wrap;
+}
+.level-pip {
+  font-family: "Telegraf", sans-serif;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 0.15rem 0.4rem;
+  border: 1.5px solid;
+}
+.level-pip.open  { color: #2d6a4f; border-color: #2d6a4f; }
+.level-pip.full  { color: rgba(58,75,74,0.35); border-color: rgba(58,75,74,0.2); }
+
+/* ── Term tag ── */
+.term-tag {
+  align-self: flex-start;
+  margin-top: 0.4rem;
+  font-family: "Telegraf", sans-serif;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--clr-forest);
+  opacity: 0.55;
+}
+
+/* ── No results ── */
+.no-results {
+  text-align: center;
+  font-family: "Telegraf", sans-serif;
+  font-size: 0.9rem;
+  color: var(--clr-forest);
+  opacity: 0.55;
+  padding: 3rem 0;
+  letter-spacing: 0.08em;
+}
+
+/* ── Responsive ── */
+@media (max-width: 1000px) {
+  .lockers-layout { grid-template-columns: 180px 1fr; gap: 2rem; }
+  .lockers-grid   { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 700px) {
+  .lockers-layout  { grid-template-columns: 1fr; }
+  .lockers-sidebar { position: static; }
+  .lockers-grid    { grid-template-columns: repeat(2, 1fr); gap: 1.5rem 1rem; }
+}
+@media (max-width: 420px) {
+  .lockers-grid { grid-template-columns: 1fr; }
+}

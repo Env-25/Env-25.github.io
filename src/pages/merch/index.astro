@@ -1,0 +1,298 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { getMerch, getMerchTypes, getMerchSizes } from "../../utils/merch";
+import "../../styles/merch.css";
+
+const items = getMerch();
+const types = getMerchTypes();
+const sizes = getMerchSizes();
+const maxPrice = 50;
+---
+<BaseLayout title="Merch — UBC CHBE">
+
+  <!-- Hero -->
+  <section class="merch-hero">
+    <img src="/home/index.png" alt="" class="merch-hero-bg" />
+    <div class="merch-hero-overlay"></div>
+    <div class="merch-hero-content">
+      <h1 class="merch-hero-title">CHBE Merch</h1>
+      <p class="merch-hero-sub">Rep the department. Wear it with pride.</p>
+    </div>
+  </section>
+
+  <section class="merch-section">
+
+    <!-- Filters Sidebar + Grid wrapper -->
+    <div class="merch-layout">
+
+      <!-- Sidebar Filters -->
+      <aside class="merch-sidebar" id="merchSidebar">
+
+        <div class="sidebar-block">
+          <p class="sidebar-heading">Search</p>
+          <div class="merch-search-inner">
+            <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <input
+              type="search"
+              id="merchSearch"
+              class="merch-search-input"
+              placeholder="Name or type…"
+              autocomplete="off"
+              spellcheck="false"
+            />
+            <button class="search-clear" id="searchClear" aria-label="Clear" hidden>✕</button>
+          </div>
+        </div>
+
+        <div class="sidebar-block">
+          <p class="sidebar-heading">Type</p>
+          <div class="filter-btn-group" id="typeFilters">
+            <button class="filter-btn active" data-type="all">All</button>
+            {types.map((t) => (
+              <button class="filter-btn" data-type={t}>{t}</button>
+            ))}
+          </div>
+        </div>
+
+        <div class="sidebar-block">
+          <p class="sidebar-heading">Size</p>
+          <div class="filter-btn-group" id="sizeFilters">
+            <button class="filter-btn active" data-size="all">All</button>
+            {sizes.map((s) => (
+              <button class="filter-btn" data-size={s}>{s}</button>
+            ))}
+          </div>
+        </div>
+
+        <div class="sidebar-block">
+          <p class="sidebar-heading">Price Range</p>
+          <div class="price-slider-wrap">
+            <div class="price-display">
+              <span id="priceMinLabel">$0</span>
+              <span id="priceMaxLabel">$50</span>
+            </div>
+            <div class="dual-slider-track" id="sliderTrack">
+              <div class="dual-slider-fill" id="sliderFill"></div>
+              <input type="range" id="priceMin" class="dual-range" min="0" max={maxPrice} value="0" step="1" />
+              <input type="range" id="priceMax" class="dual-range" min="0" max={maxPrice} value={maxPrice} step="1" />
+            </div>
+          </div>
+        </div>
+
+        <div class="sidebar-block">
+          <label class="stock-toggle">
+            <input type="checkbox" id="inStockOnly" />
+            <span class="stock-toggle-label">In stock only</span>
+          </label>
+        </div>
+
+        <button class="sidebar-reset" id="resetFilters">Reset all filters</button>
+      </aside>
+
+      <!-- Main content -->
+      <div class="merch-main">
+        <div class="merch-results-row">
+          <p class="search-count" id="searchCount"></p>
+        </div>
+
+        <div class="merch-grid" id="merchGrid">
+          {items.map((item) => {
+            const inStockSizes = item.Sizes_Stock.filter((s) => s.stock > 0).map((s) => s.size);
+            return (
+              <a
+                href={`/merch/${item.slug}`}
+                class="merch-card"
+                data-name={item.Name}
+                data-type={item.Type}
+                data-sizes={item.allSizes.join(",")}
+                data-instock={item.inStock ? "true" : "false"}
+                data-price={item.Price}
+              >
+                <div class="merch-card-img-wrap">
+                  {!item.inStock && <span class="sold-out-badge">Sold Out</span>}
+                  <img
+                    src={`/merch/images/${item.Cover_image}`}
+                    alt={item.Name}
+                    class="merch-card-img"
+                    loading="lazy"
+                  />
+                </div>
+                <div class="merch-card-info">
+                  <p class="merch-card-type">{item.Type}</p>
+                  <p class="merch-card-name">{item.Name}</p>
+                  <p class="merch-card-price">${item.Price.toFixed(2)}</p>
+                  {inStockSizes.length > 0 && (
+                    <div class="merch-card-sizes">
+                      {inStockSizes.map((s) => <span class="size-pip">{s}</span>)}
+                    </div>
+                  )}
+                </div>
+              </a>
+            );
+          })}
+        </div>
+
+        <p class="no-results" id="noResults" hidden>No items match your filters.</p>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  import Fuse from "fuse.js";
+
+  const grid = document.getElementById("merchGrid")!;
+  const cards = Array.from(grid.querySelectorAll<HTMLAnchorElement>(".merch-card"));
+
+  const data = cards.map((card) => ({
+    el: card,
+    name: card.dataset.name ?? "",
+    type: card.dataset.type ?? "",
+    sizes: (card.dataset.sizes ?? "").split(",").filter(Boolean),
+    inStock: card.dataset.instock === "true",
+    price: parseFloat(card.dataset.price ?? "0"),
+  }));
+
+  const fuse = new Fuse(data, {
+    keys: [
+      { name: "name", weight: 0.65 },
+      { name: "type", weight: 0.35 },
+    ],
+    threshold: 0.35,
+    includeScore: true,
+  });
+
+  // State
+  let activeType = "all";
+  let activeSize = "all";
+  let inStockOnly = false;
+  let priceMin = 0;
+  let priceMax = 50;
+
+  // Elements
+  const searchInput = document.getElementById("merchSearch") as HTMLInputElement;
+  const searchClear = document.getElementById("searchClear") as HTMLButtonElement;
+  const typeButtons = document.querySelectorAll<HTMLButtonElement>("[data-type]");
+  const sizeButtons = document.querySelectorAll<HTMLButtonElement>("[data-size]");
+  const inStockCheck = document.getElementById("inStockOnly") as HTMLInputElement;
+  const priceMinEl = document.getElementById("priceMin") as HTMLInputElement;
+  const priceMaxEl = document.getElementById("priceMax") as HTMLInputElement;
+  const priceMinLabel = document.getElementById("priceMinLabel")!;
+  const priceMaxLabel = document.getElementById("priceMaxLabel")!;
+  const sliderFill = document.getElementById("sliderFill")!;
+  const countEl = document.getElementById("searchCount")!;
+  const noResults = document.getElementById("noResults")!;
+  const resetBtn = document.getElementById("resetFilters")!;
+
+  function updateSliderFill() {
+    const min = parseInt(priceMinEl.value);
+    const max = parseInt(priceMaxEl.value);
+    const range = parseInt(priceMinEl.max) - parseInt(priceMinEl.min);
+    sliderFill.style.left = `${(min / range) * 100}%`;
+    sliderFill.style.right = `${100 - (max / range) * 100}%`;
+  }
+
+  function applyFilters() {
+    const q = searchInput.value.trim();
+    searchClear.hidden = q.length === 0;
+
+    const textMatched: Set<HTMLAnchorElement> | null = q
+      ? new Set(fuse.search(q).map((r) => r.item.el))
+      : null;
+
+    let visible = 0;
+    data.forEach(({ el, sizes, inStock, price }) => {
+      const passText = textMatched === null || textMatched.has(el);
+      const passType = activeType === "all" || el.dataset.type === activeType;
+      const passSize = activeSize === "all" || sizes.includes(activeSize);
+      const passStock = !inStockOnly || inStock;
+      const passPrice = price >= priceMin && price <= priceMax;
+
+      el.hidden = !(passText && passType && passSize && passStock && passPrice);
+      if (!el.hidden) visible++;
+    });
+
+    noResults.hidden = visible > 0;
+    const anyFilter = q || activeType !== "all" || activeSize !== "all" || inStockOnly || priceMin > 0 || priceMax < 50;
+    countEl.textContent = anyFilter ? `${visible} item${visible !== 1 ? "s" : ""}` : "";
+    countEl.classList.toggle("visible", !!anyFilter);
+  }
+
+  // Type filter buttons
+  typeButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      typeButtons.forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+      activeType = btn.dataset.type!;
+      applyFilters();
+    });
+  });
+
+  // Size filter buttons
+  sizeButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      sizeButtons.forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+      activeSize = btn.dataset.size!;
+      applyFilters();
+    });
+  });
+
+  // Price sliders
+  priceMinEl.addEventListener("input", () => {
+    let min = parseInt(priceMinEl.value);
+    let max = parseInt(priceMaxEl.value);
+    if (min > max - 1) { min = max - 1; priceMinEl.value = String(min); }
+    priceMin = min;
+    priceMinLabel.textContent = `$${min}`;
+    updateSliderFill();
+    applyFilters();
+  });
+
+  priceMaxEl.addEventListener("input", () => {
+    let min = parseInt(priceMinEl.value);
+    let max = parseInt(priceMaxEl.value);
+    if (max < min + 1) { max = min + 1; priceMaxEl.value = String(max); }
+    priceMax = max;
+    priceMaxLabel.textContent = `$${max}`;
+    updateSliderFill();
+    applyFilters();
+  });
+
+  // In stock
+  inStockCheck.addEventListener("change", () => {
+    inStockOnly = inStockCheck.checked;
+    applyFilters();
+  });
+
+  // Search
+  searchInput.addEventListener("input", applyFilters);
+  searchClear.addEventListener("click", () => {
+    searchInput.value = "";
+    searchInput.focus();
+    applyFilters();
+  });
+
+  // Reset
+  resetBtn.addEventListener("click", () => {
+    searchInput.value = "";
+    activeType = "all";
+    activeSize = "all";
+    inStockOnly = false;
+    priceMin = 0;
+    priceMax = 50;
+    priceMinEl.value = "0";
+    priceMaxEl.value = "50";
+    priceMinLabel.textContent = "$0";
+    priceMaxLabel.textContent = "$50";
+    inStockCheck.checked = false;
+    typeButtons.forEach((b) => b.classList.toggle("active", b.dataset.type === "all"));
+    sizeButtons.forEach((b) => b.classList.toggle("active", b.dataset.size === "all"));
+    updateSliderFill();
+    applyFilters();
+  });
+
+  updateSliderFill();
+</script>

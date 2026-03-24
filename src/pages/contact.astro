@@ -1,0 +1,264 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import "../styles/contact.css";
+---
+<BaseLayout title="Contact — UBC CHBE">
+
+  <!-- Hero -->
+  <section class="contact-hero">
+    <img src="/home/index.png" alt="" class="contact-hero-bg" />
+    <div class="contact-hero-overlay"></div>
+    <div class="contact-hero-content">
+      <h1 class="contact-hero-title">Contact Us</h1>
+      <p class="contact-hero-sub">We'd love to hear from you.</p>
+    </div>
+  </section>
+
+  <section class="contact-section">
+    <div class="contact-layout">
+
+      <!-- Left: Form -->
+      <div class="contact-form-wrap">
+        <h2 class="contact-block-title">Send a Message</h2>
+        <p class="contact-block-sub">Fill out the form below and we'll get back to you as soon as possible.</p>
+
+        <form class="contact-form" id="contactForm" novalidate>
+
+          <div class="form-field">
+            <label for="contactName" class="form-label">
+              Name <span class="required">*</span>
+            </label>
+            <input
+              type="text"
+              id="contactName"
+              name="name"
+              class="form-input"
+              placeholder="Your full name"
+              autocomplete="name"
+              required
+            />
+            <p class="field-error" id="nameError">Please enter your name.</p>
+          </div>
+
+          <div class="form-field">
+            <label for="contactEmail" class="form-label">
+              Email <span class="required">*</span>
+            </label>
+            <input
+              type="email"
+              id="contactEmail"
+              name="email"
+              class="form-input"
+              placeholder="your@email.com"
+              autocomplete="email"
+              required
+            />
+            <p class="field-error" id="emailError">Please enter a valid email address.</p>
+          </div>
+
+          <div class="form-field">
+            <label for="contactSubject" class="form-label">
+              Subject <span class="required">*</span>
+            </label>
+            <input
+              type="text"
+              id="contactSubject"
+              name="subject"
+              class="form-input"
+              placeholder="What is this regarding?"
+              required
+            />
+            <p class="field-error" id="subjectError">Please enter a subject.</p>
+          </div>
+
+          <div class="form-field">
+            <label for="contactMessage" class="form-label">
+              Message <span class="required">*</span>
+            </label>
+            <textarea
+              id="contactMessage"
+              name="message"
+              class="form-input form-textarea"
+              placeholder="Write your message here…"
+              rows="6"
+              required
+            ></textarea>
+            <p class="field-error" id="messageError">Please enter a message.</p>
+          </div>
+
+          <div class="form-field">
+            <label for="contactFile" class="form-label">
+              Attachment <span class="form-optional">(optional)</span>
+            </label>
+            <label class="file-upload-label" id="fileLabel" for="contactFile">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/>
+                <line x1="12" y1="3" x2="12" y2="15"/>
+              </svg>
+              <span id="fileLabelText">Click to upload a file</span>
+            </label>
+            <input
+              type="file"
+              id="contactFile"
+              name="file"
+              class="file-input-hidden"
+              accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
+            />
+            <p class="file-hint">Accepted: PDF, DOC, DOCX, PNG, JPG — max 10 MB</p>
+          </div>
+
+          <button type="submit" class="form-submit" disabled>
+            Send Message
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="22" y1="2" x2="11" y2="13"/>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+            </svg>
+          </button>
+
+          <p class="form-coming-soon">Form submission coming soon — email us directly in the meantime.</p>
+        </form>
+      </div>
+
+      <!-- Right: Contact directory -->
+      <div class="contact-directory">
+        <h2 class="contact-block-title">Get in Touch Directly</h2>
+        <p class="contact-block-sub">Reach out to the right person for your enquiry.</p>
+
+        <div class="contact-cards">
+
+          <div class="contact-card">
+            <div class="contact-card-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+              </svg>
+            </div>
+            <div class="contact-card-info">
+              <p class="contact-card-role">General Inquiries</p>
+              <p class="contact-card-name">CHBE Student Council</p>
+              <a href="mailto:contact@chbe.ubc.ca" class="contact-card-email">contact@chbe.ubc.ca</a>
+            </div>
+          </div>
+
+          <div class="contact-card">
+            <div class="contact-card-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
+                <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+              </svg>
+            </div>
+            <div class="contact-card-info">
+              <p class="contact-card-role">Locker Rental</p>
+              <p class="contact-card-name">Facilities & Operations</p>
+              <a href="mailto:lockers@chbe.ubc.ca" class="contact-card-email">lockers@chbe.ubc.ca</a>
+            </div>
+          </div>
+
+          <div class="contact-card">
+            <div class="contact-card-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+                <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+              </svg>
+            </div>
+            <div class="contact-card-info">
+              <p class="contact-card-role">Merch & Orders</p>
+              <p class="contact-card-name">Merchandise Team</p>
+              <a href="mailto:merch@chbe.ubc.ca" class="contact-card-email">merch@chbe.ubc.ca</a>
+            </div>
+          </div>
+
+          <div class="contact-card">
+            <div class="contact-card-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                <line x1="16" y1="2" x2="16" y2="6"/>
+                <line x1="8" y1="2" x2="8" y2="6"/>
+                <line x1="3" y1="10" x2="21" y2="10"/>
+              </svg>
+            </div>
+            <div class="contact-card-info">
+              <p class="contact-card-role">Events & Sponsorship</p>
+              <p class="contact-card-name">Events Committee</p>
+              <a href="mailto:events@chbe.ubc.ca" class="contact-card-email">events@chbe.ubc.ca</a>
+            </div>
+          </div>
+
+          <div class="contact-card">
+            <div class="contact-card-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                <polyline points="22,6 12,13 2,6"/>
+              </svg>
+            </div>
+            <div class="contact-card-info">
+              <p class="contact-card-role">Academic Support</p>
+              <p class="contact-card-name">Academic Committee</p>
+              <a href="mailto:academic@chbe.ubc.ca" class="contact-card-email">academic@chbe.ubc.ca</a>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  const form        = document.getElementById("contactForm")   as HTMLFormElement;
+  const nameEl      = document.getElementById("contactName")   as HTMLInputElement;
+  const emailEl     = document.getElementById("contactEmail")  as HTMLInputElement;
+  const subjectEl   = document.getElementById("contactSubject") as HTMLInputElement;
+  const messageEl   = document.getElementById("contactMessage") as HTMLTextAreaElement;
+  const fileInput   = document.getElementById("contactFile")   as HTMLInputElement;
+  const fileLabelText = document.getElementById("fileLabelText")!;
+  const submitBtn   = form.querySelector<HTMLButtonElement>(".form-submit")!;
+
+  // Show selected filename
+  fileInput.addEventListener("change", () => {
+    const file = fileInput.files?.[0];
+    fileLabelText.textContent = file ? file.name : "Click to upload a file";
+  });
+
+  // Validate a single field — adds/removes .error class
+  function validate(el: HTMLInputElement | HTMLTextAreaElement, errorId: string): boolean {
+    const empty = el.value.trim() === "";
+    const invalidEmail = el.type === "email" && !empty && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(el.value);
+    const invalid = empty || invalidEmail;
+    el.classList.toggle("error", invalid);
+    document.getElementById(errorId)!.classList.toggle("visible", invalid);
+    return !invalid;
+  }
+
+  // Live validation on blur
+  nameEl.addEventListener   ("blur", () => validate(nameEl,    "nameError"));
+  emailEl.addEventListener  ("blur", () => validate(emailEl,   "emailError"));
+  subjectEl.addEventListener("blur", () => validate(subjectEl, "subjectError"));
+  messageEl.addEventListener("blur", () => validate(messageEl, "messageError"));
+
+  // Clear error on input
+  [nameEl, emailEl, subjectEl, messageEl].forEach((el) => {
+    el.addEventListener("input", () => {
+      el.classList.remove("error");
+      const errorEl = el.closest(".form-field")?.querySelector(".field-error");
+      errorEl?.classList.remove("visible");
+    });
+  });
+
+  // Submit — disabled for now, just validates
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const ok = [
+      validate(nameEl,    "nameError"),
+      validate(emailEl,   "emailError"),
+      validate(subjectEl, "subjectError"),
+      validate(messageEl, "messageError"),
+    ].every(Boolean);
+
+    if (ok) {
+      // placeholder — wire up to backend/formspree/etc. later
+      console.log("Form valid — submission coming soon.");
+    }
+  });
+</script>

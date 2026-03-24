@@ -1,0 +1,93 @@
+---
+import { getEvents, nameToSlug } from "../../utils/events";
+import "../../styles/event.css";
+import "../../styles/global.css";
+
+export async function getStaticPaths() {
+  const { getEvents, nameToSlug } = await import("../../utils/events");
+  const events = getEvents();
+  return events.map((event) => ({
+    params: { event: nameToSlug(event.Name) },
+    props: { event },
+  }));
+}
+
+const { event } = Astro.props;
+---
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="preload" href="/fonts/RocaTwo-Bl.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/Telegraf.woff2" as="font" type="font/woff2" crossorigin />
+    <title>{event.Name} — CHBE Events</title>
+  </head>
+  <body class="event-body">
+
+    <!-- Top Nav -->
+    <div class="event-topnav">
+      <a href="/events" class="topnav-btn">← Back to Events</a>
+      <a href="/" class="topnav-btn">Home</a>
+    </div>
+
+    <!-- Event Layout -->
+    <div class="event-layout">
+
+      <!-- Image -->
+      <div class="event-img-wrap">
+        <img
+          src={`/events/images/${event.Image}`}
+          alt={event.Name}
+          class="event-img"
+          loading="eager"
+        />
+      </div>
+
+      <!-- Info -->
+      <div class="event-info">
+        <h1 class="event-name">{event.Name}</h1>
+
+        <div class="event-details">
+          <div class="event-detail-row">
+            <span class="detail-icon">📅</span>
+            <span class="detail-text">{event.Date}</span>
+          </div>
+          <div class="event-detail-row">
+            <span class="detail-icon">🕐</span>
+            <span class="detail-text">{event.Time}</span>
+          </div>
+          <div class="event-detail-row">
+            <span class="detail-icon">📍</span>
+            <span class="detail-text">{event.Location}</span>
+          </div>
+          {event.Email && (
+            <div class="event-detail-row">
+              <span class="detail-icon">✉</span>
+              <a href={`mailto:${event.Email}`} class="detail-link">{event.Email}</a>
+            </div>
+          )}
+        </div>
+
+        <p class="event-desc">{event.Desc}</p>
+
+        <div class="event-actions">
+          {event.CalendarLink ? (
+            <a href={event.CalendarLink} target="_blank" rel="noopener" class="event-action-btn primary">
+              + Add to Calendar
+            </a>
+          ) : (
+            <button class="event-action-btn primary" disabled title="Coming soon">
+              + Add to Calendar
+            </button>
+          )}
+          <a href={`mailto:${event.Email}`} class="event-action-btn secondary">
+            ✉ Contact
+          </a>
+        </div>
+      </div>
+
+    </div>
+
+  </body>
+</html>
