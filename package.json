@@ -6,7 +6,7 @@
     "dev": "astro dev",
     "start": "astro dev",
     "build": "astro build",
-    "preview": "astro preview",
+    "preview": "VITE_ALLOWED_HOSTS=elwood-unimagined-tasha.ngrok-free.dev astro preview --host 0.0.0.0 --port 3001",
     "astro": "astro"
   },
   "dependencies": {
