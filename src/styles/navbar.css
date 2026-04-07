@@ -4,15 +4,15 @@
   left: 0;
   width: 100%;
   z-index: 1000;
-  min-height: 72px;
+  padding-block: 0.6rem;
   display: flex;
   align-items: center;
   background: transparent;
-  transition: background 0.35s ease, min-height 0.35s ease, box-shadow 0.35s ease;
+  transition: background 0.35s ease, padding-block 0.35s ease, box-shadow 0.35s ease;
 }
 
 .navbar.scrolled {
-  min-height: 56px;
+  padding-block: 0.35rem;
   background: var(--clr-dark-teal);
   box-shadow: 0 2px 24px rgba(0, 0, 0, 0.35);
 }
@@ -24,10 +24,10 @@
   padding: 0 3rem;
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 5rem;
+  justify-content: space-between;
 }
 
+/* ── Brand (left side) ── */
 .nav-brand {
   display: flex;
   align-items: center;
@@ -36,22 +36,25 @@
 }
 
 .nav-logo {
-  height: 40px;
+  /* Let the padding-block on .navbar control the visual breathing room;
+     height auto keeps the logo as tall as it wants within that space */
+  height: 48px;
   width: auto;
   display: block;
   transition: height 0.35s ease;
 }
-.navbar.scrolled .nav-logo { height: 32px; }
+.navbar.scrolled .nav-logo { height: 36px; }
 
-.nav-name {
-  font-family: "Telegraf", sans-serif;
-  font-size: 1.2rem;
-  font-weight: 700;
-  color: #fff;
-  letter-spacing: 0.05em;
-  white-space: nowrap;
+.nav-text-logo {
+  height: 22px;
+  width: auto;
+  display: block;
+  transition: height 0.35s ease, opacity 0.35s ease;
+  opacity: 0.92;
 }
+.navbar.scrolled .nav-text-logo { height: 18px; }
 
+/* ── Links (right side) ── */
 .nav-links {
   display: flex;
   align-items: center;
@@ -66,8 +69,24 @@
   text-transform: uppercase;
   color: rgba(255, 255, 255, 0.88);
   position: relative;
+  display: flex;              /* add this */
+  align-items: center;        /* add this */
+  line-height: 1;             /* add this */
   padding-bottom: 3px;
   transition: color 0.2s;
+  text-decoration: none;
+}
+
+.nav-account {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1.5px solid rgba(255, 255, 255, 0.35);
+  border-radius: 999px;
+  padding: 0.35rem 0.85rem !important;  /* symmetric — overrides padding-bottom: 3px */
+  padding-bottom: 0.35rem !important;   /* explicit override for the ::after trick */
+  line-height: 1;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
 }
 
 .nav-links a::after {
@@ -83,9 +102,31 @@
 .nav-links a:hover { color: #fff; }
 .nav-links a:hover::after { width: 100%; }
 
+/* ── Account button ── */
+
+/* remove the underline animation on the account pill */
+.nav-account::after { display: none !important; }
+
+.nav-account:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.65);
+  color: #fff;
+}
+
+.account-icon {
+  flex-shrink: 0;
+  display: block;
+  position: relative;
+  top: -1px;   /* tweak between -2px and 2px until optically centered */
+}
+
+/* ── Responsive ── */
 @media (max-width: 900px) {
-  .navbar-inner { gap: 2rem; padding: 0 1.25rem; }
+  .navbar-inner { padding: 0 1.25rem; }
   .nav-links { gap: 1rem; }
   .nav-links a { font-size: 0.7rem; }
-  .nav-name { font-size: 1rem; }
+  .nav-logo { height: 40px; }
+  .navbar.scrolled .nav-logo { height: 30px; }
+  .nav-text-logo { height: 18px; }
+  .navbar.scrolled .nav-text-logo { height: 15px; }
 }
