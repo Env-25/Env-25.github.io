@@ -130,3 +130,9 @@
   .nav-text-logo { height: 18px; }
   .navbar.scrolled .nav-text-logo { height: 15px; }
 }
+
+.disabled {
+  pointer-events: none;
+  opacity: 0.5;
+  cursor: not-allowed;
+}

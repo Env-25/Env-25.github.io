@@ -5,130 +5,129 @@ import "../../styles/council.css";
 
 const year = "2026";
 const members = getMembers(year);
+const fromLeftToRight = members.map((m) => m.Name).join(", ");
 ---
 <BaseLayout title="Council — UBC CHBE">
+
   <!-- Hero -->
   <section class="council-hero">
     <img src="/home/index.png" alt="" class="council-hero-bg" />
     <div class="council-hero-overlay"></div>
     <div class="council-hero-content">
+      
       <h1 class="council-hero-title">CHBE Council</h1>
+      <p class="council-hero-tagline">Meet the Team</p>
       <div class="year-row">
-        <select class="year-select" id="yearSelect">
+        <select class="year-select" id="yearSelect" autocomplete="off">
           <option value="2026" selected>2026</option>
+          <option value="2025">2025</option>
         </select>
       </div>
     </div>
   </section>
 
-  <!-- Search + Grid -->
-  <section class="council-section">
-    <!-- Search Bar -->
-    <div class="council-search-wrap">
-      <div class="council-search-inner">
-        <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-        </svg>
-        <input
-          type="search"
-          id="councilSearch"
-          class="council-search-input"
-          placeholder="Search by name or position…"
-          autocomplete="off"
-          spellcheck="false"
-        />
-        <button class="search-clear" id="searchClear" aria-label="Clear search" hidden>✕</button>
-      </div>
-      <p class="search-count" id="searchCount"></p>
-    </div>
+  <!-- Group Photo -->
+  <section class="group-photo-section">
+    <img
+      src={`/council/${year}/group.jpg`}
+      alt={`CHBE Council ${year} group photo`}
+      class="group-photo"
+      id="groupPhoto"
+      loading="eager"
+    />
+    <p class="group-photo-caption">
+      <span class="caption-label">From left to right —</span>
+      <span id="captionNames">{fromLeftToRight}</span>
+    </p>
+  </section>
 
-    <!-- Grid -->
+  <!-- Member Grid -->
+  <section class="council-section">
     <div class="council-grid" id="councilGrid">
-      {members.map((member, i) => (
+      {members.map((member) => (
         <a
           href={`/council/${member.slug}`}
           class="council-card"
           data-name={member.Name}
           data-title={member.Title}
         >
-          <div class="card-img-wrap">
-            <img
-              src={`/council/${year}/images/${member.Image}`}
-              alt={member.Name}
-              class="card-img"
-              loading={i < 3 ? "eager" : "lazy"}
-            />
-          </div>
-          <div class="card-info">
-            <p class="card-name">{member.Name}</p>
-            <p class="card-title">{member.Title}</p>
-          </div>
+          <p class="card-name">{member.Name}</p>
+          <p class="card-title">{member.Title}</p>
         </a>
       ))}
     </div>
-
-    <p class="no-results" id="noResults" hidden>No members match your search.</p>
+    <p class="no-results" id="noResults" hidden>No members found for this year.</p>
   </section>
+
 </BaseLayout>
 
-<!-- Fuse.js + search logic -->
 <script>
-  import Fuse from "fuse.js";
-
+  const yearSelect = document.getElementById("yearSelect") as HTMLSelectElement;
   const grid = document.getElementById("councilGrid")!;
-  const input = document.getElementById("councilSearch") as HTMLInputElement;
-  const clearBtn = document.getElementById("searchClear") as HTMLButtonElement;
-  const countEl = document.getElementById("searchCount")!;
+  const groupPhoto = document.getElementById("groupPhoto") as HTMLImageElement;
+  const captionNames = document.getElementById("captionNames")!;
   const noResults = document.getElementById("noResults")!;
 
-  // Build data array from rendered cards
-  const cards = Array.from(grid.querySelectorAll<HTMLAnchorElement>(".council-card"));
-  const data = cards.map((card) => ({
-    el: card,
-    name: card.dataset.name ?? "",
-    title: card.dataset.title ?? "",
-  }));
-
-  const fuse = new Fuse(data, {
-    keys: [
-      { name: "name", weight: 0.7 },
-      { name: "title", weight: 0.3 },
-    ],
-    threshold: 0.35,
-    includeScore: true,
-  });
-
-  function applyFilter(query: string) {
-  const q = query.trim();
-  clearBtn.hidden = q.length === 0;
-
-  if (!q) {
-    cards.forEach((c) => (c.hidden = false));
-    countEl.textContent = "";
-    countEl.classList.remove("visible");
-    noResults.hidden = true;
-    return;
+  function nameToSlug(name: string): string {
+    return name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
   }
 
-  const results = fuse.search(q);
-  const matched = new Set(results.map((r) => r.item.el));
+  function parseCSV(text: string): Record<string, string>[] {
+    const lines = text.trim().split("\n");
+    const headers = lines[0].split(",").map((h) => h.trim().replace(/^"|"$/g, ""));
+    return lines.slice(1).map((line) => {
+      const fields: string[] = [];
+      let current = "";
+      let inQuotes = false;
+      for (const ch of line) {
+        if (ch === '"') { inQuotes = !inQuotes; }
+        else if (ch === "," && !inQuotes) { fields.push(current.trim()); current = ""; }
+        else { current += ch; }
+      }
+      fields.push(current.trim());
+      const obj: Record<string, string> = {};
+      headers.forEach((h, i) => { obj[h] = (fields[i] ?? "").replace(/^"|"$/g, ""); });
+      return obj;
+    });
+  }
 
-  let visible = 0;
-  cards.forEach((card) => {
-    card.hidden = !matched.has(card);
-    if (!card.hidden) visible++;
-  });
+  async function loadYear(year: string) {
+    try {
+      const res = await fetch(`/council/${year}/members.csv`);
+      if (!res.ok) throw new Error("Not found");
+      const text = await res.text();
+      const members = parseCSV(text);
 
-  noResults.hidden = visible > 0;
-  countEl.textContent = `${visible} result${visible !== 1 ? "s" : ""}`;
-  countEl.classList.add("visible");
-}
+      // Update group photo
+      groupPhoto.src = `/council/${year}/group.jpg`;
+      groupPhoto.alt = `CHBE Council ${year} group photo`;
 
+      // Update from-left-to-right caption
+      captionNames.textContent = members.map((m) => m.Name).join(", ");
 
-  input.addEventListener("input", () => applyFilter(input.value));
-  clearBtn.addEventListener("click", () => {
-    input.value = "";
-    input.focus();
-    applyFilter("");
-  });
+      // Re-render grid
+      if (members.length === 0) {
+        grid.innerHTML = "";
+        noResults.hidden = false;
+        return;
+      }
+
+      noResults.hidden = true;
+      grid.innerHTML = members
+        .map((m) => {
+          const slug = nameToSlug(m.Name);
+          return `<a href="/council/${slug}" class="council-card" data-name="${m.Name}" data-title="${m.Title}">
+            <p class="card-name">${m.Name}</p>
+            <p class="card-title">${m.Title}</p>
+          </a>`;
+        })
+        .join("");
+    } catch {
+      grid.innerHTML = "";
+      captionNames.textContent = "";
+      noResults.hidden = false;
+    }
+  }
+  yearSelect.value = "2026";
+  yearSelect.addEventListener("change", () => loadYear(yearSelect.value));
 </script>

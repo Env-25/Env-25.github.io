@@ -1,3 +1,4 @@
+/* ── Hero ── */
 .hero {
   position: relative;
   width: 100%;
@@ -9,7 +10,6 @@
   justify-content: center;
 }
 
-
 .hero-bg {
   position: absolute;
   inset: 0;
@@ -20,38 +20,35 @@
   z-index: 0;
 }
 
-
 .hero-overlay {
   position: absolute;
   inset: 0;
   background: linear-gradient(
     160deg,
-    rgba(20, 32, 31, 0.55) 0%,
-    rgba(10, 20, 20, 0.75) 100%
+    rgba(20, 32, 31, 0.60) 0%,
+    rgba(10, 20, 20, 0.80) 100%
   );
   z-index: 1;
 }
-
 
 .hero-content {
   position: relative;
   z-index: 2;
   display: flex;
-  flex-direction: row;         /* two-col layout */
+  flex-direction: row;
   align-items: center;
-  gap: 0;                      /* gap handled by divider */
+  gap: 0;
   text-align: left;
   padding: 0 1.5rem;
 }
 
 .hero-logo {
-  width: min(420px, 38vw);     /* larger than before */
+  width: min(420px, 38vw);
   height: auto;
   filter: brightness(0) invert(1);
   flex-shrink: 0;
 }
 
-/* Vertical separator line */
 .hero-divider {
   width: 1.5px;
   height: min(300px, 30vw);
@@ -61,9 +58,8 @@
 }
 
 .hero-title {
-  font-family: "Telegraf", sans-serif;
-  font-size: clamp(3rem, 6.4vw, 5rem);   /* doubled from clamp(1.5rem, 3.2vw, 2.5rem) */
-  font-weight: 800;                        /* was 800 — lighter feel */
+  font-family: "Telegraf-Regular", sans-serif;
+  font-size: clamp(3rem, 6.4vw, 5rem);
   color: rgba(255, 255, 255, 0.9);
   letter-spacing: 0.3em;
   text-transform: uppercase;
@@ -72,8 +68,6 @@
   gap: 0.15em;
   line-height: 1.15;
 }
-
-
 
 /* ── Scroll Indicator ── */
 .scroll-indicator {
@@ -87,7 +81,6 @@
   gap: 0.6rem;
 }
 
-
 .scroll-label {
   font-family: var(--font-body);
   font-size: 0.65rem;
@@ -96,9 +89,8 @@
   text-transform: uppercase;
   color: rgba(255, 255, 255, 0.55);
   writing-mode: vertical-rl;
-  transform:   rotate(180deg);
+  transform: rotate(180deg);
 }
-
 
 .scroll-chevrons {
   display: flex;
@@ -106,7 +98,6 @@
   align-items: center;
   gap: 5px;
 }
-
 
 .scroll-chevrons span {
   display: block;
@@ -122,13 +113,11 @@
 .scroll-chevrons span:nth-child(2) { animation-delay: 0.22s; }
 .scroll-chevrons span:nth-child(3) { animation-delay: 0.44s; }
 
-
 @keyframes chevronFall {
   0%   { opacity: 0; transform: rotate(45deg) translate(-5px, -5px); }
   40%  { opacity: 1; }
   100% { opacity: 0; transform: rotate(45deg) translate(5px, 5px); }
 }
-
 
 /* ── Shared Section Layout ── */
 .content-section {
@@ -138,19 +127,28 @@
 }
 .content-section.reverse { flex-direction: row-reverse; }
 
+/* section-media is now a flex container so the child can stretch to full height */
+.section-media {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+}
 
-.section-media { flex: 1; overflow: hidden; }
-
-
-.section-media img,
+/* wrapper div — stretches to fill .section-media */
 .section-img-placeholder {
+  width: 100%;
+  flex: 1;
+}
+
+/* the actual image — fills the wrapper completely */
+.section-img {
   width: 100%;
   height: 100%;
   min-height: 420px;
   object-fit: cover;
+  object-position: center;
   display: block;
 }
-
 
 .section-text {
   flex: 1;
@@ -161,7 +159,6 @@
   gap: 1.25rem;
 }
 
-
 /* ── Section Themes ── */
 .section-text.light {
   background: var(--clr-cream);
@@ -170,20 +167,16 @@
   background: var(--clr-dark-teal);
 }
 
-
 .section-text.light .section-eyebrow { color: var(--clr-forest); }
 .section-text.dark  .section-eyebrow { color: var(--clr-teal); }
 
-
 .section-text.light h2 { color: var(--clr-dark-teal); }
 .section-text.dark  h2 { color: var(--clr-cream); }
-
 
 .section-text.light p,
 .section-text.light li { color: #3a4b4acc; }
 .section-text.dark  p,
 .section-text.dark  li { color: rgba(253,249,239,0.8); }
-
 
 /* ── Section Typography ── */
 .section-eyebrow {
@@ -194,14 +187,12 @@
   text-transform: uppercase;
 }
 
-
 .section-text h2 {
   font-family: var(--font-heading);
   font-size: clamp(2rem, 3.2vw, 3.25rem);
   font-weight: 700;
   line-height: 1.1;
 }
-
 
 .section-text p {
   font-family: var(--font-body);
@@ -210,13 +201,11 @@
   max-width: 520px;
 }
 
-
 .section-text ul {
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
 }
-
 
 .section-text li {
   font-family: var(--font-body);
@@ -237,9 +226,11 @@
 }
 .section-text.dark li::before { background: var(--clr-teal); }
 
-
 /* ── CTA Button ── */
+/* Works as both <button> and <a> */
 .cta-btn {
+  display: inline-block;
+  text-decoration: none;
   align-self: flex-start;
   margin-top: 0.5rem;
   padding: 0.875rem 2.25rem;
@@ -259,27 +250,32 @@
   color: var(--clr-forest);
   transform: translateY(-2px);
 }
+
+/* Dark section variant — teal outline style to match the dark bg */
 .section-text.dark .cta-btn {
-  border-color: var(--clr-teal);
-  background: transparent;
-  color: var(--clr-teal);
-}
-.section-text.dark .cta-btn:hover {
-  background: var(--clr-teal);
+  border-color: var(--clr-cream);
+  background: var(--clr-cream);
   color: var(--clr-dark-teal);
 }
+.section-text.dark .cta-btn:hover {
+  background: var(--clr-dark-teal);
+  color: var(--clr-cream);
+}
+
 
 
 /* ── Responsive ── */
 @media (max-width: 900px) {
   .content-section,
   .content-section.reverse { flex-direction: column; }
+
   .section-text { padding: 3.5rem 2rem; }
-  .section-media img,
-  .section-img-placeholder { min-height: 280px; }
+
+  .section-img { min-height: 280px; }
+
   .scroll-indicator { right: 1.25rem; }
 
-    .hero-content {
+  .hero-content {
     flex-direction: column;
     text-align: center;
     gap: 1rem;
@@ -291,7 +287,7 @@
 
   .hero-divider {
     width: min(160px, 40vw);
-    height: 1.5px;             /* horizontal on mobile */
+    height: 1.5px;
     margin: 0;
   }
 
