@@ -4,10 +4,12 @@ import "../../styles/event.css";
 import "../../styles/global.css";
 
 export async function getStaticPaths() {
-  const { getEvents, nameToSlug } = await import("../../utils/events");
-  const events = getEvents();
+  const { getEvents } = await import("../../utils/events");
+  const events = getEvents().filter(
+    (e) => e.Name && e.Name.trim() !== "" && e.slug && e.slug.trim() !== ""
+  );
   return events.map((event) => ({
-    params: { event: nameToSlug(event.Name) },
+    params: { event: event.slug },
     props: { event },
   }));
 }

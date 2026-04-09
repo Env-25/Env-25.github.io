@@ -1,6 +1,6 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
-import { getMembers } from "../../utils/council";
+import { getMembers, nameToSlug } from "../../utils/council";
 import "../../styles/council.css";
 
 const year = "2026";
@@ -11,10 +11,9 @@ const fromLeftToRight = members.map((m) => m.Name).join(", ");
 
   <!-- Hero -->
   <section class="council-hero">
-    <img src="/home/index.png" alt="" class="council-hero-bg" />
+    <img src="/home/index-lower.jpg" alt="" class="council-hero-bg" />
     <div class="council-hero-overlay"></div>
     <div class="council-hero-content">
-      
       <h1 class="council-hero-title">CHBE Council</h1>
       <p class="council-hero-tagline">Meet the Team</p>
       <div class="year-row">
@@ -46,7 +45,7 @@ const fromLeftToRight = members.map((m) => m.Name).join(", ");
     <div class="council-grid" id="councilGrid">
       {members.map((member) => (
         <a
-          href={`/council/${member.slug}`}
+          href={`/council/${year}/${nameToSlug(member.Name)}`}
           class="council-card"
           data-name={member.Name}
           data-title={member.Title}
@@ -102,7 +101,7 @@ const fromLeftToRight = members.map((m) => m.Name).join(", ");
       groupPhoto.src = `/council/${year}/group.jpg`;
       groupPhoto.alt = `CHBE Council ${year} group photo`;
 
-      // Update from-left-to-right caption
+      // Update caption
       captionNames.textContent = members.map((m) => m.Name).join(", ");
 
       // Re-render grid
@@ -116,7 +115,8 @@ const fromLeftToRight = members.map((m) => m.Name).join(", ");
       grid.innerHTML = members
         .map((m) => {
           const slug = nameToSlug(m.Name);
-          return `<a href="/council/${slug}" class="council-card" data-name="${m.Name}" data-title="${m.Title}">
+          // ✅ Year is now included in the href
+          return `<a href="/council/${year}/${slug}" class="council-card" data-name="${m.Name}" data-title="${m.Title}">
             <p class="card-name">${m.Name}</p>
             <p class="card-title">${m.Title}</p>
           </a>`;
@@ -128,6 +128,7 @@ const fromLeftToRight = members.map((m) => m.Name).join(", ");
       noResults.hidden = false;
     }
   }
+
   yearSelect.value = "2026";
   yearSelect.addEventListener("change", () => loadYear(yearSelect.value));
 </script>

@@ -1,20 +1,25 @@
 ---
-import { getMembers, nameToSlug } from "../../utils/council";
-import "../../styles/council-member.css";
-import "../../styles/global.css";
-
-const year = "2026";
+import "../../../styles/council-member.css";
+import "../../../styles/global.css";
 
 export async function getStaticPaths() {
-  const { getMembers, nameToSlug } = await import("../../utils/council");
-  const members = getMembers("2026");
-  return members.map((member) => ({
-    params: { person: nameToSlug(member.Name) },
-    props: { member },
-  }));
+  const { getMembers, nameToSlug } = await import("../../../utils/council");
+  const years = ["2025", "2026"];
+
+  const paths = [];
+  for (const year of years) {
+    const members = getMembers(year);
+    for (const member of members) {
+      paths.push({
+        params: { year, person: nameToSlug(member.Name) },
+        props: { member, year },
+      });
+    }
+  }
+  return paths;
 }
 
-const { member } = Astro.props;
+const { member, year } = Astro.props;
 ---
 <!DOCTYPE html>
 <html lang="en">
@@ -35,13 +40,15 @@ const { member } = Astro.props;
 
     <!-- Member Layout -->
     <div class="member-layout">
-      <div class="member-img-wrap">
-        <img
-          src={`/council/${year}/images/${member.Image}`}
-          alt={member.Name}
-          class="member-img"
-        />
-      </div>
+      {member.Image && (
+        <div class="member-img-wrap">
+          <img
+            src={`/council/${year}/images/${member.Image}`}
+            alt={member.Name}
+            class="member-img"
+          />
+        </div>
+      )}
       <div class="member-info">
         <span class="member-eyebrow">{member.Title}</span>
         <h1 class="member-name">{member.Name}</h1>

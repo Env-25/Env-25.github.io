@@ -1,0 +1,173 @@
+.event-body {
+  font-family: "Telegraf", sans-serif;
+  background: var(--clr-cream, #fdf9ef);
+  color: #3a4b4a;
+  min-height: 100vh;
+}
+
+/* ── Top Nav ── */
+.event-topnav {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.5rem 3rem;
+  background: var(--clr-dark-teal, #3a4b4a);
+}
+
+.topnav-btn {
+  font-family: "Telegraf", sans-serif;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.75);
+  padding: 0.5rem 1.25rem;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  text-decoration: none;
+  transition: color 0.2s, border-color 0.2s;
+}
+.topnav-btn:hover { color: #fff; border-color: rgba(255, 255, 255, 0.6); }
+
+/* ── Layout ── */
+.event-layout {
+  display: flex;
+  align-items: flex-start;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 5rem 3rem;
+  gap: 5rem;
+}
+
+/* ── Image ── */
+.event-img-wrap {
+  flex: 0 0 340px;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  background: #72a691;
+}
+
+.event-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* ── Info ── */
+.event-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding-top: 0.5rem;
+}
+
+.event-name {
+  font-family: "RocaTwo-Bl", sans-serif;
+  font-size: clamp(2rem, 4vw, 3.25rem);
+  font-weight: 700;
+  color: #3a4b4a;
+  line-height: 1.05;
+}
+
+.event-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.event-detail-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.detail-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.detail-text,
+.detail-link {
+  font-family: "Telegraf", sans-serif;
+  font-size: 0.95rem;
+  color: rgba(58, 75, 74, 0.85);
+  line-height: 1.5;
+}
+
+.detail-link {
+  color: #4a8550;
+  text-decoration: underline;
+}
+.detail-link:hover { color: #3a4b4a; }
+
+.event-desc {
+  font-family: "Telegraf", sans-serif;
+  font-size: 1rem;
+  line-height: 1.8;
+  color: rgba(58, 75, 74, 0.8);
+  max-width: 560px;
+}
+
+/* ── Actions ── */
+.event-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}
+
+.event-action-btn {
+  font-family: "Telegraf", sans-serif;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  padding: 0 1.75rem;
+  height: 42px;
+  min-width: 180px;
+  white-space: nowrap;
+  border: 2px solid;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+
+.event-action-btn.primary {
+  color: #fff;
+  background: #4a8550;
+  border-color: #4a8550;
+}
+.event-action-btn.primary:hover:not([disabled]) {
+  background: transparent;
+  color: #4a8550;
+}
+.event-action-btn.primary[disabled] {
+  opacity: 0.4;
+  cursor: not-allowed;
+  background: transparent;
+  color: #4a8550;
+}
+
+.event-action-btn.secondary {
+  color: #3a4b4a;
+  background: transparent;
+  border-color: #3a4b4a;
+}
+.event-action-btn.secondary:hover {
+  background: #3a4b4a;
+  color: #fdf9ef;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .event-layout { flex-direction: column; padding: 3rem 1.5rem; gap: 2rem; }
+  .event-img-wrap { flex: none; width: 100%; max-width: 340px; }
+  .event-topnav { padding: 1rem 1.5rem; }
+}

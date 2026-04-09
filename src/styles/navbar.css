@@ -38,21 +38,21 @@
 .nav-logo {
   /* Let the padding-block on .navbar control the visual breathing room;
      height auto keeps the logo as tall as it wants within that space */
-  height: 48px;
+  height: 53px;
   width: auto;
   display: block;
   transition: height 0.35s ease;
 }
-.navbar.scrolled .nav-logo { height: 36px; }
+.navbar.scrolled .nav-logo { height: 40px; }
 
 .nav-text-logo {
-  height: 22px;
+  height: 24px;
   width: auto;
   display: block;
   transition: height 0.35s ease, opacity 0.35s ease;
   opacity: 0.92;
 }
-.navbar.scrolled .nav-text-logo { height: 18px; }
+.navbar.scrolled .nav-text-logo { height: 20px; }
 
 /* ── Links (right side) ── */
 .nav-links {
@@ -63,7 +63,7 @@
 
 .nav-links a {
   font-family: "Telegraf", sans-serif;
-  font-size: 0.8rem;
+  font-size: 0.88rem;
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;

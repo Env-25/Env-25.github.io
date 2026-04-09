@@ -1,8 +1,9 @@
 /* ── Hero ── */
 .council-hero {
   position: relative;
-  height: 32vh;
-  min-height: 240px;
+  /* Use padding to drive height — scales naturally with zoom */
+  min-height: 15rem;
+  padding-block: 3.5rem 2.5rem;
   overflow: hidden;
   display: flex;
   align-items: flex-end;
@@ -15,7 +16,7 @@
   height: 100%;
   object-fit: cover;
   object-position: center;
-  filter: blur(10px);
+  filter: blur(4px);
   transform: scale(1.08);
 }
 
@@ -32,7 +33,6 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding-bottom: 1.75rem;
   padding-top: var(--nav-height, 72px);
   gap: 0.4rem;
   text-align: center;
@@ -40,7 +40,7 @@
 
 .council-hero-tagline {
   font-family: "Telegraf", sans-serif;
-  font-size: 0.72rem;
+  font-size: 0.88rem;
   font-weight: 700;
   letter-spacing: 0.35em;
   text-transform: uppercase;
@@ -91,11 +91,10 @@
 }
 
 .group-photo {
-  width: 100%;
+  width: 90rem;
   display: block;
-  max-height: 88vh;
-  object-fit: cover;
-  object-position: center center;
+  height: auto;
+  margin-inline: auto;
 }
 
 .group-photo-caption {
@@ -190,5 +189,6 @@
 }
 @media (max-width: 600px) {
   .council-grid { grid-template-columns: repeat(2, 1fr); }
-  .group-photo { max-height: 55vw; }
+  /* rem cap on mobile so the photo doesn't dominate */
+  .group-photo { max-height: 22rem; }
 }

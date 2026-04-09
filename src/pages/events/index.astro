@@ -7,19 +7,47 @@ let events: import("../../utils/events").ChbeEvent[] = [];
 let loadError = false;
 
 try {
-  events = getEvents();
+  events = getEvents().filter((e) => e.Name && e.Name.trim() !== "");
 } catch {
   loadError = true;
 }
+
+function parseDate(s: string) { return new Date(s); }
+
+const sorted = [...events].sort(
+  (a, b) => parseDate(a.Date).getTime() - parseDate(b.Date).getTime()
+);
+
+const today = new Date();
+today.setHours(0, 0, 0, 0);
+
+const upcoming = sorted.filter((e) => parseDate(e.Date) >= today);
+const spotlight = upcoming[0] ?? null;
+
+const spotlightIndex = spotlight
+  ? sorted.findIndex((e) => e.slug === spotlight.slug)
+  : 0;
+
+function mapsUrl(loc: string) {
+  return `https://maps.google.com/?q=${encodeURIComponent(loc)}`;
+}
+
+const calEventsData = sorted.map((e) => ({
+  name: e.Name,
+  date: e.Date,
+  time: e.Time,
+  slug: e.slug,
+}));
 ---
 <BaseLayout title="Events — UBC CHBE">
 
   <!-- Hero -->
   <section class="events-hero">
-    <img src="/home/index.png" alt="" class="events-hero-bg" />
+    <img src="/home/index-lower.jpg" alt="" class="events-hero-bg" />
     <div class="events-hero-overlay"></div>
     <div class="events-hero-content">
       <h1 class="events-hero-title">CHBE Events</h1>
+      <p class="events-hero-tagline">Your community, your calendar</p>
       <div class="events-hero-actions">
         <button class="events-action-btn" disabled title="Coming soon">
           + Subscribe to Calendar
@@ -31,206 +59,290 @@ try {
     </div>
   </section>
 
-  <!-- Grid or Empty State -->
-  <section class="events-section">
-    {(loadError || events.length === 0) ? (
+  {loadError || events.length === 0 ? (
+    <section class="events-empty-section">
       <div class="events-empty">
         <p class="empty-title">No upcoming events.</p>
         <p class="empty-sub">Check back regularly — we're always planning something new.</p>
-        <p class="empty-sub">
-          Follow us on social media or
-          <button class="empty-subscribe-btn" disabled title="Coming soon">subscribe to email updates</button>
-          to stay in the loop.
-        </p>
       </div>
-    ) : (
-      <>
-        <!-- Search + Filter Bar -->
-        <div class="events-search-wrap">
-          <div class="events-search-row">
-            <!-- Text search -->
-            <div class="events-search-inner">
-              <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-              </svg>
-              <input
-                type="search"
-                id="eventsSearch"
-                class="events-search-input"
-                placeholder="Search by name or location…"
-                autocomplete="off"
-                spellcheck="false"
+    </section>
+  ) : (
+    <>
+      <!-- Spotlight -->
+      <section class="events-spotlight">
+        {spotlight ? (
+          <div class="spotlight-inner">
+            <div class="spotlight-img-wrap">
+              <img
+                src={`/events/images/${spotlight.Image}`}
+                alt={spotlight.Name}
+                class="spotlight-img"
+                loading="eager"
               />
-              <button class="search-clear" id="searchClear" aria-label="Clear search" hidden>✕</button>
             </div>
-
-            <!-- Date range -->
-            <div class="events-date-range">
-              <div class="date-field">
-                <label for="dateFrom" class="date-label">From</label>
-                <input type="date" id="dateFrom" class="date-input" />
-              </div>
-              <span class="date-sep">—</span>
-              <div class="date-field">
-                <label for="dateTo" class="date-label">To</label>
-                <input type="date" id="dateTo" class="date-input" />
-              </div>
-              <button class="date-clear-btn" id="dateClear" hidden>Clear dates</button>
-            </div>
-          </div>
-
-          <p class="search-count" id="searchCount"></p>
-        </div>
-
-        <!-- Grid -->
-        <div class="events-grid" id="eventsGrid">
-          {events.map((event, i) => (
-            <a
-              href={`/events/${event.slug}`}
-              class="event-card"
-              data-name={event.Name}
-              data-location={event.Location}
-              data-date={event.Date}
-            >
-              <div class="event-img-wrap">
-                <img
-                  src={`/events/images/${event.Image}`}
-                  alt={event.Name}
-                  class="event-img"
-                  loading={i < 3 ? "eager" : "lazy"}
-                />
-              </div>
-              <div class="event-info">
-                <p class="event-name">{event.Name}</p>
-                <p class="event-meta">📅 {event.Date}</p>
-                <p class="event-meta">🕐 {event.Time}</p>
-                <p class="event-meta">📍 {event.Location}</p>
-                {event.CalendarLink ? (
+            <div class="spotlight-info">
+              <span class="spotlight-eyebrow">Next Up</span>
+              <h2 class="spotlight-name">{spotlight.Name}</h2>
+              <ul class="spotlight-meta-list">
+                <li class="spotlight-meta">
+                  <span class="meta-icon">📅</span>
+                  <span>{spotlight.Date}</span>
+                </li>
+                <li class="spotlight-meta">
+                  <span class="meta-icon">🕐</span>
+                  <span>{spotlight.Time}</span>
+                </li>
+                <li class="spotlight-meta">
+                  <span class="meta-icon">📍</span>
                   <a
-                    href={event.CalendarLink}
-                    class="event-cal-btn"
+                    href={mapsUrl(spotlight.Location)}
+                    class="spotlight-location-link"
                     target="_blank"
                     rel="noopener"
-                    onclick="event.stopPropagation()"
-                  >
-                    + Add to Calendar
-                  </a>
+                  >{spotlight.Location}</a>
+                </li>
+              </ul>
+              {spotlight.Desc && <p class="spotlight-bio">{spotlight.Desc}</p>}
+              <div class="spotlight-actions">
+                {spotlight.CalendarLink ? (
+                  <a
+                    href={spotlight.CalendarLink}
+                    class="spotlight-cal-btn"
+                    target="_blank"
+                    rel="noopener"
+                  >+ Add to Calendar</a>
                 ) : (
-                  <button class="event-cal-btn disabled" disabled>
-                    + Add to Calendar
-                  </button>
+                  <button class="spotlight-cal-btn is-disabled" disabled>+ Add to Calendar</button>
                 )}
+                <a href={`/events/${spotlight.slug}`} class="spotlight-more-btn">
+                  View Details →
+                </a>
               </div>
-            </a>
-          ))}
-        </div>
+            </div>
+          </div>
+        ) : (
+          <div class="spotlight-empty">
+            <p class="spotlight-empty-title">No Upcoming Events</p>
+            <p class="spotlight-empty-sub">Check back soon — something is always in the works.</p>
+          </div>
+        )}
+      </section>
 
-        <p class="no-results" id="noResults" hidden>No events match your search.</p>
-      </>
-    )}
-  </section>
+      <!-- Carousel -->
+      <section class="events-carousel-section">
+        <div class="carousel-header">
+          <h2 class="carousel-title">All Events</h2>
+          <div class="carousel-arrows">
+            <button class="carousel-arrow" id="carouselPrev" aria-label="Previous events">&#8592;</button>
+            <button class="carousel-arrow" id="carouselNext" aria-label="Next events">&#8594;</button>
+          </div>
+        </div>
+        <div class="carousel-viewport" id="carouselViewport">
+          <div class="carousel-track" id="carouselTrack">
+            {sorted.map((ev) => (
+              <div class="carousel-card" data-slug={ev.slug}>
+                <div class="carousel-img-wrap">
+                  <img
+                    src={`/events/images/${ev.Image}`}
+                    alt={ev.Name}
+                    class="carousel-img"
+                    loading="lazy"
+                    width="400"
+                    height="300"
+                  />
+                </div>
+                <div class="carousel-info">
+                  <p class="carousel-name">{ev.Name}</p>
+                  <p class="carousel-meta">📅 {ev.Date}</p>
+                  <p class="carousel-meta">🕐 {ev.Time}</p>
+                  <p class="carousel-meta">
+                    <a
+                      href={mapsUrl(ev.Location)}
+                      class="location-pin-link"
+                      target="_blank"
+                      rel="noopener"
+                    >📍 {ev.Location}</a>
+                  </p>
+                  <div class="carousel-cal-wrap">
+                    {ev.CalendarLink ? (
+                      <a
+                        href={ev.CalendarLink}
+                        class="event-cal-btn"
+                        target="_blank"
+                        rel="noopener"
+                      >+ Add to Calendar</a>
+                    ) : (
+                      <button class="event-cal-btn is-disabled" disabled>+ Add to Calendar</button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <!-- Calendar -->
+      <section class="events-calendar-section">
+        <div class="cal-header">
+          <button class="cal-nav-btn" id="calPrev" aria-label="Previous month">&#8592;</button>
+          <h2 class="cal-month-label" id="calMonthLabel"></h2>
+          <button class="cal-nav-btn" id="calNext" aria-label="Next month">&#8594;</button>
+        </div>
+        <div class="cal-grid-wrap">
+          <div class="cal-dow-row">
+            {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map((d) => (
+              <div class="cal-dow">{d}</div>
+            ))}
+          </div>
+          <div class="cal-grid" id="calGrid"></div>
+        </div>
+      </section>
+    </>
+  )}
 
 </BaseLayout>
 
-<script>
-  import Fuse from "fuse.js";
+<script define:vars={{ calEventsData, spotlightIndex }}>
+  // ── Carousel ────────────────────────────────────────────────────────────
+  const viewport = document.getElementById("carouselViewport");
+  const track    = document.getElementById("carouselTrack");
+  const prevBtn  = document.getElementById("carouselPrev");
+  const nextBtn  = document.getElementById("carouselNext");
 
-  const grid = document.getElementById("eventsGrid");
-  if (grid) {
-    const input = document.getElementById("eventsSearch") as HTMLInputElement;
-    const clearBtn = document.getElementById("searchClear") as HTMLButtonElement;
-    const dateFrom = document.getElementById("dateFrom") as HTMLInputElement;
-    const dateTo = document.getElementById("dateTo") as HTMLInputElement;
-    const dateClear = document.getElementById("dateClear") as HTMLButtonElement;
-    const countEl = document.getElementById("searchCount")!;
-    const noResults = document.getElementById("noResults")!;
+  if (track && viewport && prevBtn && nextBtn) {
+    const cards = Array.from(track.querySelectorAll(".carousel-card"));
+    let index = spotlightIndex;
 
-    const cards = Array.from(grid.querySelectorAll<HTMLAnchorElement>(".event-card"));
-
-    const data = cards.map((card) => ({
-      el: card,
-      name: card.dataset.name ?? "",
-      location: card.dataset.location ?? "",
-      // Parse date stored as "Month D, YYYY" or ISO — normalise to Date for comparison
-      date: card.dataset.date ?? "",
-    }));
-
-    const fuse = new Fuse(data, {
-      keys: [
-        { name: "name", weight: 0.6 },
-        { name: "location", weight: 0.4 },
-      ],
-      threshold: 0.35,
-      includeScore: true,
-    });
-
-    // Parse a date string like "March 24, 2026" or "2026-03-24" into a comparable Date
-    function parseDate(str: string): Date | null {
-      if (!str) return null;
-      const d = new Date(str);
-      return isNaN(d.getTime()) ? null : d;
+    function visibleCount() {
+      if (window.innerWidth >= 900) return 3;
+      if (window.innerWidth >= 560) return 2;
+      return 1;
     }
 
-    function applyFilters() {
-      const q = input.value.trim();
-      const from = dateFrom.value ? new Date(dateFrom.value) : null;
-      const to = dateTo.value ? new Date(dateTo.value) : null;
+    function render() {
+      const vis   = visibleCount();
+      const gap   = parseFloat(getComputedStyle(track).columnGap) || 32;
+      const vpW   = viewport.offsetWidth;
+      const cardW = (vpW - gap * (vis - 1)) / vis;
+      const max   = Math.max(0, cards.length - vis);
 
-      // Adjust "to" to end of day
-      if (to) to.setHours(23, 59, 59, 999);
+      index = Math.min(index, max);
 
-      clearBtn.hidden = q.length === 0;
-      dateClear.hidden = !dateFrom.value && !dateTo.value;
-
-      // Fuzzy text matches
-      const textMatched: Set<HTMLAnchorElement> | null = q
-        ? new Set(fuse.search(q).map((r) => r.item.el))
-        : null;
-
-      let visible = 0;
-      data.forEach(({ el, date }) => {
-        const passesText = textMatched === null || textMatched.has(el);
-
-        let passesDate = true;
-        if (from || to) {
-          const d = parseDate(date);
-          if (!d) {
-            passesDate = false;
-          } else {
-            if (from && d < from) passesDate = false;
-            if (to && d > to) passesDate = false;
-          }
-        }
-
-        el.hidden = !(passesText && passesDate);
-        if (!el.hidden) visible++;
+      cards.forEach((c) => {
+        c.style.width      = cardW + "px";
+        c.style.flexShrink = "0";
       });
 
-      noResults.hidden = visible > 0;
+      track.style.transform = `translateX(-${index * (cardW + gap)}px)`;
+      prevBtn.disabled = index === 0;
+      nextBtn.disabled = index >= max;
+    }
 
-      if (q || dateFrom.value || dateTo.value) {
-        countEl.textContent = `${visible} result${visible !== 1 ? "s" : ""}`;
-        countEl.classList.add("visible");
-      } else {
-        countEl.textContent = "";
-        countEl.classList.remove("visible");
+    prevBtn.addEventListener("click", () => {
+      index = Math.max(0, index - 1);
+      render();
+    });
+    nextBtn.addEventListener("click", () => {
+      index = Math.min(Math.max(0, cards.length - visibleCount()), index + 1);
+      render();
+    });
+
+    cards.forEach((card) => {
+      card.addEventListener("click", (e) => {
+        if (e.target.closest("a, button")) return;
+        window.location.href = "/events/" + card.dataset.slug;
+      });
+    });
+
+    window.addEventListener("resize", render);
+    render();
+  }
+
+  // ── Calendar ────────────────────────────────────────────────────────────
+  const calGrid   = document.getElementById("calGrid");
+  const calLabel  = document.getElementById("calMonthLabel");
+  const calPrevEl = document.getElementById("calPrev");
+  const calNextEl = document.getElementById("calNext");
+
+  if (calGrid && calLabel) {
+    const MONTHS = [
+      "January","February","March","April","May","June",
+      "July","August","September","October","November","December"
+    ];
+
+    const eventsWithDates = calEventsData.map((e) => ({
+      ...e,
+      _date: new Date(e.date),
+    }));
+
+    const now = new Date();
+    let viewYear  = now.getFullYear();
+    let viewMonth = now.getMonth();
+
+    function build() {
+      calLabel.textContent = `${MONTHS[viewMonth]} ${viewYear}`;
+      calGrid.innerHTML = "";
+
+      const firstDay    = new Date(viewYear, viewMonth, 1).getDay();
+      const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+      const todayDate   = new Date();
+
+      for (let i = 0; i < firstDay; i++) {
+        const blank = document.createElement("div");
+        blank.className = "cal-cell cal-cell--empty";
+        calGrid.appendChild(blank);
+      }
+
+      for (let d = 1; d <= daysInMonth; d++) {
+        const cell = document.createElement("div");
+        cell.className = "cal-cell";
+
+        const num = document.createElement("span");
+        num.className = "cal-day-num";
+        num.textContent = String(d);
+
+        const isToday =
+          d === todayDate.getDate() &&
+          viewMonth === todayDate.getMonth() &&
+          viewYear  === todayDate.getFullYear();
+        if (isToday) num.classList.add("cal-today");
+
+        cell.appendChild(num);
+
+        eventsWithDates
+          .filter((e) => {
+            const ed = e._date;
+            return ed.getFullYear() === viewYear &&
+                   ed.getMonth()    === viewMonth &&
+                   ed.getDate()     === d;
+          })
+          .forEach((ev) => {
+            const chip = document.createElement("a");
+            chip.href = "/events/" + ev.slug;
+            chip.className = "cal-event-chip";
+            chip.textContent = window.innerWidth < 560
+              ? ev.name
+              : (ev.time ? ev.time + " · " : "") + ev.name;
+            chip.title = ev.name;
+            cell.appendChild(chip);
+          });
+
+        calGrid.appendChild(cell);
       }
     }
 
-    input.addEventListener("input", applyFilters);
-    dateFrom.addEventListener("change", applyFilters);
-    dateTo.addEventListener("change", applyFilters);
-
-    clearBtn.addEventListener("click", () => {
-      input.value = "";
-      input.focus();
-      applyFilters();
+    calPrevEl?.addEventListener("click", () => {
+      viewMonth--;
+      if (viewMonth < 0) { viewMonth = 11; viewYear--; }
+      build();
+    });
+    calNextEl?.addEventListener("click", () => {
+      viewMonth++;
+      if (viewMonth > 11) { viewMonth = 0; viewYear++; }
+      build();
     });
 
-    dateClear.addEventListener("click", () => {
-      dateFrom.value = "";
-      dateTo.value = "";
-      applyFilters();
-    });
+    build();
   }
 </script>

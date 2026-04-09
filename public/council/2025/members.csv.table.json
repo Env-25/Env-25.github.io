@@ -1,0 +1,67 @@
+{
+  "columns": [
+    {
+      "field": "ID",
+      "title": "ID",
+      "minWidth": 40,
+      "resizable": true,
+      "sorter": "number",
+      "headerSort": true,
+      "width": 69
+    },
+    {
+      "field": "Name",
+      "title": "Name",
+      "minWidth": 40,
+      "resizable": true,
+      "sorter": "string",
+      "headerSort": true,
+      "width": 108
+    },
+    {
+      "field": "Title",
+      "title": "Title",
+      "minWidth": 40,
+      "resizable": true,
+      "sorter": "string",
+      "headerSort": true,
+      "width": 195
+    },
+    {
+      "field": "Image",
+      "title": "Image",
+      "minWidth": 40,
+      "resizable": true,
+      "sorter": "string",
+      "headerSort": true,
+      "width": 94
+    },
+    {
+      "field": "Bio",
+      "title": "Bio",
+      "minWidth": 40,
+      "resizable": true,
+      "sorter": "string",
+      "headerSort": true,
+      "width": 1362
+    },
+    {
+      "field": "Contact",
+      "title": "Contact",
+      "minWidth": 40,
+      "resizable": true,
+      "sorter": "string",
+      "headerSort": true,
+      "width": 197
+    },
+    {
+      "field": "LinkedIn",
+      "title": "LinkedIn",
+      "minWidth": 40,
+      "resizable": true,
+      "sorter": "string",
+      "headerSort": true,
+      "width": 236
+    }
+  ]
+}

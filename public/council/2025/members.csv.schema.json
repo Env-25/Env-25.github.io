@@ -1,0 +1,42 @@
+{
+  "fields": [
+    {
+      "name": "ID",
+      "type": "integer",
+      "format": "default"
+    },
+    {
+      "name": "Name",
+      "type": "string",
+      "format": "default"
+    },
+    {
+      "name": "Title",
+      "type": "string",
+      "format": "default"
+    },
+    {
+      "name": "Image",
+      "type": "string",
+      "format": "default"
+    },
+    {
+      "name": "Bio",
+      "type": "string",
+      "format": "default"
+    },
+    {
+      "name": "Contact",
+      "type": "any",
+      "format": "default"
+    },
+    {
+      "name": "LinkedIn",
+      "type": "any",
+      "format": "default"
+    }
+  ],
+  "missingValues": [
+    ""
+  ]
+}
