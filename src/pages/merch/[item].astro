@@ -1,6 +1,6 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
-import { getMerch, getMerchBySlug } from "../../utils/merch";
+import { getMerch, getMerchBySlug, colorToCSS } from "../../utils/merch";
 import "../../styles/merch-item.css";
 
 export async function getStaticPaths() {
@@ -12,27 +12,32 @@ const { item: slug } = Astro.params;
 const product = getMerchBySlug(slug!);
 if (!product) return Astro.redirect("/merch");
 
-const allImages = [product.Cover_image, ...product.Additional_images];
+const hasColors = product.colorVariants.length > 1;
+const cardPrice = (product.Price * 1.03).toFixed(2);
+
+// Build the combined image list across ALL colour variants, tagged by colour.
+// Each entry: { src, color, slug, isCover }
+interface GalleryImage { src: string; color: string; variantSlug: string; isCover: boolean; }
+const galleryImages: GalleryImage[] = product.colorVariants.flatMap((v) => [
+  { src: v.cover_image,          color: v.color, variantSlug: v.slug, isCover: true  },
+  ...v.additional_images.map((img) => ({
+    src: img, color: v.color, variantSlug: v.slug, isCover: false,
+  })),
+]);
+
+// Active colour = this page's colour
+const activeColor = product.Color;
+const firstImage  = product.Cover_image;
 ---
 <BaseLayout title={`${product.Name} — CHBE Merch`} hideNav={true}>
-  <div class="item-page">
 
-    <!-- Top nav bar -->
-    <div class="item-topbar">
-      <a href="/merch" class="item-back-btn">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="15 18 9 12 15 6"/>
-        </svg>
-        Back to Merch
-      </a>
-      <a href="/" class="item-home-btn">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z"/>
-          <polyline points="9 21 9 12 15 12 15 21"/>
-        </svg>
-        Home
-      </a>
-    </div>
+  <!-- Full-width dark teal top nav -->
+  <div class="item-topnav">
+    <a href="/merch" class="topnav-btn">← Back to Merch</a>
+    <a href="/" class="topnav-btn">Home</a>
+  </div>
+
+  <div class="item-page">
 
     <!-- Breadcrumb -->
     <nav class="item-breadcrumb">
@@ -45,44 +50,119 @@ const allImages = [product.Cover_image, ...product.Additional_images];
 
     <div class="item-layout">
 
-      <!-- Image Gallery -->
+      <!-- ── Gallery ── -->
       <div class="item-gallery">
+
+        <!-- Scrollable thumbnail column, grouped by colour -->
         <div class="gallery-thumbs" id="galleryThumbs">
-          {allImages.map((img, i) => (
-            <button
-              class={`thumb-btn${i === 0 ? " active" : ""}`}
-              data-img={`/merch/images/${img}`}
-              aria-label={`View image ${i + 1}`}
-            >
-              <img src={`/merch/images/${img}`} alt={`${product.Name} view ${i + 1}`} loading="lazy" />
-            </button>
-          ))}
+          {product.colorVariants.map((v) => {
+            const variantImgs: GalleryImage[] = galleryImages.filter(
+              (g) => g.color === v.color
+            );
+            return (
+              <div
+                class={`thumb-group${v.color === activeColor ? " active-group" : ""}`}
+                data-group-color={v.color}
+              >
+
+                {variantImgs.map((img, idx) => (
+                  <button
+                    class={`thumb-btn${img.isCover && v.color === activeColor ? " active" : ""}`}
+                    data-img={`/merch/images/${img.src}`}
+                    data-color={v.color}
+                    aria-label={`${v.color} view ${idx + 1}`}
+                  >
+                    <img
+                      src={`/merch/images/${img.src}`}
+                      alt={`${product.Name} — ${v.color} view ${idx + 1}`}
+                      loading="lazy"
+                    />
+                  </button>
+                ))}
+              </div>
+            );
+          })}
         </div>
+
+        <!-- Main image -->
         <div class="gallery-main">
           <img
             id="mainImage"
-            src={`/merch/images/${product.Cover_image}`}
+            src={`/merch/images/${firstImage}`}
             alt={product.Name}
             class="gallery-main-img"
           />
         </div>
       </div>
 
-      <!-- Product Info -->
+      <!-- ── Product Info ── -->
       <div class="item-info">
         <p class="item-type">{product.Type}</p>
         <h1 class="item-name">{product.Name}</h1>
-        <p class="item-price">${product.Price.toFixed(2)} <span class="item-price-note">CAD</span></p>
+
+        <!-- Dual pricing -->
+        <div class="item-price-row">
+          <span class="item-price-cash">
+            <img src="/public/logos/cash.png" alt="Cash price" class="item-price-icon" />
+            ${product.Price.toFixed(2)}
+            <span class="item-price-note">CAD</span>
+          </span>
+          <span class="item-price-sep">·</span>
+          <span class="item-price-card">
+            <svg class="item-price-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
+              <line x1="1" y1="10" x2="23" y2="10"/>
+            </svg>
+            ${cardPrice}
+            <span class="item-price-note">incl. 3% Card Surcharge</span>
+          </span>
+        </div>
 
         <div class="item-divider"></div>
 
-        <p class="item-desc">{product.Desc}</p>
+        {product.Desc && <p class="item-desc">{product.Desc}</p>}
+        {product.Desc && <div class="item-divider"></div>}
 
-        <div class="item-divider"></div>
+        <!-- Hidden input carries selected colour for backend -->
+        <input
+          type="hidden"
+          id="selectedColorInput"
+          name="selected_color"
+          value={activeColor}
+        />
 
-        <!-- Size selector -->
+        <!-- ── Colour selector ── -->
         <div class="item-option-block">
-          <p class="option-label">Size <span id="selectedSizeLabel" class="selected-value"></span></p>
+          <p class="option-label">
+            Colour
+            <span class="selected-value" id="selectedColorLabel">— {activeColor}</span>
+          </p>
+          <div class="color-btn-group" id="colorGroup">
+            {product.colorVariants.map((v) => (
+              <button
+                class={`color-variant-btn${v.color === activeColor ? " active" : ""}${!v.inStock ? " out" : ""}`}
+                data-color={v.color}
+                data-slug={v.slug}
+                title={v.inStock ? v.color : `${v.color} — sold out`}
+                aria-label={v.color}
+                type="button"
+              >
+                <span
+                  class="color-variant-dot"
+                  style={`background:${colorToCSS(v.color)}`}
+                ></span>
+                <span class="color-variant-name">{v.color}</span>
+                {!v.inStock && <span class="color-variant-out">sold out</span>}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <!-- ── Size selector ── -->
+        <div class="item-option-block">
+          <p class="option-label">
+            Size <span id="selectedSizeLabel" class="selected-value"></span>
+          </p>
           <div class="size-btn-group" id="sizeGroup">
             {product.Sizes_Stock.map(({ size, stock }) => (
               <button
@@ -91,6 +171,7 @@ const allImages = [product.Cover_image, ...product.Additional_images];
                 data-stock={stock}
                 disabled={stock === 0}
                 title={stock === 0 ? "Out of stock" : `${stock} left`}
+                type="button"
               >
                 {size}
               </button>
@@ -98,34 +179,31 @@ const allImages = [product.Cover_image, ...product.Additional_images];
           </div>
         </div>
 
-        <!-- Quantity selector -->
+        <!-- ── Quantity ── -->
         <div class="item-option-block" id="qtyBlock" style="display:none">
           <p class="option-label">Quantity</p>
           <div class="qty-row">
-            <button class="qty-btn" id="qtyDown">−</button>
+            <button class="qty-btn" id="qtyDown" type="button">−</button>
             <span class="qty-value" id="qtyValue">1</span>
-            <button class="qty-btn" id="qtyUp">+</button>
+            <button class="qty-btn" id="qtyUp" type="button">+</button>
             <span class="qty-stock-note" id="qtyStockNote"></span>
           </div>
         </div>
 
-        <!-- Purchase -->
-        <button class="purchase-btn" id="purchaseBtn" disabled>
+        <!-- ── Purchase ── -->
+        <button class="purchase-btn" id="purchaseBtn" disabled type="button">
           Select a size to purchase
         </button>
-
         <p class="purchase-note">Purchases coming soon — stay tuned!</p>
 
         <div class="item-divider"></div>
 
-        <!-- Size chart -->
-        {product.allSizes.some(s => ["XS","S","M","L","XL","XXL"].includes(s)) && (
+        <!-- ── Size chart ── -->
+        {product.allSizes.some((s) => ["XS","S","M","L","XL","XXL"].includes(s)) && (
           <details class="size-chart">
             <summary>Size guide</summary>
             <table class="size-table">
-              <thead>
-                <tr><th>Size</th><th>Chest (in)</th><th>Length (in)</th></tr>
-              </thead>
+              <thead><tr><th>Size</th><th>Chest (in)</th><th>Length (in)</th></tr></thead>
               <tbody>
                 <tr><td>XS</td><td>32–34</td><td>26</td></tr>
                 <tr><td>S</td><td>35–37</td><td>27</td></tr>
@@ -143,63 +221,85 @@ const allImages = [product.Cover_image, ...product.Additional_images];
 </BaseLayout>
 
 <script>
-  const thumbBtns = document.querySelectorAll<HTMLButtonElement>(".thumb-btn");
-  const mainImg = document.getElementById("mainImage") as HTMLImageElement;
+  // ── Gallery thumbs ──────────────────────────────────────────────────────────
+  const thumbBtns   = Array.from(document.querySelectorAll<HTMLButtonElement>(".thumb-btn"));
+  const thumbGroups = Array.from(document.querySelectorAll<HTMLDivElement>(".thumb-group"));
+  const mainImg     = document.getElementById("mainImage") as HTMLImageElement;
 
-  thumbBtns.forEach((btn) => {
+  function activateThumb(btn: HTMLButtonElement) {
+    thumbBtns.forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    mainImg.src = btn.dataset.img!;
+  }
+
+  thumbBtns.forEach((btn) => btn.addEventListener("click", () => activateThumb(btn)));
+
+  // ── Colour selector ─────────────────────────────────────────────────────────
+  const colorBtns        = Array.from(document.querySelectorAll<HTMLButtonElement>(".color-variant-btn"));
+  const colorLabel       = document.getElementById("selectedColorLabel")!;
+  const colorInput       = document.getElementById("selectedColorInput") as HTMLInputElement;
+
+  function selectColor(color: string) {
+    // 1. Update label and hidden input (for backend)
+    colorLabel.textContent = `— ${color}`;
+    colorInput.value       = color;
+
+    // 2. Update colour button active states
+    colorBtns.forEach((b) => b.classList.toggle("active", b.dataset.color === color));
+
+    // 3. Highlight the thumb group for this colour
+    thumbGroups.forEach((g) =>
+      g.classList.toggle("active-group", g.dataset.groupColor === color)
+    );
+
+    // 4. Spotlight the first thumb of the selected colour
+    const firstThumb = thumbBtns.find((b) => b.dataset.color === color);
+    if (firstThumb) {
+      activateThumb(firstThumb);
+      firstThumb.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  }
+
+  colorBtns.forEach((btn) => {
     btn.addEventListener("click", () => {
-      thumbBtns.forEach((b) => b.classList.remove("active"));
-      btn.classList.add("active");
-      mainImg.src = btn.dataset.img!;
+      if (!btn.classList.contains("out")) selectColor(btn.dataset.color!);
     });
   });
 
-  const sizeBtns = document.querySelectorAll<HTMLButtonElement>(".size-btn:not(.out)");
+  // ── Size selector ───────────────────────────────────────────────────────────
+  const sizeBtns          = Array.from(document.querySelectorAll<HTMLButtonElement>(".size-btn:not(.out)"));
   const selectedSizeLabel = document.getElementById("selectedSizeLabel")!;
-  const qtyBlock = document.getElementById("qtyBlock")!;
-  const qtyValue = document.getElementById("qtyValue")!;
-  const qtyStockNote = document.getElementById("qtyStockNote")!;
-  const qtyDown = document.getElementById("qtyDown") as HTMLButtonElement;
-  const qtyUp = document.getElementById("qtyUp") as HTMLButtonElement;
-  const purchaseBtn = document.getElementById("purchaseBtn") as HTMLButtonElement;
+  const qtyBlock          = document.getElementById("qtyBlock")!;
+  const qtyValue          = document.getElementById("qtyValue")!;
+  const qtyStockNote      = document.getElementById("qtyStockNote")!;
+  const qtyDown           = document.getElementById("qtyDown")  as HTMLButtonElement;
+  const qtyUp             = document.getElementById("qtyUp")    as HTMLButtonElement;
+  const purchaseBtn       = document.getElementById("purchaseBtn") as HTMLButtonElement;
 
   let selectedStock = 0;
-  let qty = 1;
+  let qty           = 1;
 
   sizeBtns.forEach((btn) => {
     btn.addEventListener("click", () => {
       sizeBtns.forEach((b) => b.classList.remove("active"));
       btn.classList.add("active");
-      const size = btn.dataset.size!;
-      selectedStock = parseInt(btn.dataset.stock ?? "0");
-      qty = 1;
-
-      selectedSizeLabel.textContent = `— ${size}`;
-      qtyValue.textContent = "1";
-      qtyStockNote.textContent = `${selectedStock} in stock`;
-      qtyBlock.style.display = "";
-      qtyDown.disabled = true;
-      qtyUp.disabled = selectedStock <= 1;
-      purchaseBtn.disabled = true;
-      purchaseBtn.textContent = "Purchase (Coming Soon)";
+      selectedStock             = parseInt(btn.dataset.stock ?? "0");
+      qty                       = 1;
+      selectedSizeLabel.textContent = `— ${btn.dataset.size}`;
+      qtyValue.textContent          = "1";
+      qtyStockNote.textContent      = `${selectedStock} in stock`;
+      qtyBlock.style.display        = "";
+      qtyDown.disabled              = true;
+      qtyUp.disabled                = selectedStock <= 1;
+      purchaseBtn.disabled          = true;
+      purchaseBtn.textContent       = "Purchase (Coming Soon)";
     });
   });
 
   qtyDown.addEventListener("click", () => {
-    if (qty > 1) {
-      qty--;
-      qtyValue.textContent = String(qty);
-      qtyDown.disabled = qty <= 1;
-      qtyUp.disabled = qty >= selectedStock;
-    }
+    if (qty > 1) { qty--; qtyValue.textContent = String(qty); qtyDown.disabled = qty <= 1; qtyUp.disabled = qty >= selectedStock; }
   });
-
   qtyUp.addEventListener("click", () => {
-    if (qty < selectedStock) {
-      qty++;
-      qtyValue.textContent = String(qty);
-      qtyDown.disabled = qty <= 1;
-      qtyUp.disabled = qty >= selectedStock;
-    }
+    if (qty < selectedStock) { qty++; qtyValue.textContent = String(qty); qtyDown.disabled = qty <= 1; qtyUp.disabled = qty >= selectedStock; }
   });
 </script>

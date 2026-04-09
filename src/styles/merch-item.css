@@ -1,4 +1,28 @@
-/* merch-item.css — Individual merch item page styles */
+/* merch-item.css */
+
+/* ── Top Nav ── */
+.item-topnav {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.5rem 3rem;
+  background: var(--clr-dark-teal, #3a4b4a);
+}
+.topnav-btn {
+  font-family: "Telegraf", sans-serif;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.75);
+  padding: 0.5rem 1.25rem;
+  border: 1px solid rgba(255,255,255,0.25);
+  text-decoration: none;
+  transition: color 0.2s, border-color 0.2s;
+}
+.topnav-btn:hover { color: #fff; border-color: rgba(255,255,255,0.6); }
+
+/* ── Page ── */
 .item-page {
   background: var(--clr-cream);
   min-height: 100vh;
@@ -7,7 +31,7 @@
   margin: 0 auto;
 }
 
-/* Breadcrumb */
+/* ── Breadcrumb ── */
 .item-breadcrumb {
   display: flex;
   align-items: center;
@@ -20,11 +44,7 @@
   color: rgba(0,60,55,0.5);
   margin-bottom: 2rem;
 }
-.item-breadcrumb a {
-  color: var(--clr-forest);
-  text-decoration: none;
-  transition: opacity 0.15s;
-}
+.item-breadcrumb a { color: var(--clr-forest); text-decoration: none; transition: opacity 0.15s; }
 .item-breadcrumb a:hover { opacity: 0.7; }
 
 /* ── Two-column layout ── */
@@ -42,51 +62,65 @@
   position: sticky;
   top: calc(var(--nav-height, 72px) + 1.5rem);
 }
+
+/* Scrollable thumb column */
 .gallery-thumbs {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
+  gap: 0;
   flex-shrink: 0;
+  width: 68px;
+  max-height: 520px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0,60,55,0.2) transparent;
 }
+.gallery-thumbs::-webkit-scrollbar { width: 3px; }
+.gallery-thumbs::-webkit-scrollbar-thumb { background: rgba(0,60,55,0.25); border-radius: 2px; }
+
+.thumb-group,
+.thumb-group.active-group { display: contents; }
+
 .thumb-btn {
   width: 64px;
   height: 64px;
-  padding: 0;
+  padding: 2px;
   border: 2px solid transparent;
-  background: #e8e4df;
+  background: #ffffff;
   cursor: pointer;
   overflow: hidden;
+  flex-shrink: 0;
   transition: border-color 0.15s;
 }
 .thumb-btn img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   display: block;
+  background: #ffffff;
 }
-.thumb-btn:hover { border-color: rgba(0,60,55,0.3); }
+.thumb-btn:hover  { border-color: rgba(0,60,55,0.3); }
 .thumb-btn.active { border-color: var(--clr-dark-teal); }
 
+/* Main image */
 .gallery-main {
   flex: 1;
   aspect-ratio: 1 / 1;
+  background: #ffffff;
   overflow: hidden;
-  background: #e8e4df;
 }
 .gallery-main-img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   display: block;
+  background: #ffffff;
   transition: opacity 0.15s;
 }
 
-/* ── Product Info ── */
-.item-info {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-}
+/* ── Info panel ── */
+.item-info { display: flex; flex-direction: column; gap: 0; }
+
 .item-type {
   font-family: "Telegraf", sans-serif;
   font-size: 0.7rem;
@@ -105,18 +139,26 @@
   line-height: 1.15;
   margin: 0 0 0.75rem;
 }
-.item-price {
+
+/* ── Dual price ── */
+.item-price-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.item-price-cash, .item-price-card {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
   font-family: "Telegraf", sans-serif;
-  font-size: 1.5rem;
   font-weight: 700;
-  color: var(--clr-dark-teal);
-  margin-bottom: 0;
 }
-.item-price-note {
-  font-size: 0.8rem;
-  opacity: 0.5;
-  font-weight: 600;
-}
+.item-price-cash { font-size: 1.4rem; color: var(--clr-dark-teal); }
+.item-price-card { font-size: 1rem; color: var(--clr-dark-teal); opacity: 0.7; }
+.item-price-sep  { font-size: 1rem; color: var(--clr-dark-teal); opacity: 0.25; }
+.item-price-icon { width: 15px; height: 20px; flex-shrink: 0; }
+.item-price-note { font-size: 0.72rem; font-weight: 600; opacity: 0.7; }
 
 .item-divider {
   width: 100%;
@@ -124,18 +166,15 @@
   background: rgba(0,60,55,0.12);
   margin: 1.25rem 0;
 }
-
 .item-desc {
   font-family: "Telegraf", sans-serif;
   font-size: 0.9rem;
   line-height: 1.75;
-  color: rgba(58,75,74,0.8);
+  color: rgba(58,75,74,0.9);
 }
 
-/* Size selector */
-.item-option-block {
-  margin-bottom: 1.25rem;
-}
+/* ── Option block ── */
+.item-option-block { margin-bottom: 1.25rem; }
 .option-label {
   font-family: "Telegraf", sans-serif;
   font-size: 0.75rem;
@@ -145,24 +184,65 @@
   color: var(--clr-dark-teal);
   margin-bottom: 0.6rem;
 }
-.selected-value {
-  font-weight: 400;
-  text-transform: none;
-  letter-spacing: 0;
-  opacity: 0.65;
+.selected-value { font-weight: 400; text-transform: none; letter-spacing: 0; opacity: 0.65; }
+
+/* ── Colour variant buttons ── */
+.color-btn-group { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.color-variant-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.35rem 0.75rem 0.35rem 0.5rem;
+  border: 1.5px solid rgba(0,60,55,0.2);
+  background: #fff;
+  text-decoration: none;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  position: relative;
 }
-.size-btn-group {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
+.color-variant-btn:hover:not(.out) { border-color: var(--clr-dark-teal); }
+.color-variant-btn.active {
+  border-color: var(--clr-dark-teal);
+  background: var(--clr-dark-teal);
+  -webkit-text-fill-color: var(--clr-cream);
+  /* Checkmark indicator on active colour */
+  box-shadow: inset 0 0 0 1.5px var(--clr-dark-teal);
 }
+.color-variant-btn.out { opacity: 0.4; cursor: default; }
+.color-variant-dot {
+  width: 14px; height: 14px; border-radius: 50%;
+  border: 1px solid rgba(0,0,0,0.15);
+  flex-shrink: 0; display: inline-block;
+}
+/* Active dot gets a ring highlight */
+.color-variant-btn.active .color-variant-dot {
+  box-shadow: 0 0 0 2px var(--clr-cream), 0 0 0 3.5px var(--clr-dark-teal);
+}
+.color-variant-name {
+  font-family: "Telegraf", sans-serif;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--clr-dark-teal);
+}
+.color-variant-out {
+  font-family: "Telegraf", sans-serif;
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--clr-forest);
+  opacity: 0.55;
+  margin-left: 0.1rem;
+}
+
+/* ── Size buttons ── */
+.size-btn-group { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .size-btn {
   font-family: "Telegraf", sans-serif;
   font-size: 0.8rem;
   font-weight: 700;
   letter-spacing: 0.06em;
-  min-width: 44px;
-  height: 44px;
+  min-width: 44px; height: 44px;
   padding: 0 0.75rem;
   border: 1.5px solid rgba(0,60,55,0.3);
   background: #fff;
@@ -171,26 +251,13 @@
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 .size-btn:hover:not(.out) { border-color: var(--clr-dark-teal); }
-.size-btn.active {
-  background: var(--clr-dark-teal);
-  color: var(--clr-cream);
-  border-color: var(--clr-dark-teal);
-}
-.size-btn.out {
-  opacity: 0.3;
-  cursor: not-allowed;
-  text-decoration: line-through;
-}
+.size-btn.active { background: var(--clr-dark-teal); color: var(--clr-cream); border-color: var(--clr-dark-teal); }
+.size-btn.out { opacity: 0.3; cursor: not-allowed; text-decoration: line-through; }
 
-/* Quantity */
-.qty-row {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
+/* ── Qty ── */
+.qty-row { display: flex; align-items: center; gap: 0.75rem; }
 .qty-btn {
-  width: 36px;
-  height: 36px;
+  width: 36px; height: 36px;
   font-size: 1.1rem;
   font-family: "Telegraf", sans-serif;
   font-weight: 700;
@@ -198,142 +265,93 @@
   border: 1.5px solid rgba(0,60,55,0.25);
   color: var(--clr-dark-teal);
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: flex; align-items: center; justify-content: center;
   transition: background 0.15s;
 }
 .qty-btn:hover:not(:disabled) { background: rgba(0,60,55,0.07); }
 .qty-btn:disabled { opacity: 0.3; cursor: not-allowed; }
-.qty-value {
-  font-family: "Telegraf", sans-serif;
-  font-size: 1rem;
-  font-weight: 700;
-  min-width: 24px;
-  text-align: center;
-  color: var(--clr-dark-teal);
-}
-.qty-stock-note {
-  font-family: "Telegraf", sans-serif;
-  font-size: 0.72rem;
-  color: var(--clr-forest);
-  opacity: 0.55;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-}
+.qty-value { font-family: "Telegraf", sans-serif; font-size: 1rem; font-weight: 700; min-width: 24px; text-align: center; color: var(--clr-dark-teal); }
+.qty-stock-note { font-family: "Telegraf", sans-serif; font-size: 0.72rem; color: var(--clr-forest); opacity: 0.55; font-weight: 600; }
 
-/* Purchase */
+/* ── Purchase ── */
 .purchase-btn {
-  width: 100%;
-  height: 52px;
+  width: 100%; height: 52px;
   font-family: "Telegraf", sans-serif;
-  font-size: 0.85rem;
-  font-weight: 700;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  background: var(--clr-dark-teal);
-  color: var(--clr-cream);
-  border: none;
-  cursor: not-allowed;
-  opacity: 0.45;
+  font-size: 0.85rem; font-weight: 700;
+  letter-spacing: 0.15em; text-transform: uppercase;
+  background: var(--clr-dark-teal); color: var(--clr-cream);
+  border: none; cursor: not-allowed; opacity: 0.45;
   transition: opacity 0.2s;
   margin-bottom: 0.75rem;
 }
 .purchase-note {
   font-family: "Telegraf", sans-serif;
-  font-size: 0.72rem;
-  color: var(--clr-forest);
-  opacity: 0.5;
-  letter-spacing: 0.06em;
-  text-align: center;
+  font-size: 0.72rem; color: var(--clr-forest); opacity: 0.5;
+  letter-spacing: 0.06em; text-align: center;
 }
 
-/* Size chart */
-.size-chart {
-  font-family: "Telegraf", sans-serif;
-  font-size: 0.82rem;
-  color: var(--clr-dark-teal);
-}
+/* ── Size chart ── */
+.size-chart { font-family: "Telegraf", sans-serif; font-size: 0.82rem; color: var(--clr-dark-teal); }
 .size-chart summary {
-  cursor: pointer;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  font-size: 0.72rem;
-  opacity: 0.6;
-  margin-bottom: 0.75rem;
-  list-style: none;
+  cursor: pointer; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase; font-size: 0.72rem; opacity: 0.6;
+  margin-bottom: 0.75rem; list-style: none;
 }
 .size-chart summary::-webkit-details-marker { display: none; }
 .size-chart summary::before { content: "+ "; }
 details[open] .size-chart summary::before { content: "− "; }
-.size-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.8rem;
-}
-.size-table th, .size-table td {
-  padding: 0.4rem 0.75rem;
-  border: 1px solid rgba(0,60,55,0.12);
-  text-align: left;
-}
-.size-table th {
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  font-size: 0.68rem;
-  background: rgba(0,60,55,0.04);
-}
+.size-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+.size-table th, .size-table td { padding: 0.4rem 0.75rem; border: 1px solid rgba(0,60,55,0.12); text-align: left; }
+.size-table th { font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; font-size: 0.68rem; background: rgba(0,60,55,0.04); }
 
-/* ── Responsive ── */
 @media (max-width: 800px) {
-  .item-layout { grid-template-columns: 1fr; gap: 2rem; }
-  .item-gallery { position: static; }
+  .item-layout {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+
+  .item-topnav {
+    padding: 1rem 1.25rem;
+  }
+
+  .item-gallery {
+    position: static;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+  }
+
+  .gallery-main {
+    order: 1;
+    width: 100%;
+  }
+
+  .gallery-thumbs {
+    order: 2;
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    max-height: none;
+    overflow-x: auto;
+    overflow-y: hidden;
+    gap: 0.5rem;
+    padding-bottom: 0.25rem;
+  }
+
+  .thumb-group,
+  .thumb-group.active-group {
+    display: contents;
+  }
+
+  .thumb-btn {
+    width: 64px;
+    height: 64px;
+    flex-shrink: 0;
+  }
 }
 @media (max-width: 500px) {
-  .gallery-thumbs { flex-direction: row; }
-  .thumb-btn { width: 52px; height: 52px; }
-}
-
-/* ── Item page topbar (replaces navbar) ── */
-.item-topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1rem 0 0;
-  margin-bottom: 1.5rem;
-  border-bottom: 1px solid rgba(0, 60, 55, 0.1);
-  padding-bottom: 1rem;
-}
-
-.item-back-btn,
-.item-home-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-family: "Telegraf", sans-serif;
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  text-decoration: none;
-  color: var(--clr-dark-teal);
-  opacity: 0.6;
-  transition: opacity 0.15s;
-  padding: 0.4rem 0.75rem;
-  border: 1.5px solid rgba(0, 60, 55, 0.2);
-  background: #fff;
-}
-
-.item-back-btn:hover,
-.item-home-btn:hover {
-  opacity: 1;
-  border-color: var(--clr-dark-teal);
-}
-
-.item-back-btn svg,
-.item-home-btn svg {
-  width: 14px;
-  height: 14px;
-  flex-shrink: 0;
+  .thumb-btn {
+    width: 52px;
+    height: 52px;
+  }
 }

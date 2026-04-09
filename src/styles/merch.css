@@ -1,4 +1,5 @@
 /* merch.css — Merch listing page styles */
+
 /* ── Hero ── */
 .merch-hero {
   position: relative;
@@ -69,7 +70,6 @@
   display: flex;
   flex-direction: column;
   gap: 0;
-
   top: calc(var(--nav-height, 72px) + 1.5rem);
 }
 .sidebar-block {
@@ -90,9 +90,7 @@
 }
 
 /* Search */
-.merch-search-inner {
-  position: relative;
-}
+.merch-search-inner { position: relative; }
 .search-icon {
   position: absolute;
   left: 0.75rem;
@@ -157,12 +155,29 @@
   padding: 0.3rem 0.65rem;
   cursor: pointer;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
+  display: inline-flex;
+  align-items: center;
 }
 .filter-btn:hover { border-color: var(--clr-teal); }
 .filter-btn.active {
   background: var(--clr-dark-teal);
   color: var(--clr-cream);
   border-color: var(--clr-dark-teal);
+}
+
+/* Colour filter swatch dot */
+.filter-btn-swatch {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--swatch-clr, #9ca3af);
+  margin-right: 0.35rem;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  flex-shrink: 0;
+}
+.filter-btn--color.active .filter-btn-swatch {
+  border-color: rgba(255, 255, 255, 0.4);
 }
 
 /* Price slider */
@@ -287,7 +302,6 @@
 .merch-card {
   display: flex;
   flex-direction: column;
-  text-decoration: none;
   color: var(--clr-dark-teal);
   transition: transform 0.25s ease;
 }
@@ -295,11 +309,21 @@
 .merch-card:hover .merch-card-img { filter: brightness(0.88); }
 .merch-card[hidden] { display: none; }
 
+/* Inner <a> wraps image + info */
+.merch-card-link {
+  display: flex;
+  flex-direction: column;
+  text-decoration: none;
+  color: inherit;
+  flex: 1;
+}
+
+/* ── Card image — contain so full product is always visible ── */
 .merch-card-img-wrap {
   position: relative;
   aspect-ratio: 1 / 1;
   overflow: hidden;
-  background: #e8e4df;
+  background: #ffffff;
 }
 .sold-out-badge {
   position: absolute;
@@ -318,10 +342,13 @@
 .merch-card-img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   display: block;
+  background: #ffffff;
   transition: filter 0.25s ease;
 }
+
+/* ── Card info ── */
 .merch-card-info {
   padding: 0.75rem 0 0;
   display: flex;
@@ -343,13 +370,40 @@
   font-weight: 700;
   color: var(--clr-dark-teal);
 }
-.merch-card-price {
-  font-family: "Telegraf", sans-serif;
-  font-size: 0.9rem;
-  font-weight: 700;
-  color: var(--clr-dark-teal);
-  margin-top: 0.15rem;
+
+/* ── Dual price on card ── */
+.merch-card-pricing {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin-top: 0.2rem;
+  flex-wrap: wrap;
 }
+.price-cash,
+.price-card {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.22rem;
+  font-family: "Telegraf", sans-serif;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.price-cash {
+  font-size: 1.1rem;
+  color: var(--clr-dark-teal);
+}
+.price-card {
+  font-size: 1.0rem;
+  color: var(--clr-dark-teal);
+  opacity: 0.75;
+}
+.price-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+/* ── Card sizes ── */
 .merch-card-sizes {
   display: flex;
   flex-wrap: wrap;
@@ -364,6 +418,43 @@
   color: var(--clr-forest);
   border: 1px solid rgba(0,60,55,0.25);
   padding: 0.1rem 0.35rem;
+}
+
+/* ── Colour availability hint on card ── */
+.merch-card-color-hint {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 0.45rem;
+}
+.color-hint-dots {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+.color-mini-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  display: inline-block;
+  border: 1px solid rgba(0,0,0,0.14);
+  flex-shrink: 0;
+}
+.color-mini-more {
+  font-family: "Telegraf", sans-serif;
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: var(--clr-forest);
+  opacity: 0.55;
+  line-height: 1;
+}
+.color-hint-text {
+  font-family: "Telegraf", sans-serif;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--clr-forest);
+  opacity: 0.6;
 }
 
 /* No results */
@@ -381,20 +472,19 @@
 /* ── Responsive ── */
 @media (max-width: 1000px) {
   .merch-layout { grid-template-columns: 180px 1fr; gap: 2rem; }
-  .merch-grid { grid-template-columns: repeat(2, 1fr); }
+  .merch-grid   { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 700px) {
-  .merch-layout { grid-template-columns: 1fr; }
+  .merch-layout  { grid-template-columns: 1fr; }
   .merch-sidebar { position: static; }
-  .merch-grid { grid-template-columns: repeat(2, 1fr); gap: 1.5rem 1rem; }
+  .merch-grid    { grid-template-columns: repeat(2, 1fr); gap: 1.5rem 1rem; }
 }
 @media (max-width: 420px) {
   .merch-grid { grid-template-columns: 1fr; }
 }
 
-.sidebar-toggle {
-  display: none; /* hidden on desktop */
-}
+/* ── Mobile sidebar toggle ── */
+.sidebar-toggle { display: none; }
 
 @media (max-width: 700px) {
   .sidebar-toggle {
@@ -414,28 +504,21 @@
     width: 100%;
     margin-bottom: 0;
   }
-
   .sidebar-toggle-arrow {
     margin-left: auto;
     transition: transform 0.25s ease;
   }
-
   .sidebar-toggle[aria-expanded="true"] .sidebar-toggle-arrow {
     transform: rotate(180deg);
   }
-
   .sidebar-collapsible {
     display: none;
     flex-direction: column;
     gap: 0;
   }
-
-  .sidebar-collapsible.is-open {
-    display: flex;
-  }
+  .sidebar-collapsible.is-open { display: flex; }
 }
 
-/* Desktop — always show collapsible content */
 @media (min-width: 701px) {
   .sidebar-collapsible {
     display: flex;
