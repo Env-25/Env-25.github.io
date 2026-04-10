@@ -22,9 +22,8 @@ const terms     = getLockerTerms();
   <section class="lockers-section">
     <div class="lockers-layout">
 
-      <!-- Sidebar -->
       <aside class="lockers-sidebar">
-
+        <!-- Search -->
         <div class="sidebar-block">
           <p class="sidebar-heading">Search</p>
           <div class="locker-search-inner">
@@ -36,7 +35,7 @@ const terms     = getLockerTerms();
           </div>
         </div>
 
-        <!-- Building multi-select -->
+        <!-- Building -->
         <div class="sidebar-block">
           <p class="sidebar-heading">Building</p>
           <div class="location-dropdown-wrap">
@@ -57,7 +56,7 @@ const terms     = getLockerTerms();
           </div>
         </div>
 
-                <!-- Price range -->
+        <!-- Price range -->
         <div class="sidebar-block">
           <p class="sidebar-heading">Price Range</p>
           <div class="price-slider-wrap">
@@ -120,8 +119,6 @@ const terms     = getLockerTerms();
           </label>
         </div>
 
-
-
         <button class="sidebar-reset" id="resetFilters">Reset all filters</button>
       </aside>
 
@@ -159,15 +156,11 @@ const terms     = getLockerTerms();
               <div class="locker-card-info">
                 <p class="locker-card-location">{locker.Location}</p>
                 <p class="locker-card-name">{locker.Name}</p>
-
                 <div class="locker-card-meta-row">
-                  <!-- Price -->
                   <span class="locker-card-price">
                     ${locker.Price.toFixed(2)}
                     <span class="locker-price-period">/{locker.Rental_Term === "Semester" ? "sem" : "yr"}</span>
                   </span>
-
-                  <!-- Lock icon -->
                   {locker.Lock_Included ? (
                     <span class="lock-icon lock-yes" title="Lock included">
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -184,21 +177,11 @@ const terms     = getLockerTerms();
                     </span>
                   )}
                 </div>
-
-                <!-- Availability by level -->
                 <div class="level-avail-row">
-                  <span class={`level-pip ${locker.Availability_Top > 0 ? "open" : "full"}`}>
-                    T: {locker.Availability_Top}
-                  </span>
-                  <span class={`level-pip ${locker.Availability_Mid > 0 ? "open" : "full"}`}>
-                    M: {locker.Availability_Mid}
-                  </span>
-                  <span class={`level-pip ${locker.Availability_Bottom > 0 ? "open" : "full"}`}>
-                    B: {locker.Availability_Bottom}
-                  </span>
+                  <span class={`level-pip ${locker.Availability_Top > 0 ? "open" : "full"}`}>T: {locker.Availability_Top}</span>
+                  <span class={`level-pip ${locker.Availability_Mid > 0 ? "open" : "full"}`}>M: {locker.Availability_Mid}</span>
+                  <span class={`level-pip ${locker.Availability_Bottom > 0 ? "open" : "full"}`}>B: {locker.Availability_Bottom}</span>
                 </div>
-
-                <!-- Term -->
                 <span class="term-tag">{locker.Rental_Term}</span>
               </div>
             </a>
@@ -214,184 +197,176 @@ const terms     = getLockerTerms();
 <script>
   import Fuse from "fuse.js";
 
-  const grid  = document.getElementById("lockersGrid")!;
-  const cards = Array.from(grid.querySelectorAll<HTMLAnchorElement>(".locker-card"));
+  function init() {
+    const grid  = document.getElementById("lockersGrid");
+    if (!grid) return;
+    const cards = Array.from(grid.querySelectorAll<HTMLAnchorElement>(".locker-card"));
+    cards.forEach((c) => (c.hidden = false));
 
-  const data = cards.map((card) => ({
-    el:       card,
-    name:     card.dataset.name     ?? "",
-    location: card.dataset.location ?? "",
-    size:     card.dataset.size     ?? "",
-    term:     card.dataset.term     ?? "",
-    lock:     card.dataset.lock     ?? "",
-    top:      parseInt(card.dataset.availTop    ?? "0"),
-    mid:      parseInt(card.dataset.availMid    ?? "0"),
-    bottom:   parseInt(card.dataset.availBottom ?? "0"),
-    total:    parseInt(card.dataset.total ?? "0"),
-    price:    parseFloat(card.dataset.price ?? "0"),
-  }));
+    const data = cards.map((card) => ({
+      el:       card,
+      name:     card.dataset.name     ?? "",
+      location: card.dataset.location ?? "",
+      size:     card.dataset.size     ?? "",
+      term:     card.dataset.term     ?? "",
+      lock:     card.dataset.lock     ?? "",
+      top:      parseInt(card.dataset.availTop    ?? "0"),
+      mid:      parseInt(card.dataset.availMid    ?? "0"),
+      bottom:   parseInt(card.dataset.availBottom ?? "0"),
+      total:    parseInt(card.dataset.total ?? "0"),
+      price:    parseFloat(card.dataset.price ?? "0"),
+    }));
 
-  const fuse = new Fuse(data, {
-    keys: [
-      { name: "name",     weight: 0.5 },
-      { name: "location", weight: 0.5 },
-    ],
-    threshold: 0.35,
-    includeScore: true,
-  });
-
-  let activeSize  = "all";
-  let activeTerm  = "all";
-  let activeLock  = "all";
-  let activeLevel = "all";
-  let availOnly   = false;
-  let selectedLocs = new Set<string>();
-  let priceMin = 0;
-  let priceMax = 50;
-
-  const searchInput    = document.getElementById("lockerSearch")     as HTMLInputElement;
-  const searchClear    = document.getElementById("searchClear")      as HTMLButtonElement;
-  const sizeButtons    = document.querySelectorAll<HTMLButtonElement>("[data-size]");
-  const termButtons    = document.querySelectorAll<HTMLButtonElement>("[data-term]");
-  const lockButtons    = document.querySelectorAll<HTMLButtonElement>("[data-lock]");
-  const levelButtons   = document.querySelectorAll<HTMLButtonElement>("[data-level]");
-  const availCheck     = document.getElementById("availOnly")        as HTMLInputElement;
-  const locCheckboxes  = document.querySelectorAll<HTMLInputElement>(".loc-checkbox");
-  const locTrigger     = document.getElementById("locationTrigger")  as HTMLButtonElement;
-  const locTriggerLabel = document.getElementById("locationTriggerLabel")!;
-  const locMenu        = document.getElementById("locationMenu")!;
-  const priceMinEl     = document.getElementById("priceMin")         as HTMLInputElement;
-  const priceMaxEl     = document.getElementById("priceMax")         as HTMLInputElement;
-  const priceMinLabel  = document.getElementById("priceMinLabel")!;
-  const priceMaxLabel  = document.getElementById("priceMaxLabel")!;
-  const sliderFill     = document.getElementById("sliderFill")!;
-  const countEl        = document.getElementById("searchCount")!;
-  const noResults      = document.getElementById("noResults")!;
-  const resetBtn       = document.getElementById("resetFilters")!;
-
-// Dropdown toggle
-locTrigger.addEventListener("click", () => {
-  const isOpen = locMenu.classList.contains("open");
-  locMenu.classList.toggle("open", !isOpen);
-  locTrigger.setAttribute("aria-expanded", String(!isOpen));
-});
-
-// Close on outside click
-document.addEventListener("click", (e) => {
-  if (!locTrigger.contains(e.target as Node) && !locMenu.contains(e.target as Node)) {
-    locMenu.classList.remove("open");
-    locTrigger.setAttribute("aria-expanded", "false");
-  }
-});
-
-  function updateLocationLabel() {
-    locTriggerLabel.textContent =
-      selectedLocs.size === 0 ? "All buildings" :
-      selectedLocs.size === 1 ? [...selectedLocs][0] :
-      `${selectedLocs.size} buildings selected`;
-  }
-  locCheckboxes.forEach((cb) => {
-    cb.addEventListener("change", () => {
-      if (cb.checked) selectedLocs.add(cb.value);
-      else selectedLocs.delete(cb.value);
-      updateLocationLabel();
-      applyFilters();
+    const fuse = new Fuse(data, {
+      keys: [{ name: "name", weight: 0.5 }, { name: "location", weight: 0.5 }],
+      threshold: 0.35,
+      includeScore: true,
     });
-  });
 
-  function updateSliderFill() {
-    const range = parseInt(priceMinEl.max) - parseInt(priceMinEl.min);
-    sliderFill.style.left  = `${(priceMin / range) * 100}%`;
-    sliderFill.style.right = `${100 - (priceMax / range) * 100}%`;
-  }
+    let activeSize = "all", activeTerm = "all", activeLock = "all", activeLevel = "all";
+    let availOnly = false, selectedLocs = new Set<string>(), priceMin = 0, priceMax = 50;
 
-  function makeToggle(buttons: NodeListOf<HTMLButtonElement>, key: string, setter: (v: string) => void) {
-    buttons.forEach((btn) => {
-      btn.addEventListener("click", () => {
-        buttons.forEach((b) => b.classList.remove("active"));
-        btn.classList.add("active");
-        setter((btn as any).dataset[key]!);
-        applyFilters();
+    const searchInput     = document.getElementById("lockerSearch")     as HTMLInputElement;
+    const searchClear     = document.getElementById("searchClear")      as HTMLButtonElement;
+    const sizeButtons     = document.querySelectorAll<HTMLButtonElement>("[data-size]");
+    const termButtons     = document.querySelectorAll<HTMLButtonElement>("[data-term]");
+    const lockButtons     = document.querySelectorAll<HTMLButtonElement>("[data-lock]");
+    const levelButtons    = document.querySelectorAll<HTMLButtonElement>("[data-level]");
+    const availCheck      = document.getElementById("availOnly")        as HTMLInputElement;
+    const locCheckboxes   = document.querySelectorAll<HTMLInputElement>(".loc-checkbox");
+    const locTrigger      = document.getElementById("locationTrigger")  as HTMLButtonElement;
+    const locTriggerLabel = document.getElementById("locationTriggerLabel")!;
+    const locMenu         = document.getElementById("locationMenu")!;
+    const priceMinEl      = document.getElementById("priceMin")         as HTMLInputElement;
+    const priceMaxEl      = document.getElementById("priceMax")         as HTMLInputElement;
+    const priceMinLabel   = document.getElementById("priceMinLabel")!;
+    const priceMaxLabel   = document.getElementById("priceMaxLabel")!;
+    const sliderFill      = document.getElementById("sliderFill")!;
+    const countEl         = document.getElementById("searchCount")!;
+    const noResults       = document.getElementById("noResults")!;
+    const resetBtn        = document.getElementById("resetFilters")!;
+
+    locTrigger.addEventListener("click", () => {
+      const isOpen = locMenu.classList.contains("open");
+      locMenu.classList.toggle("open", !isOpen);
+      locTrigger.setAttribute("aria-expanded", String(!isOpen));
+    });
+    document.addEventListener("click", (e) => {
+      if (!locTrigger.contains(e.target as Node) && !locMenu.contains(e.target as Node)) {
+        locMenu.classList.remove("open");
+        locTrigger.setAttribute("aria-expanded", "false");
+      }
+    });
+
+    function updateLocationLabel() {
+      locTriggerLabel.textContent =
+        selectedLocs.size === 0 ? "All buildings" :
+        selectedLocs.size === 1 ? [...selectedLocs][0] :
+        `${selectedLocs.size} buildings selected`;
+    }
+    locCheckboxes.forEach((cb) => {
+      cb.addEventListener("change", () => {
+        if (cb.checked) selectedLocs.add(cb.value);
+        else selectedLocs.delete(cb.value);
+        updateLocationLabel(); applyFilters();
       });
     });
-  }
 
-  makeToggle(sizeButtons,  "size",  (v) => activeSize  = v);
-  makeToggle(termButtons,  "term",  (v) => activeTerm  = v);
-  makeToggle(lockButtons,  "lock",  (v) => activeLock  = v);
-  makeToggle(levelButtons, "level", (v) => activeLevel = v);
+    function updateSliderFill() {
+      const range = parseInt(priceMinEl.max) - parseInt(priceMinEl.min);
+      sliderFill.style.left  = `${(priceMin / range) * 100}%`;
+      sliderFill.style.right = `${100 - (priceMax / range) * 100}%`;
+    }
 
-  availCheck.addEventListener("change", () => { availOnly = availCheck.checked; applyFilters(); });
+    function makeToggle(buttons: NodeListOf<HTMLButtonElement>, key: string, setter: (v: string) => void) {
+      buttons.forEach((btn) => {
+        btn.addEventListener("click", () => {
+          buttons.forEach((b) => b.classList.remove("active"));
+          btn.classList.add("active");
+          setter((btn as any).dataset[key]!);
+          applyFilters();
+        });
+      });
+    }
+    makeToggle(sizeButtons,  "size",  (v) => activeSize  = v);
+    makeToggle(termButtons,  "term",  (v) => activeTerm  = v);
+    makeToggle(lockButtons,  "lock",  (v) => activeLock  = v);
+    makeToggle(levelButtons, "level", (v) => activeLevel = v);
 
-  priceMinEl.addEventListener("input", () => {
-    let min = parseInt(priceMinEl.value), max = parseInt(priceMaxEl.value);
-    if (min > max - 1) { min = max - 1; priceMinEl.value = String(min); }
-    priceMin = min; priceMinLabel.textContent = `$${min}`;
-    updateSliderFill(); applyFilters();
-  });
-  priceMaxEl.addEventListener("input", () => {
-    let min = parseInt(priceMinEl.value), max = parseInt(priceMaxEl.value);
-    if (max < min + 1) { max = min + 1; priceMaxEl.value = String(max); }
-    priceMax = max; priceMaxLabel.textContent = `$${max}`;
-    updateSliderFill(); applyFilters();
-  });
+    availCheck.addEventListener("change", () => { availOnly = availCheck.checked; applyFilters(); });
 
-  searchInput.addEventListener("input", applyFilters);
-  searchClear.addEventListener("click", () => { searchInput.value = ""; searchInput.focus(); applyFilters(); });
-
-  function applyFilters() {
-    const q = searchInput.value.trim();
-    searchClear.hidden = q.length === 0;
-
-    const textMatched: Set<HTMLAnchorElement> | null = q
-      ? new Set(fuse.search(q).map((r) => r.item.el))
-      : null;
-
-    let visible = 0;
-    data.forEach(({ el, location, size, term, lock, top, mid, bottom, total, price }) => {
-      const passText  = textMatched === null || textMatched.has(el);
-      const passLoc   = selectedLocs.size === 0 || selectedLocs.has(location);
-      const passSize  = activeSize  === "all" || size  === activeSize;
-      const passTerm  = activeTerm  === "all" || term  === activeTerm;
-      const passLock  = activeLock  === "all" || lock  === activeLock;
-      const passLevel = activeLevel === "all"
-        || (activeLevel === "top"    && top    > 0)
-        || (activeLevel === "mid"    && mid    > 0)
-        || (activeLevel === "bottom" && bottom > 0);
-      const passAvail = !availOnly || total > 0;
-      const passPrice = price >= priceMin && price <= priceMax;
-
-      el.hidden = !(passText && passLoc && passSize && passTerm && passLock && passLevel && passAvail && passPrice);
-      if (!el.hidden) visible++;
+    priceMinEl.addEventListener("input", () => {
+      let min = parseInt(priceMinEl.value), max = parseInt(priceMaxEl.value);
+      if (min > max - 1) { min = max - 1; priceMinEl.value = String(min); }
+      priceMin = min; priceMinLabel.textContent = `$${min}`;
+      updateSliderFill(); applyFilters();
+    });
+    priceMaxEl.addEventListener("input", () => {
+      let min = parseInt(priceMinEl.value), max = parseInt(priceMaxEl.value);
+      if (max < min + 1) { max = min + 1; priceMaxEl.value = String(max); }
+      priceMax = max; priceMaxLabel.textContent = `$${max}`;
+      updateSliderFill(); applyFilters();
     });
 
-    noResults.hidden = visible > 0;
-    const any = q || selectedLocs.size > 0 || activeSize !== "all" || activeTerm !== "all"
-      || activeLock !== "all" || activeLevel !== "all" || availOnly || priceMin > 0 || priceMax < 50;
-    countEl.textContent = any ? `${visible} locker${visible !== 1 ? "s" : ""}` : "";
-    countEl.classList.toggle("visible", !!any);
-  }
+    searchInput.addEventListener("input", applyFilters);
+    searchClear.addEventListener("click", () => { searchInput.value = ""; searchInput.focus(); applyFilters(); });
 
-  resetBtn.addEventListener("click", () => {
-    searchInput.value = "";
-    activeSize = activeTerm = activeLock = activeLevel = "all";
-    availOnly = false; selectedLocs.clear();
-    priceMin = 0; priceMax = 50;
-    priceMinEl.value = "0"; priceMaxEl.value = "50";
-    priceMinLabel.textContent = "$0"; priceMaxLabel.textContent = "$50";
-    availCheck.checked = false;
-    locCheckboxes.forEach((cb) => (cb.checked = false));
-    updateLocationLabel();
-    [sizeButtons, termButtons, lockButtons, levelButtons].forEach((group) =>
-      group.forEach((b) => {
-        const key = Object.keys((b as any).dataset)[0];
-        b.classList.toggle("active", (b as any).dataset[key] === "all");
-      })
-    );
+    function applyFilters() {
+      const q = searchInput.value.trim();
+      searchClear.hidden = q.length === 0;
+      const textMatched: Set<HTMLAnchorElement> | null = q
+        ? new Set(fuse.search(q).map((r) => r.item.el))
+        : null;
+
+      let visible = 0;
+      data.forEach(({ el, location, size, term, lock, top, mid, bottom, total, price }) => {
+        const passText  = textMatched === null || textMatched.has(el);
+        const passLoc   = selectedLocs.size === 0 || selectedLocs.has(location);
+        const passSize  = activeSize  === "all" || size  === activeSize;
+        const passTerm  = activeTerm  === "all" || term  === activeTerm;
+        const passLock  = activeLock  === "all" || lock  === activeLock;
+        const passLevel = activeLevel === "all"
+          || (activeLevel === "top"    && top    > 0)
+          || (activeLevel === "mid"    && mid    > 0)
+          || (activeLevel === "bottom" && bottom > 0);
+        const passAvail = !availOnly || total > 0;
+        const passPrice = price >= priceMin && price <= priceMax;
+        el.hidden = !(passText && passLoc && passSize && passTerm && passLock && passLevel && passAvail && passPrice);
+        if (!el.hidden) visible++;
+      });
+
+      noResults.hidden = visible > 0;
+      const any = q || selectedLocs.size > 0 || activeSize !== "all" || activeTerm !== "all"
+        || activeLock !== "all" || activeLevel !== "all" || availOnly || priceMin > 0 || priceMax < 50;
+      countEl.textContent = any ? `${visible} locker${visible !== 1 ? "s" : ""}` : "";
+      countEl.classList.toggle("visible", !!any);
+    }
+
+    resetBtn.addEventListener("click", () => {
+      searchInput.value = "";
+      activeSize = activeTerm = activeLock = activeLevel = "all";
+      availOnly = false; selectedLocs.clear();
+      priceMin = 0; priceMax = 50;
+      priceMinEl.value = "0"; priceMaxEl.value = "50";
+      priceMinLabel.textContent = "$0"; priceMaxLabel.textContent = "$50";
+      availCheck.checked = false;
+      locCheckboxes.forEach((cb) => (cb.checked = false));
+      updateLocationLabel();
+      [sizeButtons, termButtons, lockButtons, levelButtons].forEach((group) =>
+        group.forEach((b) => {
+          const key = Object.keys((b as any).dataset)[0];
+          b.classList.toggle("active", (b as any).dataset[key] === "all");
+        })
+      );
+      updateSliderFill();
+      applyFilters();
+    });
+
     updateSliderFill();
     applyFilters();
-  });
+  }
 
-  updateSliderFill();
-  applyFilters();
+  init();
+  document.addEventListener("astro:page-load", init);
+  window.addEventListener("pageshow", (e) => { if (e.persisted) init(); });
 </script>

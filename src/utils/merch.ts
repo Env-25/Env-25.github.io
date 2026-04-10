@@ -12,6 +12,7 @@ export interface ColorVariant {
   cover_image: string;
   additional_images: string[];   // all extra images for this colour
   inStock: boolean;
+  sizesStock: { size: string; stock: number }[];
 }
 
 export interface MerchItem {
@@ -149,6 +150,7 @@ export function getMerch(): MerchItem[] {
       cover_image:       item.Cover_image,
       additional_images: item.Additional_images,
       inStock:           item.inStock,
+      sizesStock:        item.Sizes_Stock,
     });
   });
 
@@ -159,17 +161,49 @@ export function getMerch(): MerchItem[] {
 }
 
 /** One card per Type_id (first row). allSizes merged from all variants. */
+/** One card per Type_id (first row), with merged stock data across all variants. */
 export function getGroupedMerch(): MerchItem[] {
   const items = getMerch();
-  const seen  = new Set<string>();
+  const seen = new Set<string>();
+
   return items
-    .filter((item) => { if (seen.has(item.Type_id)) return false; seen.add(item.Type_id); return true; })
-    .map((rep) => ({
-      ...rep,
-      allSizes: [...new Set(
-        items.filter((i) => i.Type_id === rep.Type_id).flatMap((i) => i.allSizes)
-      )],
-    }));
+    .filter((item) => {
+      if (seen.has(item.Type_id)) return false;
+      seen.add(item.Type_id);
+      return true;
+    })
+    .map((rep) => {
+      const groupItems = items.filter((i) => i.Type_id === rep.Type_id);
+
+      const mergedSizesMap = new Map<string, number>();
+      groupItems.forEach((variant) => {
+        variant.Sizes_Stock.forEach(({ size, stock }) => {
+          mergedSizesMap.set(size, (mergedSizesMap.get(size) ?? 0) + stock);
+        });
+      });
+
+      const mergedSizesStock: SizeStock[] = [...mergedSizesMap.entries()].map(
+        ([size, stock]) => ({ size, stock })
+      );
+
+      const anyVariantInStock = groupItems.some((variant) => variant.inStock);
+      const mergedAllSizes = [...new Set(groupItems.flatMap((i) => i.allSizes))];
+
+      return {
+        ...rep,
+        Sizes_Stock: mergedSizesStock,
+        inStock: anyVariantInStock,
+        allSizes: mergedAllSizes,
+        colorVariants: groupItems.map((variant) => ({
+          color: variant.Color,
+          slug: variant.slug,
+          cover_image: variant.Cover_image,
+          additional_images: [...variant.Additional_images],
+          inStock: variant.inStock,
+          sizesStock: variant.Sizes_Stock.map((s) => ({ ...s })),
+        })),
+      };
+    });
 }
 
 export function getMerchBySlug(slug: string): MerchItem | undefined {

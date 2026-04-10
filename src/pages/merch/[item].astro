@@ -15,31 +15,38 @@ if (!product) return Astro.redirect("/merch");
 const hasColors = product.colorVariants.length > 1;
 const cardPrice = (product.Price * 1.03).toFixed(2);
 
-// Build the combined image list across ALL colour variants, tagged by colour.
-// Each entry: { src, color, slug, isCover }
-interface GalleryImage { src: string; color: string; variantSlug: string; isCover: boolean; }
+interface GalleryImage {
+  src: string;
+  color: string;
+  variantSlug: string;
+  isCover: boolean;
+}
+
 const galleryImages: GalleryImage[] = product.colorVariants.flatMap((v) => [
-  { src: v.cover_image,          color: v.color, variantSlug: v.slug, isCover: true  },
+  { src: v.cover_image, color: v.color, variantSlug: v.slug, isCover: true },
   ...v.additional_images.map((img) => ({
-    src: img, color: v.color, variantSlug: v.slug, isCover: false,
+    src: img,
+    color: v.color,
+    variantSlug: v.slug,
+    isCover: false,
   })),
 ]);
 
-// Active colour = this page's colour
 const activeColor = product.Color;
-const firstImage  = product.Cover_image;
----
-<BaseLayout title={`${product.Name} — CHBE Merch`} hideNav={true}>
+const activeVariant =
+  product.colorVariants.find((v) => v.color === activeColor) ?? product.colorVariants[0];
 
-  <!-- Full-width dark teal top nav -->
+const activeSizes = activeVariant?.sizesStock ?? [];
+const firstImage = activeVariant?.cover_image ?? product.Cover_image;
+---
+
+<BaseLayout title={`${product.Name} — CHBE Merch`} hideNav={true}>
   <div class="item-topnav">
     <a href="/merch" class="topnav-btn">← Back to Merch</a>
     <a href="/" class="topnav-btn">Home</a>
   </div>
 
   <div class="item-page">
-
-    <!-- Breadcrumb -->
     <nav class="item-breadcrumb">
       <a href="/merch">Merch</a>
       <span>›</span>
@@ -49,28 +56,22 @@ const firstImage  = product.Cover_image;
     </nav>
 
     <div class="item-layout">
-
-      <!-- ── Gallery ── -->
       <div class="item-gallery">
-
-        <!-- Scrollable thumbnail column, grouped by colour -->
         <div class="gallery-thumbs" id="galleryThumbs">
           {product.colorVariants.map((v) => {
-            const variantImgs: GalleryImage[] = galleryImages.filter(
-              (g) => g.color === v.color
-            );
+            const variantImgs: GalleryImage[] = galleryImages.filter((g) => g.color === v.color);
             return (
               <div
                 class={`thumb-group${v.color === activeColor ? " active-group" : ""}`}
                 data-group-color={v.color}
               >
-
                 {variantImgs.map((img, idx) => (
                   <button
                     class={`thumb-btn${img.isCover && v.color === activeColor ? " active" : ""}`}
                     data-img={`/merch/images/${img.src}`}
                     data-color={v.color}
                     aria-label={`${v.color} view ${idx + 1}`}
+                    type="button"
                   >
                     <img
                       src={`/merch/images/${img.src}`}
@@ -84,7 +85,6 @@ const firstImage  = product.Cover_image;
           })}
         </div>
 
-        <!-- Main image -->
         <div class="gallery-main">
           <img
             id="mainImage"
@@ -95,15 +95,13 @@ const firstImage  = product.Cover_image;
         </div>
       </div>
 
-      <!-- ── Product Info ── -->
       <div class="item-info">
         <p class="item-type">{product.Type}</p>
         <h1 class="item-name">{product.Name}</h1>
 
-        <!-- Dual pricing -->
         <div class="item-price-row">
           <span class="item-price-cash">
-            <img src="/public/logos/cash.png" alt="Cash price" class="item-price-icon" />
+            <img src="/logos/cash.png" alt="Cash price" class="item-price-icon" />
             ${product.Price.toFixed(2)}
             <span class="item-price-note">CAD</span>
           </span>
@@ -123,7 +121,6 @@ const firstImage  = product.Cover_image;
         {product.Desc && <p class="item-desc">{product.Desc}</p>}
         {product.Desc && <div class="item-divider"></div>}
 
-        <!-- Hidden input carries selected colour for backend -->
         <input
           type="hidden"
           id="selectedColorInput"
@@ -131,7 +128,6 @@ const firstImage  = product.Cover_image;
           value={activeColor}
         />
 
-        <!-- ── Colour selector ── -->
         <div class="item-option-block">
           <p class="option-label">
             Colour
@@ -158,13 +154,12 @@ const firstImage  = product.Cover_image;
           </div>
         </div>
 
-        <!-- ── Size selector ── -->
         <div class="item-option-block">
           <p class="option-label">
             Size <span id="selectedSizeLabel" class="selected-value"></span>
           </p>
           <div class="size-btn-group" id="sizeGroup">
-            {product.Sizes_Stock.map(({ size, stock }) => (
+            {activeSizes.map(({ size, stock }) => (
               <button
                 class={`size-btn${stock === 0 ? " out" : ""}`}
                 data-size={size}
@@ -179,7 +174,6 @@ const firstImage  = product.Cover_image;
           </div>
         </div>
 
-        <!-- ── Quantity ── -->
         <div class="item-option-block" id="qtyBlock" style="display:none">
           <p class="option-label">Quantity</p>
           <div class="qty-row">
@@ -190,7 +184,6 @@ const firstImage  = product.Cover_image;
           </div>
         </div>
 
-        <!-- ── Purchase ── -->
         <button class="purchase-btn" id="purchaseBtn" disabled type="button">
           Select a size to purchase
         </button>
@@ -198,8 +191,7 @@ const firstImage  = product.Cover_image;
 
         <div class="item-divider"></div>
 
-        <!-- ── Size chart ── -->
-        {product.allSizes.some((s) => ["XS","S","M","L","XL","XXL"].includes(s)) && (
+        {product.allSizes.some((s) => ["XS", "S", "M", "L", "XL", "XXL"].includes(s)) && (
           <details class="size-chart">
             <summary>Size guide</summary>
             <table class="size-table">
@@ -220,39 +212,70 @@ const firstImage  = product.Cover_image;
   </div>
 </BaseLayout>
 
-<script>
-  // ── Gallery thumbs ──────────────────────────────────────────────────────────
-  const thumbBtns   = Array.from(document.querySelectorAll<HTMLButtonElement>(".thumb-btn"));
-  const thumbGroups = Array.from(document.querySelectorAll<HTMLDivElement>(".thumb-group"));
-  const mainImg     = document.getElementById("mainImage") as HTMLImageElement;
+<script define:vars={{ product }}>
+  const thumbBtns = Array.from(document.querySelectorAll(".thumb-btn"));
+  const thumbGroups = Array.from(document.querySelectorAll(".thumb-group"));
+  const mainImg = document.getElementById("mainImage");
 
-  function activateThumb(btn: HTMLButtonElement) {
+  const colorBtns = Array.from(document.querySelectorAll(".color-variant-btn"));
+  const colorLabel = document.getElementById("selectedColorLabel");
+  const colorInput = document.getElementById("selectedColorInput");
+
+  const sizeBtns = Array.from(document.querySelectorAll(".size-btn"));
+  const selectedSizeLabel = document.getElementById("selectedSizeLabel");
+  const qtyBlock = document.getElementById("qtyBlock");
+  const qtyValue = document.getElementById("qtyValue");
+  const qtyStockNote = document.getElementById("qtyStockNote");
+  const qtyDown = document.getElementById("qtyDown");
+  const qtyUp = document.getElementById("qtyUp");
+  const purchaseBtn = document.getElementById("purchaseBtn");
+
+  let selectedStock = 0;
+  let qty = 1;
+
+  function activateThumb(btn) {
     thumbBtns.forEach((b) => b.classList.remove("active"));
     btn.classList.add("active");
-    mainImg.src = btn.dataset.img!;
+    if (mainImg) mainImg.src = btn.dataset.img;
   }
 
-  thumbBtns.forEach((btn) => btn.addEventListener("click", () => activateThumb(btn)));
+  function setSizesForColor(color) {
+    const variant = product.colorVariants.find((v) => v.color === color);
+    if (!variant) return;
 
-  // ── Colour selector ─────────────────────────────────────────────────────────
-  const colorBtns        = Array.from(document.querySelectorAll<HTMLButtonElement>(".color-variant-btn"));
-  const colorLabel       = document.getElementById("selectedColorLabel")!;
-  const colorInput       = document.getElementById("selectedColorInput") as HTMLInputElement;
+    sizeBtns.forEach((btn) => {
+      const size = btn.dataset.size;
+      const entry = variant.sizesStock.find((s) => s.size === size);
+      const stock = entry ? entry.stock : 0;
 
-  function selectColor(color: string) {
-    // 1. Update label and hidden input (for backend)
+      btn.dataset.stock = String(stock);
+      btn.disabled = stock === 0;
+      btn.classList.toggle("out", stock === 0);
+      btn.title = stock === 0 ? "Out of stock" : `${stock} left`;
+      btn.classList.remove("active");
+    });
+
+    selectedSizeLabel.textContent = "";
+    qtyBlock.style.display = "none";
+    qtyValue.textContent = "1";
+    qtyStockNote.textContent = "";
+    qtyDown.disabled = true;
+    qtyUp.disabled = true;
+    purchaseBtn.disabled = true;
+    purchaseBtn.textContent = "Select a size to purchase";
+  }
+
+  function selectColor(color) {
+    if (!color) return;
+
     colorLabel.textContent = `— ${color}`;
-    colorInput.value       = color;
+    if (colorInput) colorInput.value = color;
 
-    // 2. Update colour button active states
     colorBtns.forEach((b) => b.classList.toggle("active", b.dataset.color === color));
+    thumbGroups.forEach((g) => g.classList.toggle("active-group", g.dataset.groupColor === color));
 
-    // 3. Highlight the thumb group for this colour
-    thumbGroups.forEach((g) =>
-      g.classList.toggle("active-group", g.dataset.groupColor === color)
-    );
+    setSizesForColor(color);
 
-    // 4. Spotlight the first thumb of the selected colour
     const firstThumb = thumbBtns.find((b) => b.dataset.color === color);
     if (firstThumb) {
       activateThumb(firstThumb);
@@ -260,46 +283,66 @@ const firstImage  = product.Cover_image;
     }
   }
 
-  colorBtns.forEach((btn) => {
-    btn.addEventListener("click", () => {
-      if (!btn.classList.contains("out")) selectColor(btn.dataset.color!);
-    });
+  thumbBtns.forEach((btn) => {
+    btn.addEventListener("click", () => activateThumb(btn));
   });
 
-  // ── Size selector ───────────────────────────────────────────────────────────
-  const sizeBtns          = Array.from(document.querySelectorAll<HTMLButtonElement>(".size-btn:not(.out)"));
-  const selectedSizeLabel = document.getElementById("selectedSizeLabel")!;
-  const qtyBlock          = document.getElementById("qtyBlock")!;
-  const qtyValue          = document.getElementById("qtyValue")!;
-  const qtyStockNote      = document.getElementById("qtyStockNote")!;
-  const qtyDown           = document.getElementById("qtyDown")  as HTMLButtonElement;
-  const qtyUp             = document.getElementById("qtyUp")    as HTMLButtonElement;
-  const purchaseBtn       = document.getElementById("purchaseBtn") as HTMLButtonElement;
-
-  let selectedStock = 0;
-  let qty           = 1;
+  colorBtns.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      if (!btn.classList.contains("out")) selectColor(btn.dataset.color);
+    });
+  });
 
   sizeBtns.forEach((btn) => {
     btn.addEventListener("click", () => {
+      if (btn.disabled) return;
+
       sizeBtns.forEach((b) => b.classList.remove("active"));
       btn.classList.add("active");
-      selectedStock             = parseInt(btn.dataset.stock ?? "0");
-      qty                       = 1;
+
+      selectedStock = parseInt(btn.dataset.stock || "0", 10);
+      qty = 1;
+
       selectedSizeLabel.textContent = `— ${btn.dataset.size}`;
-      qtyValue.textContent          = "1";
-      qtyStockNote.textContent      = `${selectedStock} in stock`;
-      qtyBlock.style.display        = "";
-      qtyDown.disabled              = true;
-      qtyUp.disabled                = selectedStock <= 1;
-      purchaseBtn.disabled          = true;
-      purchaseBtn.textContent       = "Purchase (Coming Soon)";
+      qtyValue.textContent = "1";
+      qtyStockNote.textContent = `${selectedStock} in stock`;
+      qtyBlock.style.display = "";
+      qtyDown.disabled = true;
+      qtyUp.disabled = selectedStock <= 1;
+      purchaseBtn.disabled = true;
+      purchaseBtn.textContent = "Purchase (Coming Soon)";
     });
   });
 
-  qtyDown.addEventListener("click", () => {
-    if (qty > 1) { qty--; qtyValue.textContent = String(qty); qtyDown.disabled = qty <= 1; qtyUp.disabled = qty >= selectedStock; }
+  qtyDown?.addEventListener("click", () => {
+    if (qty > 1) {
+      qty -= 1;
+      qtyValue.textContent = String(qty);
+      qtyDown.disabled = qty <= 1;
+      qtyUp.disabled = qty >= selectedStock;
+    }
   });
-  qtyUp.addEventListener("click", () => {
-    if (qty < selectedStock) { qty++; qtyValue.textContent = String(qty); qtyDown.disabled = qty <= 1; qtyUp.disabled = qty >= selectedStock; }
+
+  qtyUp?.addEventListener("click", () => {
+    if (qty < selectedStock) {
+      qty += 1;
+      qtyValue.textContent = String(qty);
+      qtyDown.disabled = qty <= 1;
+      qtyUp.disabled = qty >= selectedStock;
+    }
+  });
+
+  const initialColor =
+    colorInput?.value ||
+    product.Color ||
+    product.colorVariants[0]?.color ||
+    "";
+
+  selectColor(initialColor);
+
+  window.addEventListener("pageshow", (event) => {
+    if (event.persisted) {
+      selectColor(colorInput?.value || initialColor);
+    }
   });
 </script>

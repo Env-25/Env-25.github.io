@@ -21,24 +21,12 @@ const levels = [
 ];
 ---
 <BaseLayout title={`${locker.Name} — CHBE Locker Rental`} hideNav={true}>
-  <div class="locker-item-page">
+  <div class="item-topnav">
+    <a href="/locker-rental" class="topnav-btn">← Back to Lockers</a>
+    <a href="/" class="topnav-btn">Home</a>
+  </div>
 
-    <!-- Topbar -->
-    <div class="item-topbar">
-      <a href="/locker-rental" class="item-back-btn">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="15 18 9 12 15 6"/>
-        </svg>
-        Back to Lockers
-      </a>
-      <a href="/" class="item-home-btn">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z"/>
-          <polyline points="9 21 9 12 15 12 15 21"/>
-        </svg>
-        Home
-      </a>
-    </div>
+  <div class="locker-item-page">
 
     <!-- Breadcrumb -->
     <nav class="item-breadcrumb">
@@ -109,21 +97,27 @@ const levels = [
 
         <div class="item-divider"></div>
 
-        <!-- Level availability -->
+        <!-- Level selector -->
         <div class="level-avail-block">
-          <p class="option-label">Availability by Level</p>
-          <div class="level-avail-detail">
+          <p class="option-label">
+            Level
+            <span class="option-label-hint" id="levelSelectedLabel"></span>
+          </p>
+          <div class="level-btn-group" id="levelBtnGroup">
             {levels.map(({ label, count }) => (
-              <div class={`level-detail-row ${count > 0 ? "open" : "full"}`}>
-                <span class="level-detail-name">{label}</span>
-                <div class="level-detail-bar-wrap">
-                  <div
-                    class="level-detail-bar"
-                    style={`width: ${Math.min(count * 20, 100)}%`}
-                  ></div>
-                </div>
-                <span class="level-detail-count">{count} left</span>
-              </div>
+              // ✅ FIX 1: class-based, never disabled={...} — Astro renders
+              //           disabled="false" which HTML treats as truthy
+              <button
+                class={`level-select-btn${count === 0 ? " is-full" : ""}`}
+                data-level={label}
+                data-count={count}
+                title={count === 0 ? "None available" : `${count} left`}
+              >
+                <span class="level-select-name">{label}</span>
+                <span class={`level-select-count ${count > 0 ? "open" : "full"}`}>
+                  {count > 0 ? `${count} left` : "Full"}
+                </span>
+              </button>
             ))}
           </div>
         </div>
@@ -131,8 +125,8 @@ const levels = [
         <div class="item-divider"></div>
 
         <!-- Reserve button -->
-        <button class="purchase-btn" disabled>
-          {locker.totalAvailable > 0 ? "Reserve Locker (Coming Soon)" : "Currently Fully Rented"}
+        <button class="purchase-btn" id="reserveBtn" disabled>
+          {locker.totalAvailable > 0 ? "Select a level to reserve" : "Currently Fully Rented"}
         </button>
         <p class="purchase-note">Online reservations coming soon — contact us to inquire.</p>
 
@@ -167,13 +161,49 @@ const levels = [
 </BaseLayout>
 
 <script>
-  const thumbBtns = document.querySelectorAll<HTMLButtonElement>(".thumb-btn");
-  const mainImg   = document.getElementById("mainImage") as HTMLImageElement;
-  thumbBtns.forEach((btn) => {
-    btn.addEventListener("click", () => {
-      thumbBtns.forEach((b) => b.classList.remove("active"));
-      btn.classList.add("active");
-      mainImg.src = btn.dataset.img!;
+  let controller: AbortController | null = null;
+
+  function init() {
+    // Tear down any previous listeners to prevent duplicates
+    controller?.abort();
+    controller = new AbortController();
+    const { signal } = controller;
+
+    // ── Gallery ──────────────────────────────────────────────────────────────
+    const thumbBtns = document.querySelectorAll<HTMLButtonElement>(".thumb-btn");
+    const mainImg   = document.getElementById("mainImage") as HTMLImageElement;
+
+    thumbBtns.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        thumbBtns.forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        mainImg.src = btn.dataset.img!;
+      }, { signal });
     });
-  });
+
+    // ── Level selector ───────────────────────────────────────────────────────
+    const levelBtns          = document.querySelectorAll<HTMLButtonElement>(".level-select-btn");
+    const reserveBtn         = document.getElementById("reserveBtn") as HTMLButtonElement;
+    const levelSelectedLabel = document.getElementById("levelSelectedLabel")!;
+
+    levelBtns.forEach((btn) => {
+      // ✅ FIX 2: check .is-full class — never btn.disabled
+      if (btn.classList.contains("is-full")) return;
+
+      btn.addEventListener("click", () => {
+        levelBtns.forEach((b) => b.classList.remove("selected"));
+        btn.classList.add("selected");
+
+        const level = btn.dataset.level!;
+        levelSelectedLabel.textContent = `— ${level}`;
+        reserveBtn.textContent = `Reserve ${level} Level (Coming Soon)`;
+      }, { signal });
+    });
+  }
+
+  // ✅ FIX 3: call init() directly — astro:page-load only fires if
+  //           <ClientRouter /> is in BaseLayout, which may not be the case
+  init();
+  document.addEventListener("astro:page-load", init);
+  window.addEventListener("pageshow", (e) => { if (e.persisted) init(); });
 </script>

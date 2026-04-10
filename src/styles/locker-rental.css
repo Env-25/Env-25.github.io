@@ -8,37 +8,27 @@
   margin: 0 auto;
 }
 
-/* ── Topbar ── */
-.item-topbar {
+/* ── Top Nav ── */
+.item-topnav {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding-bottom: 1rem;
-  margin-bottom: 1.5rem;
-  border-bottom: 1px solid rgba(0,60,55,0.1);
+  gap: 1rem;
+  padding: 1.5rem 3rem;
+  background: var(--clr-dark-teal, #3a4b4a);
 }
-.item-back-btn,
-.item-home-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
+.topnav-btn {
   font-family: "Telegraf", sans-serif;
-  font-size: 0.78rem;
+  font-size: 0.8rem;
   font-weight: 700;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.15em;
   text-transform: uppercase;
+  color: rgba(255,255,255,0.75);
+  padding: 0.5rem 1.25rem;
+  border: 1px solid rgba(255,255,255,0.25);
   text-decoration: none;
-  color: var(--clr-dark-teal);
-  opacity: 0.6;
-  border: 1.5px solid rgba(0,60,55,0.2);
-  background: #fff;
-  padding: 0.4rem 0.75rem;
-  transition: opacity 0.15s, border-color 0.15s;
+  transition: color 0.2s, border-color 0.2s;
 }
-.item-back-btn:hover,
-.item-home-btn:hover { opacity: 1; border-color: var(--clr-dark-teal); }
-.item-back-btn svg,
-.item-home-btn svg { width: 14px; height: 14px; flex-shrink: 0; }
+.topnav-btn:hover { color: #fff; border-color: rgba(255,255,255,0.6); }
 
 /* ── Breadcrumb ── */
 .item-breadcrumb {
@@ -72,7 +62,6 @@
 .item-gallery {
   display: flex;
   gap: 1rem;
-  position: sticky;
   top: calc(var(--nav-height, 72px) + 1.5rem);
 }
 .gallery-thumbs {
@@ -97,8 +86,8 @@
   object-fit: cover;
   display: block;
 }
-.thumb-btn:hover { border-color: rgba(0,60,55,0.3); }
-.thumb-btn.active { border-color: var(--clr-dark-teal); }
+.thumb-btn:hover   { border-color: rgba(0,60,55,0.3); }
+.thumb-btn.active  { border-color: var(--clr-dark-teal); }
 .gallery-main {
   flex: 1;
   aspect-ratio: 4 / 3;
@@ -177,7 +166,7 @@
 
 /* ── Specs ── */
 .item-specs { display: flex; flex-direction: column; gap: 0.6rem; }
-.spec-row { display: flex; gap: 1rem; align-items: baseline; }
+.spec-row   { display: flex; gap: 1rem; align-items: baseline; }
 .spec-key {
   font-family: "Telegraf", sans-serif;
   font-size: 0.72rem;
@@ -196,8 +185,9 @@
   color: var(--clr-dark-teal);
 }
 
-/* ── Level availability bars ── */
+/* ── Level selector ── */
 .level-avail-block { display: flex; flex-direction: column; gap: 0.6rem; }
+
 .option-label {
   font-family: "Telegraf", sans-serif;
   font-size: 0.75rem;
@@ -207,42 +197,84 @@
   color: var(--clr-dark-teal);
   margin-bottom: 0.4rem;
 }
-.level-avail-detail { display: flex; flex-direction: column; gap: 0.5rem; }
-.level-detail-row {
-  display: grid;
-  grid-template-columns: 56px 1fr 52px;
-  align-items: center;
-  gap: 0.75rem;
+.option-label-hint {
+  font-family: "Telegraf", sans-serif;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--clr-teal);
+  margin-left: 0.25rem;
+  letter-spacing: 0.05em;
+  text-transform: none;
 }
-.level-detail-name {
+
+.level-btn-group {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.4rem;
+}
+
+.level-select-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.55rem 1rem;
+  min-width: 76px;
+  background: #fff;
+  border: 1.5px solid rgba(0,60,55,0.2);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+}
+
+/* Sold-out state — uses a class, NOT :disabled, to avoid Astro's
+   disabled="false" string truthy bug */
+.level-select-btn.is-full {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.level-select-btn:hover:not(.is-full) {
+  border-color: var(--clr-teal);
+  background: rgba(0,120,110,0.05);
+}
+
+.level-select-btn.selected {
+  border-color: var(--clr-dark-teal);
+  background: var(--clr-dark-teal);
+  box-shadow: none;
+}
+
+.level-select-btn:hover:not(.is-full) {
+  border-color: var(--clr-dark-teal);
+  background: var(--clr-dark-teal);
+}
+
+.level-select-btn:hover:not(.is-full) .level-select-name,
+.level-select-btn:hover:not(.is-full) .level-select-count {
+  color: var(--clr-cream);
+}
+
+.level-select-name {
   font-family: "Telegraf", sans-serif;
   font-size: 0.78rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
   color: var(--clr-dark-teal);
-  opacity: 0.7;
+  letter-spacing: 0.05em;
 }
-.level-detail-bar-wrap {
-  height: 6px;
-  background: rgba(0,60,55,0.1);
-  overflow: hidden;
+.level-select-btn.selected .level-select-name,
+.level-select-btn.selected .level-select-count {
+  color: var(--clr-cream);
 }
-.level-detail-bar {
-  height: 100%;
-  min-width: 4px;
-  transition: width 0.3s ease;
-}
-.level-detail-row.open .level-detail-bar  { background: #2d6a4f; }
-.level-detail-row.full .level-detail-bar  { background: rgba(58,75,74,0.2); width: 100% !important; }
-.level-detail-count {
+.level-select-count {
   font-family: "Telegraf", sans-serif;
-  font-size: 0.72rem;
-  font-weight: 700;
-  text-align: right;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
 }
-.level-detail-row.open .level-detail-count { color: #2d6a4f; }
-.level-detail-row.full .level-detail-count { color: rgba(58,75,74,0.4); }
+.level-select-count.open { color: #2d6a4f; }
+.level-select-count.full { color: rgba(58,75,74,0.4); }
 
 /* ── Reserve button ── */
 .purchase-btn {
@@ -286,8 +318,8 @@
   list-style: none;
 }
 .size-chart summary::-webkit-details-marker { display: none; }
-.size-chart summary::before { content: "+ "; }
-details[open] > summary::before { content: "− "; }
+.size-chart summary::before         { content: "+ "; }
+details[open] > summary::before     { content: "− "; }
 .size-chart-intro {
   font-size: 0.78rem;
   opacity: 0.6;
@@ -318,10 +350,10 @@ details[open] > summary::before { content: "− "; }
 
 /* ── Responsive ── */
 @media (max-width: 800px) {
-  .item-layout { grid-template-columns: 1fr; gap: 2rem; }
+  .item-layout  { grid-template-columns: 1fr; gap: 2rem; }
   .item-gallery { position: static; }
 }
 @media (max-width: 500px) {
   .gallery-thumbs { flex-direction: row; }
-  .thumb-btn { width: 52px; height: 52px; }
+  .thumb-btn      { width: 52px; height: 52px; }
 }

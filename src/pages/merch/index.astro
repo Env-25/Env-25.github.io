@@ -17,8 +17,6 @@ const maxPrice = 130;
 ---
 
 <BaseLayout title="Merch — UBC CHBE">
-
-  <!-- Hero -->
   <section class="merch-hero">
     <img src="/home/index-lower.jpg" alt="" class="merch-hero-bg" />
     <div class="merch-hero-overlay"></div>
@@ -30,8 +28,6 @@ const maxPrice = 130;
 
   <section class="merch-section">
     <div class="merch-layout">
-
-      <!-- Sidebar / Filters -->
       <aside class="merch-sidebar" id="merchSidebar">
         <button class="sidebar-toggle" id="sidebarToggle" aria-expanded="false">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -42,8 +38,6 @@ const maxPrice = 130;
         </button>
 
         <div class="sidebar-collapsible" id="sidebarCollapsible">
-
-          <!-- Search -->
           <div class="sidebar-block">
             <p class="sidebar-heading">Search</p>
             <div class="merch-search-inner">
@@ -62,7 +56,6 @@ const maxPrice = 130;
             </div>
           </div>
 
-          <!-- Type filter -->
           <div class="sidebar-block">
             <p class="sidebar-heading">Type</p>
             <div class="filter-btn-group" id="typeFilters">
@@ -73,7 +66,6 @@ const maxPrice = 130;
             </div>
           </div>
 
-          <!-- Size filter -->
           <div class="sidebar-block">
             <p class="sidebar-heading">Size</p>
             <div class="filter-btn-group" id="sizeFilters">
@@ -84,7 +76,6 @@ const maxPrice = 130;
             </div>
           </div>
 
-          <!-- Colour filter -->
           {colors.length > 0 && (
             <div class="sidebar-block">
               <p class="sidebar-heading">Colour</p>
@@ -103,7 +94,6 @@ const maxPrice = 130;
             </div>
           )}
 
-          <!-- Price Range -->
           <div class="sidebar-block">
             <p class="sidebar-heading">Price Range</p>
             <div class="price-slider-wrap">
@@ -119,7 +109,6 @@ const maxPrice = 130;
             </div>
           </div>
 
-          <!-- In stock -->
           <div class="sidebar-block">
             <label class="stock-toggle">
               <input type="checkbox" id="inStockOnly" />
@@ -128,34 +117,39 @@ const maxPrice = 130;
           </div>
 
           <button class="sidebar-reset" id="resetFilters">Reset all filters</button>
-
         </div>
       </aside>
 
-      <!-- Main content -->
       <div class="merch-main">
-        <div class="merch-results-row">
-          <p class="search-count" id="searchCount"></p>
-        </div>
 
         <div class="merch-grid" id="merchGrid">
           {items.map((item) => {
-            const inStockSizes = item.Sizes_Stock.filter((s) => s.stock > 0).map((s) => s.size);
             const allColors = item.colorVariants.map((v) => v.color).filter(Boolean);
             const colourCount = allColors.length;
+
+            const inStockSizes = item.Sizes_Stock.filter((s) => s.stock > 0).map((s) => s.size);
+            const anyVariantInStock = item.inStock;
+
             return (
               <div
                 class="merch-card"
                 data-name={item.Name}
                 data-type={item.Type}
-                data-sizes={item.allSizes.join(",")}
-                data-instock={item.inStock ? "true" : "false"}
+                data-sizes={inStockSizes.join(",")}
+                data-variants={JSON.stringify(
+                item.colorVariants.map((v) => ({
+                  color: v.color,
+                  inStock: v.inStock,
+                  sizes: v.sizesStock.filter((s) => s.stock > 0).map((s) => s.size),
+                }))
+              )}
+                data-instock={anyVariantInStock ? "true" : "false"}
                 data-price={item.Price}
                 data-colors={allColors.join(",")}
               >
                 <a href={`/merch/${item.slug}`} class="merch-card-link">
                   <div class="merch-card-img-wrap">
-                    {!item.inStock && <span class="sold-out-badge">Sold Out</span>}
+                    {!anyVariantInStock && <span class="sold-out-badge">Sold Out</span>}
                     <img
                       src={`/merch/images/${item.Cover_image}`}
                       alt={item.Name}
@@ -163,12 +157,14 @@ const maxPrice = 130;
                       loading="lazy"
                     />
                   </div>
+
                   <div class="merch-card-info">
                     <p class="merch-card-type">{item.Type}</p>
                     <p class="merch-card-name">{item.Name}</p>
+
                     <div class="merch-card-pricing">
                       <span class="price-cash">
-                        <img src="/public/logos/cash.png" alt="Cash price" class="price-icon" />
+                        <img src="/logos/cash.png" alt="Cash price" class="price-icon" />
                         ${item.Price.toFixed(2)}
                       </span>
                       <span class="price-card">
@@ -179,31 +175,30 @@ const maxPrice = 130;
                         ${(item.Price * 1.03).toFixed(2)}
                       </span>
                     </div>
+
                     {inStockSizes.length > 0 && (
                       <div class="merch-card-sizes">
                         {inStockSizes.map((s) => <span class="size-pip">{s}</span>)}
                       </div>
                     )}
-                    {/* Colour availability hint — dots + count, links to item page */}
-                    {colourCount > 1 && (
-                      <div class="merch-card-color-hint">
-                        <span class="color-hint-dots">
-                          {allColors.slice(0, 6).map((c) => (
-                            <span
-                              class="color-mini-dot"
-                              style={`background:${colorToCSS(c)}`}
-                              title={c}
-                            ></span>
-                          ))}
-                          {colourCount > 6 && (
-                            <span class="color-mini-more">+{colourCount - 6}</span>
-                          )}
-                        </span>
-                        <span class="color-hint-text">
-                          {colourCount} colour{colourCount !== 1 ? "s" : ""}
-                        </span>
-                      </div>
-                    )}
+
+                    <div class="merch-card-color-hint">
+                      <span class="color-hint-dots">
+                        {allColors.slice(0, 6).map((c) => (
+                          <span
+                            class="color-mini-dot"
+                            style={`background:${colorToCSS(c)}`}
+                            title={c}
+                          ></span>
+                        ))}
+                        {colourCount > 6 && (
+                          <span class="color-mini-more">+{colourCount - 6}</span>
+                        )}
+                      </span>
+                      <span class="color-hint-text">
+                        {colourCount} colour{colourCount !== 1 ? "s" : ""}
+                      </span>
+                    </div>
                   </div>
                 </a>
               </div>
@@ -213,7 +208,6 @@ const maxPrice = 130;
 
         <p class="no-results" id="noResults" hidden>No items match your filters.</p>
       </div>
-
     </div>
   </section>
 </BaseLayout>
@@ -221,17 +215,18 @@ const maxPrice = 130;
 <script>
   import Fuse from "fuse.js";
 
-  const grid  = document.getElementById("merchGrid")!;
-  const cards = Array.from(grid.querySelectorAll<HTMLDivElement>(".merch-card"));
+  const grid = document.getElementById("merchGrid");
+  const cards = Array.from(grid.querySelectorAll(".merch-card"));
 
   const data = cards.map((card) => ({
-    el:      card,
-    name:    card.dataset.name ?? "",
-    type:    card.dataset.type ?? "",
-    sizes:   (card.dataset.sizes  ?? "").split(",").filter(Boolean),
+    el: card,
+    name: card.dataset.name ?? "",
+    type: card.dataset.type ?? "",
+    sizes: (card.dataset.sizes ?? "").split(",").filter(Boolean),
     inStock: card.dataset.instock === "true",
-    price:   parseFloat(card.dataset.price ?? "0"),
-    colors:  (card.dataset.colors ?? "").split(",").filter(Boolean),
+    price: parseFloat(card.dataset.price ?? "0"),
+    colors: (card.dataset.colors ?? "").split(",").filter(Boolean),
+    variants: JSON.parse(card.dataset.variants ?? "[]"),
   }));
 
   const fuse = new Fuse(data, {
@@ -243,33 +238,32 @@ const maxPrice = 130;
     includeScore: true,
   });
 
-  let activeType  = "all";
-  let activeSize  = "all";
+  let activeType = "all";
+  let activeSize = "all";
   let activeColor = "all";
   let inStockOnly = false;
-  let priceMin    = 0;
-  let priceMax    = 130;
+  let priceMin = 0;
+  let priceMax = 130;
 
-  const searchInput   = document.getElementById("merchSearch")   as HTMLInputElement;
-  const searchClear   = document.getElementById("searchClear")   as HTMLButtonElement;
-  const typeButtons   = document.querySelectorAll<HTMLButtonElement>("[data-type]");
-  const sizeButtons   = document.querySelectorAll<HTMLButtonElement>("[data-size]");
-  const colorButtons  = document.querySelectorAll<HTMLButtonElement>("[data-color]");
-  const inStockCheck  = document.getElementById("inStockOnly")   as HTMLInputElement;
-  const priceMinEl    = document.getElementById("priceMin")      as HTMLInputElement;
-  const priceMaxEl    = document.getElementById("priceMax")      as HTMLInputElement;
-  const priceMinLabel = document.getElementById("priceMinLabel")!;
-  const priceMaxLabel = document.getElementById("priceMaxLabel")!;
-  const sliderFill    = document.getElementById("sliderFill")!;
-  const countEl       = document.getElementById("searchCount")!;
-  const noResults     = document.getElementById("noResults")!;
-  const resetBtn      = document.getElementById("resetFilters")!;
+  const searchInput = document.getElementById("merchSearch");
+  const searchClear = document.getElementById("searchClear");
+  const typeButtons = document.querySelectorAll("[data-type]");
+  const sizeButtons = document.querySelectorAll("[data-size]");
+  const colorButtons = document.querySelectorAll("[data-color]");
+  const inStockCheck = document.getElementById("inStockOnly");
+  const priceMinEl = document.getElementById("priceMin");
+  const priceMaxEl = document.getElementById("priceMax");
+  const priceMinLabel = document.getElementById("priceMinLabel");
+  const priceMaxLabel = document.getElementById("priceMaxLabel");
+  const sliderFill = document.getElementById("sliderFill");
+  const noResults = document.getElementById("noResults");
+  const resetBtn = document.getElementById("resetFilters");
 
   function updateSliderFill() {
-    const min   = parseInt(priceMinEl.value);
-    const max   = parseInt(priceMaxEl.value);
-    const range = parseInt(priceMinEl.max) - parseInt(priceMinEl.min);
-    sliderFill.style.left  = `${(min / range) * 100}%`;
+    const min = parseInt(priceMinEl.value, 10);
+    const max = parseInt(priceMaxEl.value, 10);
+    const range = parseInt(priceMinEl.max, 10) - parseInt(priceMinEl.min, 10);
+    sliderFill.style.left = `${(min / range) * 100}%`;
     sliderFill.style.right = `${100 - (max / range) * 100}%`;
   }
 
@@ -277,41 +271,58 @@ const maxPrice = 130;
     const q = searchInput.value.trim();
     searchClear.hidden = q.length === 0;
 
-    const textMatched: Set<HTMLDivElement> | null = q
+    const textMatched = q
       ? new Set(fuse.search(q).map((r) => r.item.el))
       : null;
 
     let visible = 0;
-    data.forEach(({ el, sizes, inStock, price, colors }) => {
-      const passText  = textMatched === null || textMatched.has(el);
-      const passType  = activeType  === "all" || el.dataset.type === activeType;
-      const passSize  = activeSize  === "all" || sizes.includes(activeSize);
-      const passColor = activeColor === "all" || colors.includes(activeColor);
-      const passStock = !inStockOnly || inStock;
+
+    data.forEach(({ el, inStock, price, variants }) => {
+      const passText = textMatched === null || textMatched.has(el);
+      const passType = activeType === "all" || el.dataset.type === activeType;
       const passPrice = price >= priceMin && price <= priceMax;
 
-      el.hidden = !(passText && passType && passSize && passColor && passStock && passPrice);
-      if (!el.hidden) visible++;
+      let matchingVariants = variants;
+
+      if (activeColor !== "all") {
+        matchingVariants = matchingVariants.filter((v) => v.color === activeColor);
+      }
+
+      if (activeSize !== "all") {
+        matchingVariants = matchingVariants.filter((v) => v.sizes.includes(activeSize));
+      }
+
+      const passVariantMatch =
+        activeColor === "all" && activeSize === "all"
+          ? true
+          : matchingVariants.length > 0;
+
+      const passStock =
+        !inStockOnly ||
+        (activeColor === "all" && activeSize === "all"
+          ? inStock
+          : matchingVariants.some((v) => v.inStock));
+
+      el.hidden = !(passText && passType && passPrice && passVariantMatch && passStock);
     });
 
     noResults.hidden = visible > 0;
+
     const anyFilter =
       q ||
-      activeType  !== "all" ||
-      activeSize  !== "all" ||
+      activeType !== "all" ||
+      activeSize !== "all" ||
       activeColor !== "all" ||
       inStockOnly ||
       priceMin > 0 ||
       priceMax < 130;
-    countEl.textContent = anyFilter ? `${visible} item${visible !== 1 ? "s" : ""}` : "";
-    countEl.classList.toggle("visible", !!anyFilter);
   }
 
   typeButtons.forEach((btn) => {
     btn.addEventListener("click", () => {
       typeButtons.forEach((b) => b.classList.remove("active"));
       btn.classList.add("active");
-      activeType = btn.dataset.type!;
+      activeType = btn.dataset.type;
       applyFilters();
     });
   });
@@ -320,7 +331,7 @@ const maxPrice = 130;
     btn.addEventListener("click", () => {
       sizeButtons.forEach((b) => b.classList.remove("active"));
       btn.classList.add("active");
-      activeSize = btn.dataset.size!;
+      activeSize = btn.dataset.size;
       applyFilters();
     });
   });
@@ -329,15 +340,18 @@ const maxPrice = 130;
     btn.addEventListener("click", () => {
       colorButtons.forEach((b) => b.classList.remove("active"));
       btn.classList.add("active");
-      activeColor = btn.dataset.color!;
+      activeColor = btn.dataset.color;
       applyFilters();
     });
   });
 
   priceMinEl.addEventListener("input", () => {
-    let min = parseInt(priceMinEl.value);
-    let max = parseInt(priceMaxEl.value);
-    if (min > max - 1) { min = max - 1; priceMinEl.value = String(min); }
+    let min = parseInt(priceMinEl.value, 10);
+    let max = parseInt(priceMaxEl.value, 10);
+    if (min > max - 1) {
+      min = max - 1;
+      priceMinEl.value = String(min);
+    }
     priceMin = min;
     priceMinLabel.textContent = `$${min}`;
     updateSliderFill();
@@ -345,9 +359,12 @@ const maxPrice = 130;
   });
 
   priceMaxEl.addEventListener("input", () => {
-    let min = parseInt(priceMinEl.value);
-    let max = parseInt(priceMaxEl.value);
-    if (max < min + 1) { max = min + 1; priceMaxEl.value = String(max); }
+    let min = parseInt(priceMinEl.value, 10);
+    let max = parseInt(priceMaxEl.value, 10);
+    if (max < min + 1) {
+      max = min + 1;
+      priceMaxEl.value = String(max);
+    }
     priceMax = max;
     priceMaxLabel.textContent = `$${max}`;
     updateSliderFill();
@@ -360,78 +377,57 @@ const maxPrice = 130;
   });
 
   searchInput.addEventListener("input", applyFilters);
+
   searchClear.addEventListener("click", () => {
     searchInput.value = "";
     searchInput.focus();
     applyFilters();
   });
 
-  resetBtn.addEventListener("click", () => {
-    searchInput.value    = "";
-    activeType           = "all";
-    activeSize           = "all";
-    activeColor          = "all";
-    inStockOnly          = false;
-    priceMin             = 0;
-    priceMax             = 130;
-    priceMinEl.value     = "0";
-    priceMaxEl.value     = "130";
+  function resetAllFilters() {
+    searchInput.value = "";
+    activeType = "all";
+    activeSize = "all";
+    activeColor = "all";
+    inStockOnly = false;
+    priceMin = 0;
+    priceMax = 130;
+
+    priceMinEl.value = "0";
+    priceMaxEl.value = "130";
     priceMinLabel.textContent = "$0";
     priceMaxLabel.textContent = "$130";
     inStockCheck.checked = false;
-    typeButtons.forEach((b)  => b.classList.toggle("active", b.dataset.type  === "all"));
-    sizeButtons.forEach((b)  => b.classList.toggle("active", b.dataset.size  === "all"));
+
+    typeButtons.forEach((b) => b.classList.toggle("active", b.dataset.type === "all"));
+    sizeButtons.forEach((b) => b.classList.toggle("active", b.dataset.size === "all"));
     colorButtons.forEach((b) => b.classList.toggle("active", b.dataset.color === "all"));
+
+    cards.forEach((card) => {
+      card.hidden = false;
+    });
+
+    noResults.hidden = true;
+
     updateSliderFill();
     applyFilters();
-  });
+  }
+
+  resetBtn.addEventListener("click", resetAllFilters);
 
   updateSliderFill();
 
-  // ── Mobile sidebar toggle ────────────────────────────────────────────────
-  const sidebarToggle      = document.getElementById("sidebarToggle");
+  const sidebarToggle = document.getElementById("sidebarToggle");
   const sidebarCollapsible = document.getElementById("sidebarCollapsible");
 
   sidebarToggle?.addEventListener("click", () => {
-    const isOpen = sidebarCollapsible!.classList.toggle("is-open");
+    const isOpen = sidebarCollapsible.classList.toggle("is-open");
     sidebarToggle.setAttribute("aria-expanded", String(isOpen));
   });
 
   window.addEventListener("pageshow", (event) => {
-  if (!event.persisted) return;
-
-  cards.forEach((card) => {
-    card.hidden = false;
+    if (event.persisted) {
+      resetAllFilters();
+    }
   });
-
-  noResults.hidden = true;
-  countEl.textContent = "";
-  countEl.classList.remove("visible");
-
-  searchInput.value = "";
-  activeType = "all";
-  activeSize = "all";
-  activeColor = "all";
-  inStockOnly = false;
-  priceMin = 0;
-  priceMax = 130;
-
-  priceMinEl.value = "0";
-  priceMaxEl.value = "130";
-  priceMinLabel.textContent = "$0";
-  priceMaxLabel.textContent = "$130";
-  inStockCheck.checked = false;
-
-  typeButtons.forEach((b) =>
-    b.classList.toggle("active", b.dataset.type === "all")
-  );
-  sizeButtons.forEach((b) =>
-    b.classList.toggle("active", b.dataset.size === "all")
-  );
-  colorButtons.forEach((b) =>
-    b.classList.toggle("active", b.dataset.color === "all")
-  );
-
-  updateSliderFill();
-});
 </script>

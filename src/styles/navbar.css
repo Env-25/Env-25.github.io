@@ -4,7 +4,7 @@
   left: 0;
   width: 100%;
   z-index: 1000;
-  padding-block: 0.6rem;
+  padding-block: 0.9rem;
   display: flex;
   align-items: center;
   background: transparent;
@@ -38,7 +38,7 @@
 .nav-logo {
   /* Let the padding-block on .navbar control the visual breathing room;
      height auto keeps the logo as tall as it wants within that space */
-  height: 53px;
+  height: 63px;
   width: auto;
   display: block;
   transition: height 0.35s ease;
@@ -46,13 +46,13 @@
 .navbar.scrolled .nav-logo { height: 40px; }
 
 .nav-text-logo {
-  height: 24px;
+  height: 30px;
   width: auto;
   display: block;
   transition: height 0.35s ease, opacity 0.35s ease;
   opacity: 0.92;
 }
-.navbar.scrolled .nav-text-logo { height: 20px; }
+.navbar.scrolled .nav-text-logo { height: 25px; }
 
 /* ── Links (right side) ── */
 .nav-links {
