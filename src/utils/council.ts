@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 
 export interface Member {
@@ -10,6 +10,15 @@ export interface Member {
   Contact: string;
   LinkedIn: string;
   slug: string;
+}
+export function getLeftToRightText(year: string = "2026"): string {
+  const txtPath = join(process.cwd(), `public/council/${year}/leftToRight.txt`);
+
+  if (existsSync(txtPath)) {
+    return readFileSync(txtPath, "utf-8").trim();
+  }
+
+  return getMembers(year).map((m) => m.Name).join(", ");
 }
 
 function parseCSVLine(line: string): string[] {

@@ -1,11 +1,12 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
-import { getMembers, nameToSlug } from "../../utils/council";
-import "../../styles/council.css";
+import { getMembers, getLeftToRightText, nameToSlug } from "../../utils/council";
 
 const year = "2026";
 const members = getMembers(year);
-const fromLeftToRight = members.map((m) => m.Name).join(", ");
+const fromLeftToRight = getLeftToRightText(year);
+
+import "../../styles/council.css";
 ---
 <BaseLayout title="Council — UBC CHBE">
 
@@ -102,7 +103,10 @@ const fromLeftToRight = members.map((m) => m.Name).join(", ");
       groupPhoto.alt = `CHBE Council ${year} group photo`;
 
       // Update caption
-      captionNames.textContent = members.map((m) => m.Name).join(", ");
+      const leftToRightRes = await fetch(`/council/${year}/leftToRight.txt`);
+      captionNames.textContent = leftToRightRes.ok
+        ? (await leftToRightRes.text()).trim()
+        : members.map((m) => m.Name).join(", ");
 
       // Re-render grid
       if (members.length === 0) {

@@ -157,7 +157,7 @@
 .item-price-cash { font-size: 1.4rem; color: var(--clr-dark-teal); }
 .item-price-card { font-size: 1rem; color: var(--clr-dark-teal); opacity: 0.7; }
 .item-price-sep  { font-size: 1rem; color: var(--clr-dark-teal); opacity: 0.25; }
-.item-price-icon { width: 15px; height: 20px; flex-shrink: 0; }
+.item-price-icon { width: 20px; height: 20px; flex-shrink: 0; }
 .item-price-note { font-size: 0.72rem; font-weight: 600; opacity: 0.7; }
 
 .item-divider {

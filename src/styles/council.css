@@ -91,10 +91,14 @@
 }
 
 .group-photo {
-  width: 90rem;
+  width: 100%;
   display: block;
   height: auto;
   margin-inline: auto;
+}
+
+#captionNames {
+  white-space: pre-line;
 }
 
 .group-photo-caption {
