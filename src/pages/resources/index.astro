@@ -1,0 +1,97 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import "../../styles/resources.css";
+
+const resources = [
+  {
+    title: "Google Drive",
+    description: "Course notes, study guides & shared files",
+    href: "https://drive.google.com/drive/folders/1X7JUWFyTM0j9veln52Pnv7lONGHQRBks?usp=sharing",
+    icon: "/public/resources/google-drive.png",
+    alt: "Google Drive icon",
+  },
+  {
+    title: "Discord Server",
+    description: "Connect with CHBE students & council",
+    href: "https://discord.com/invite/cCp3J3465X",
+    icon: "/public/resources/discord.png",
+    alt: "Discord icon",
+  },
+  {
+    title: "Clubroom Feedback Form",
+    description: "Help us improve the clubroom experience",
+    href: "https://docs.google.com/forms/d/e/1FAIpQLSczevSzXgmiCr-a4SuhoOPWo9ESxd37p1ZC1onEc4M4xkM01g/viewform",
+    icon: "/public/resources/google-forms.png",
+    alt: "Feedback form icon",
+  },
+  {
+    title: "CHBE Canvas Page",
+    description: "Announcements, events & resources from CHBE Student Council",
+    href: "https://canvas.ubc.ca",
+    icon: "/public/resources/canvas.png",
+    alt: "Canvas icon",
+  },
+];
+---
+
+<BaseLayout title="Resources — UBC CHBE">
+
+  <!-- ── Hero ── -->
+  <section class="resources-hero">
+    <img src="/home/index-lower.jpg" alt="" class="resources-hero-bg" />
+    <div class="resources-hero-overlay"></div>
+    <div class="resources-hero-content">
+
+      <h1 class="resources-hero-title">Resources</h1>
+        <p class="resources-hero-tagline">Student Council</p>
+    </div>
+  </section>
+
+  <!-- ── List ── -->
+  <section class="resources-section">
+    <div class="resources-list" role="list">
+      {resources.map((r, i) => (
+        <a
+          class={`resource-row ${i % 2 === 0 ? "row-cream" : "row-cream"}`}
+          href={r.href}
+          target="_blank"
+          rel="noopener noreferrer"
+          role="listitem"
+          aria-label={`Open ${r.title}`}
+        >
+
+          <!-- ① Icon placeholder — swap src when you have real icons -->
+          <div class="resource-icon-wrap">
+            <img
+              src={r.icon}
+              alt={r.alt}
+              class="resource-icon"
+              width="40"
+              height="40"
+              loading="lazy"
+            />
+          </div>
+
+          <!-- ② Title + description -->
+          <div class="resource-info">
+            <span class="resource-title">{r.title}</span>
+            <span class="resource-desc">{r.description}</span>
+          </div>
+
+          <!-- ③ External link icon -->
+          <div class="resource-link-icon" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+              <polyline points="15 3 21 3 21 9"/>
+              <line x1="10" y1="14" x2="21" y2="3"/>
+            </svg>
+          </div>
+
+        </a>
+      ))}
+    </div>
+  </section>
+
+</BaseLayout>

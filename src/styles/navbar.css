@@ -1,3 +1,4 @@
+/* ── Navbar ── */
 .navbar {
   position: fixed;
   top: 0;
@@ -27,7 +28,8 @@
   justify-content: space-between;
 }
 
-/* ── Brand (left side) ── */
+
+/* ── Brand ── */
 .nav-brand {
   display: flex;
   align-items: center;
@@ -36,8 +38,6 @@
 }
 
 .nav-logo {
-  /* Let the padding-block on .navbar control the visual breathing room;
-     height auto keeps the logo as tall as it wants within that space */
   height: 63px;
   width: auto;
   display: block;
@@ -54,7 +54,8 @@
 }
 .navbar.scrolled .nav-text-logo { height: 25px; }
 
-/* ── Links (right side) ── */
+
+/* ── Desktop links ── */
 .nav-links {
   display: flex;
   align-items: center;
@@ -69,24 +70,12 @@
   text-transform: uppercase;
   color: rgba(255, 255, 255, 0.88);
   position: relative;
-  display: flex;              /* add this */
-  align-items: center;        /* add this */
-  line-height: 1;             /* add this */
+  display: flex;
+  align-items: center;
+  line-height: 1;
   padding-bottom: 3px;
   transition: color 0.2s;
   text-decoration: none;
-}
-
-.nav-account {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  border: 1.5px solid rgba(255, 255, 255, 0.35);
-  border-radius: 999px;
-  padding: 0.35rem 0.85rem !important;  /* symmetric — overrides padding-bottom: 3px */
-  padding-bottom: 0.35rem !important;   /* explicit override for the ::after trick */
-  line-height: 1;
-  transition: background 0.2s, border-color 0.2s, color 0.2s;
 }
 
 .nav-links a::after {
@@ -99,12 +88,23 @@
   background: var(--clr-teal);
   transition: width 0.25s ease;
 }
-.nav-links a:hover { color: #fff; }
+.nav-links a:hover        { color: #fff; }
 .nav-links a:hover::after { width: 100%; }
 
-/* ── Account button ── */
 
-/* remove the underline animation on the account pill */
+/* ── Account pill (desktop) ── */
+.nav-account {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1.5px solid rgba(255, 255, 255, 0.35);
+  border-radius: 999px;
+  padding: 0.35rem 0.85rem !important;
+  padding-bottom: 0.35rem !important;
+  line-height: 1;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+
 .nav-account::after { display: none !important; }
 
 .nav-account:hover {
@@ -117,22 +117,144 @@
   flex-shrink: 0;
   display: block;
   position: relative;
-  top: -1px;   /* tweak between -2px and 2px until optically centered */
+  top: -1px;
 }
 
-/* ── Responsive ── */
-@media (max-width: 900px) {
-  .navbar-inner { padding: 0 1.25rem; }
-  .nav-links { gap: 1rem; }
-  .nav-links a { font-size: 0.7rem; }
-  .nav-logo { height: 40px; }
-  .navbar.scrolled .nav-logo { height: 30px; }
-  .nav-text-logo { height: 18px; }
-  .navbar.scrolled .nav-text-logo { height: 15px; }
-}
 
+/* ── Disabled ── */
 .disabled {
   pointer-events: none;
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+
+/* ── Burger button (mobile only) ── */
+.nav-burger {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  flex-shrink: 0;
+  z-index: 1100;
+}
+
+.burger-line {
+  display: block;
+  width: 24px;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.88);
+  border-radius: 2px;
+  transform-origin: center;
+  transition: transform 0.3s ease, opacity 0.3s ease, width 0.3s ease;
+}
+
+.nav-burger.open .burger-line:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.nav-burger.open .burger-line:nth-child(2) { opacity: 0; width: 0; }
+.nav-burger.open .burger-line:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+
+/* ── Mobile drawer ── */
+.mobile-menu {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 999;
+  background: var(--clr-dark-teal);
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.38s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.mobile-menu.open {
+  max-height: 100dvh;
+}
+
+.mobile-menu-inner {
+  display: flex;
+  flex-direction: column;
+  padding-top: calc(var(--nav-height, 72px) + 0.75rem);
+  padding-bottom: 4rem;
+}
+
+
+/* ── Mobile nav links ── */
+.mobile-link {
+  font-family: "Telegraf", sans-serif;
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.82);
+  text-decoration: none;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: color 0.18s, background 0.18s;
+}
+
+.mobile-link:last-child { border-bottom: none; }
+.mobile-link:hover,
+.mobile-link:active     { color: #fff; background: rgba(255, 255, 255, 0.05); }
+
+
+/* ── Mobile Sign In pill — fixed width, centered ── */
+.mobile-account {
+  align-self: center;           /* ← stops it stretching full width */
+  width: fit-content;           /* ← shrinks to content */
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+  justify-content: center;
+  border: 1.5px solid rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  padding: 0.65rem 1.75rem;
+  color: rgba(255, 255, 255, 0.7);
+  /* override the full-width border-bottom from .mobile-link */
+  border-bottom: 1.5px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+.mobile-account:hover,
+.mobile-account:active {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.4) !important;
+  color: #fff;
+}
+
+
+/* ── Backdrop ── */
+.mobile-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 998;
+  background: rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.mobile-backdrop.open {
+  display: block;
+  opacity: 1;
+}
+
+
+/* ── Responsive ── */
+@media (max-width: 1050px) {
+  .nav-links    { display: none !important; }
+  .nav-burger   { display: flex; }
+  .navbar-inner { padding: 0 1.25rem; }
+  .nav-logo                      { height: 40px; }
+  .navbar.scrolled .nav-logo     { height: 30px; }
+  .nav-text-logo                 { height: 18px; }
+  .navbar.scrolled .nav-text-logo { height: 15px; }
 }

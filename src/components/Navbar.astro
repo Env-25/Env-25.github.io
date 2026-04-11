@@ -1,14 +1,17 @@
 ---
 import "../styles/navbar.css";
 ---
+
 <nav class="navbar" id="navbar">
   <div class="navbar-inner">
+
     <a href="/" class="nav-brand">
       <!-- <img src="/logos/logo-round.png" alt="CHBE Council" class="nav-logo" /> -->
       <img src="/logos/logo-text-white.png" alt="CHBE" class="nav-text-logo" />
     </a>
+
+    <!-- Desktop links (hidden on mobile) -->
     <div class="nav-links">
-      <!-- <a href="/">Home</a> -->
       <a href="/council">Council</a>
       <a href="/events">Events</a>
       <a href="/merch">Merch</a>
@@ -16,19 +19,86 @@ import "../styles/navbar.css";
       <a href="/contact">Contact</a>
       <a href="/resources">Resources</a>
       <a href="/sign-in" class="nav-account disabled" aria-disabled="true">
-        <svg class="account-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <svg class="account-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <circle cx="12" cy="8" r="4"/>
           <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
         </svg>
         Sign In
       </a>
     </div>
+
+    <!-- Burger button (mobile only) -->
+    <button class="nav-burger" id="navBurger" aria-label="Toggle menu" aria-expanded="false">
+      <span class="burger-line"></span>
+      <span class="burger-line"></span>
+      <span class="burger-line"></span>
+    </button>
+
   </div>
 </nav>
 
+<!-- Mobile drawer -->
+<div class="mobile-menu" id="mobileMenu" aria-hidden="true">
+  <div class="mobile-menu-inner">
+    <a href="/council"       class="mobile-link">Council</a>
+    <a href="/events"        class="mobile-link">Events</a>
+    <a href="/merch"         class="mobile-link">Merch</a>
+    <a href="/locker-rental" class="mobile-link">Lockers</a>
+    <a href="/contact"       class="mobile-link">Contact</a>
+    <a href="/resources"     class="mobile-link">Resources</a>
+    <a href="/sign-in"       class="mobile-link mobile-account disabled" aria-disabled="true">
+      <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15"
+           viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="8" r="4"/>
+        <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+      </svg>
+      Sign In
+    </a>
+  </div>
+</div>
+
+<!-- Backdrop -->
+<div class="mobile-backdrop" id="mobileBackdrop" aria-hidden="true"></div>
+
 <script>
-  const navbar = document.getElementById("navbar") as HTMLElement;
+  const navbar   = document.getElementById("navbar")   as HTMLElement;
+  const burger   = document.getElementById("navBurger") as HTMLButtonElement;
+  const menu     = document.getElementById("mobileMenu") as HTMLElement;
+  const backdrop = document.getElementById("mobileBackdrop") as HTMLElement;
+
+  // Scroll → .scrolled
   window.addEventListener("scroll", () => {
     navbar.classList.toggle("scrolled", window.scrollY > 80);
   }, { passive: true });
+
+  function openMenu() {
+    burger.classList.add("open");
+    menu.classList.add("open");
+    backdrop.classList.add("open");
+    burger.setAttribute("aria-expanded", "true");
+    document.body.style.overflow = "hidden";
+  }
+
+  function closeMenu() {
+    burger.classList.remove("open");
+    menu.classList.remove("open");
+    backdrop.classList.remove("open");
+    burger.setAttribute("aria-expanded", "false");
+    document.body.style.overflow = "";
+  }
+
+  burger.addEventListener("click", () =>
+    burger.classList.contains("open") ? closeMenu() : openMenu()
+  );
+
+  backdrop.addEventListener("click", closeMenu);
+  document.addEventListener("keydown", e => { if (e.key === "Escape") closeMenu(); });
+
+  // Close drawer when a mobile link is tapped
+  menu.querySelectorAll(".mobile-link").forEach(l =>
+    l.addEventListener("click", closeMenu)
+  );
 </script>
