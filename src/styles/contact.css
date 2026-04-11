@@ -243,8 +243,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0,60,55,0.06);
-  border: 1px solid rgba(0,60,55,0.1);
 }
 .contact-card-icon svg {
   width: 16px;
@@ -287,4 +285,63 @@
     grid-template-columns: 1fr;
     gap: 3rem;
   }
+}
+
+/* ── Type of Inquiry Select ── */
+.form-select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%233a4b4a' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  padding-right: 2.75rem;
+  cursor: pointer;
+}
+.form-select:focus { outline: none; }
+
+/* ── Turnstile container ── */
+.turnstile-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+/* ── Submit: loading state ── */
+.form-submit .btn-label  { display: inline; }
+.form-submit .btn-icon   { display: inline-block; }
+.form-submit .btn-spinner { display: none; }
+
+.form-submit.loading .btn-label  { display: none; }
+.form-submit.loading .btn-icon   { display: none; }
+.form-submit.loading .btn-spinner {
+  display: inline-block;
+  width: 1.1rem;
+  height: 1.1rem;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.65s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Feedback messages ── */
+.form-feedback {
+  font-family: "Telegraf", sans-serif;
+  font-size: 0.88rem;
+  letter-spacing: 0.04em;
+  padding: 0.8rem 1.1rem;
+  border-radius: 3px;
+  text-align: center;
+  margin-top: 0.25rem;
+}
+.form-feedback--success {
+  color: var(--clr-forest);
+  background: rgba(58, 75, 74, 0.08);
+  border: 1px solid rgba(58, 75, 74, 0.2);
+}
+.form-feedback--error {
+  color: #a83232;
+  background: rgba(168, 50, 50, 0.07);
+  border: 1px solid rgba(168, 50, 50, 0.2);
 }
