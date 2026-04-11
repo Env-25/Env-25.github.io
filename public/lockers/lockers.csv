@@ -1,13 +1,2 @@
 ID,Name,Desc,Location,Size,Price,Availability_Top,Availability_Mid,Availability_Bottom,Rental_Term,Lock_Included,Cover_photo,Add_photos
-1,Large Locker A,"Full-size locker near the main entrance. Great for storing lab coats binders and personal gear.",Chemical & Biological Engineering Building,12x18x24,25.00,3,2,0,Full Year,Yes,locker.jpg,locker.jpg|locker.jpg
-2,Large Locker B,"Full-size locker adjacent to A. Includes a built-in shelf for extra organisation.",Chemical & Biological Engineering Building,12x18x24,25.00,0,1,4,Full Year,No,locker.jpg,locker.jpg
-3,Medium Locker AC,"Mid-size locker on the second floor near the grad student lounge.",Chemical & Biological Engineering Building,12x18x18,20.00,2,0,2,Semester,Yes,locker.jpg,locker.jpg|locker.jpg
-4,Medium Locker BC,"Mid-size locker with good ventilation. Close to the stairwell.",Chemical & Biological Engineering Building,12x18x18,20.00,0,3,1,Term 1,No,locker.jpg,locker.jpg
-5,Compact Locker A,"Compact locker on the third floor. Ideal for books and a laptop.",Engineering Student Centre,10x12x18,15.00,5,5,5,Full Year,Yes,locker.jpg,locker.jpg|locker.jpg
-6,Compact Locker B,"Compact locker next to A. Conveniently located near the study rooms.",Engineering Student Centre,10x12x18,15.00,0,0,2,Semester,No,locker.jpg,locker.jpg
-7,Large Locker C,"Large locker in the basement storage wing. Best for bulky equipment.",Kaiser Building,14x20x30,30.00,2,2,2,Full Year,Yes,locker.jpg,locker.jpg|locker.jpg
-8,Large Locker D,"Large locker with reinforced door. Located near the bike storage area.",Kaiser Building,14x20x30,30.00,1,0,3,Full Year,No,locker.jpg,locker.jpg
-9,Standard Locker A,"Standard locker in the main atrium. High foot-traffic area with good security.",MacLeod Building,12x18x24,25.00,0,0,0,Semester,Yes,locker.jpg,locker.jpg
-10,Standard Locker B,"Standard locker one unit from A. Same specs quieter corner spot.",MacLeod Building,12x18x24,25.00,4,2,1,Full Year,Yes,locker.jpg,locker.jpg|locker.jpg
-11,Slim Locker A,"Slim locker near the printing lab. Great for documents and a light bag.",Engineering Student Centre,8x12x24,18.00,3,3,3,Semester,No,locker.jpg,locker.jpg
-12,Slim Locker B,"Slim locker next to A. Recently serviced with a new lock mechanism.",Engineering Student Centre,8x12x24,18.00,2,1,0,Full Year,Yes,locker.jpg,locker.jpg|locker.jpg
+1,Locker Test,Test description,CHBE 1st Floor,1x1x1,10,2,0,1,2026W1,Yes,locker.jpg,
