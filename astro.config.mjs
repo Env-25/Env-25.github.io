@@ -13,6 +13,7 @@ export default defineConfig({
       allowedHosts: [
         'elwood-unimagined-tasha.ngrok-free.dev',
         'localhost',
+        'chbe-site.akshajs.org',
       ]
     }
   }
