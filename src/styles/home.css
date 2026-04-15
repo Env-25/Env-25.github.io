@@ -263,13 +263,11 @@
 }
 
 .notice-bar {
-  position: fixed;
-  margin-top: 72px; /* navbar height */
+  margin-top: 10px; /* navbar height */
   left: 0;
   width: 100%;
   background: #000;
   color: #fff;
-  z-index: 999;
 }
 
 .notice-bar-inner {
