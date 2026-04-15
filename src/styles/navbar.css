@@ -91,7 +91,24 @@
 .nav-links a:hover        { color: #fff; }
 .nav-links a:hover::after { width: 100%; }
 
+.navbar-notice {
+  position: fixed;
+  top: 72px; /* match your navbar height */
+  left: 0;
+  width: 100%;
+  background: #000;
+  color: #fff;
+  z-index: 999;
+}
 
+.navbar-notice-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0.55rem 1rem;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  text-align: center;
+}
 /* ── Account pill (desktop) ── */
 .nav-account {
   display: flex;
