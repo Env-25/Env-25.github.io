@@ -1,0 +1,59 @@
+---
+interface Props {
+  message?: string;
+}
+const { message } = Astro.props;
+---
+
+<div class="notice-bar" id="noticeBar" role="status" aria-live="polite">
+  <div class="notice-bar-inner">
+    {message ? message : <slot />}
+  </div>
+</div>
+
+<style>
+  .notice-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 1100;
+    background: var(--clr-dark-teal);
+    color: #fff;
+    border-bottom: 2px solid var(--clr-teal);
+  }
+
+  .notice-bar-inner {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0.65rem 1.5rem;
+    font-family: "Telegraf", sans-serif;
+    font-size: 0.88rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    line-height: 1.45;
+    text-align: center;
+  }
+
+  @media (max-width: 600px) {
+    .notice-bar-inner {
+      font-size: 0.8rem;
+      padding: 0.6rem 1rem;
+      letter-spacing: 0.04em;
+    }
+  }
+</style>
+
+<script>
+  function syncNoticeHeight() {
+    const bar = document.getElementById("noticeBar");
+    if (!bar) return;
+    document.documentElement.style.setProperty(
+      "--notice-height",
+      `${bar.offsetHeight}px`
+    );
+  }
+
+  syncNoticeHeight();
+  window.addEventListener("resize", syncNoticeHeight);
+</script>

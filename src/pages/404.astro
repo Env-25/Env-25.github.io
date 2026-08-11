@@ -1,0 +1,37 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import "../styles/status.css";
+---
+
+<BaseLayout title="Page Not Found — UBC CHBE">
+  <section class="status-page">
+    <img src="/home/index-lower.jpg" alt="" class="status-page-bg" />
+    <div class="status-page-overlay"></div>
+
+    <div class="status-page-content">
+      <img src="/logos/logo-text-1915.png" alt="UBC CHBE Council" class="status-logo" />
+      <p class="status-code">404</p>
+      <p class="status-eyebrow">Lost in the process</p>
+      <h1 class="status-title">Page Not Found</h1>
+      <p class="status-text">
+        The page you’re looking for doesn’t exist or may have moved.
+        Head back or return to the homepage.
+      </p>
+      <div class="status-actions">
+        <button type="button" class="status-btn" id="statusBackBtn">← Go Back</button>
+        <a href="/" class="status-btn primary">Return Home</a>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  const backBtn = document.getElementById("statusBackBtn");
+  backBtn?.addEventListener("click", () => {
+    if (window.history.length > 1) {
+      window.history.back();
+    } else {
+      window.location.href = "/";
+    }
+  });
+</script>

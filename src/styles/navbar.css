@@ -9,7 +9,12 @@
   display: flex;
   align-items: center;
   background: transparent;
-  transition: background 0.35s ease, padding-block 0.35s ease, box-shadow 0.35s ease;
+  transition: background 0.35s ease, padding-block 0.35s ease, box-shadow 0.35s ease, top 0.2s ease;
+}
+
+/* Shift navbar down when a page-level notice bar is present */
+.has-notice .navbar {
+  top: var(--notice-height, 42px);
 }
 
 .navbar.scrolled {
@@ -91,24 +96,6 @@
 .nav-links a:hover        { color: #fff; }
 .nav-links a:hover::after { width: 100%; }
 
-.navbar-notice {
-  position: fixed;
-  top: 72px; /* match your navbar height */
-  left: 0;
-  width: 100%;
-  background: #000;
-  color: #fff;
-  z-index: 999;
-}
-
-.navbar-notice-inner {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0.55rem 1rem;
-  font-size: 0.9rem;
-  line-height: 1.4;
-  text-align: center;
-}
 /* ── Account pill (desktop) ── */
 .nav-account {
   display: flex;
@@ -200,6 +187,10 @@
   flex-direction: column;
   padding-top: calc(var(--nav-height, 72px) + 0.75rem);
   padding-bottom: 4rem;
+}
+
+.has-notice .mobile-menu-inner {
+  padding-top: calc(var(--nav-height, 72px) + var(--notice-height, 42px) + 0.75rem);
 }
 
 
