@@ -7,10 +7,12 @@
     "start": "astro dev",
     "build": "astro build",
     "preview": "VITE_ALLOWED_HOSTS=elwood-unimagined-tasha.ngrok-free.dev astro preview --host 0.0.0.0 --port 3001",
-    "astro": "astro"
+    "astro": "astro",
+    "aws:setup-auth": "bash aws/scripts/setup-auth.sh"
   },
   "dependencies": {
     "astro": "^4.0.0",
+    "aws-amplify": "^6.20.0",
     "fuse.js": "^7.1.0"
   }
 }

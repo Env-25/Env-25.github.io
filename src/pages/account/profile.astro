@@ -1,0 +1,489 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import "../../styles/auth.css";
+
+const currentYear = new Date().getFullYear();
+const years = Array.from({ length: 12 }, (_, i) => String(currentYear - i));
+---
+
+<BaseLayout title="Profile — UBC CHBE">
+  <section class="auth-hero">
+    <img src="/home/index-lower.jpg" alt="" class="auth-hero-bg" />
+    <div class="auth-hero-overlay"></div>
+    <div class="auth-hero-content">
+      <h1 class="auth-hero-title">Profile</h1>
+      <p class="auth-hero-sub">Your CHBE Council account</p>
+    </div>
+  </section>
+
+  <section class="auth-section">
+    <div class="auth-shell auth-shell--wide">
+      <div id="profileLoading" class="auth-block-sub">Loading your profile…</div>
+
+      <div id="profileContent" hidden>
+        <div class="auth-banner auth-banner--warn" id="emailBanner" hidden>
+          <span>Email not verified. Verify now for access to email updates and orders.</span>
+          <a class="auth-banner-action" href="/account/verify-email">Verify now</a>
+        </div>
+
+        <div class="auth-banner auth-banner--info" id="incompleteBanner" hidden>
+          <span>Your profile is incomplete.</span>
+          <a class="auth-banner-action" href="/account/complete-profile">Complete now</a>
+        </div>
+
+        <h2 class="auth-block-title">Account details</h2>
+        <p class="auth-block-sub">Fields are locked by default. Click Edit on a field to change it, then Save.</p>
+
+        <form class="auth-form" id="profileForm" novalidate>
+          <div class="form-field">
+            <div class="field-label-row">
+              <label for="profileName" class="form-label">Full name</label>
+              <button type="button" class="field-edit-btn" data-edit="profileName">Edit</button>
+            </div>
+            <input type="text" id="profileName" class="form-input" autocomplete="name" disabled />
+          </div>
+
+          <div class="form-field">
+            <div class="field-label-row">
+              <label for="profileEmail" class="form-label">Email</label>
+              <button type="button" class="field-edit-btn" id="changeEmailBtn">Change email</button>
+            </div>
+            <input type="email" id="profileEmail" class="form-input" autocomplete="email" disabled readonly />
+            <p class="form-hint" id="emailCooldownHint" hidden></p>
+            <p class="form-hint">Email can be changed once per week and requires verification.</p>
+          </div>
+
+          <div class="form-field">
+            <div class="field-label-row">
+              <label for="studentNumber" class="form-label">Student number</label>
+              <button type="button" class="field-edit-btn" data-edit="studentNumber">Edit</button>
+            </div>
+            <input type="text" id="studentNumber" class="form-input" inputmode="numeric" disabled />
+          </div>
+
+          <div class="form-field">
+            <div class="field-label-row">
+              <label for="enrollmentYear" class="form-label">UBC enrollment year</label>
+              <button type="button" class="field-edit-btn" data-edit="enrollmentYear">Edit</button>
+            </div>
+            <select id="enrollmentYear" class="form-input form-select" disabled>
+              <option value="">Select year…</option>
+              {years.map((y) => <option value={y}>{y}</option>)}
+            </select>
+          </div>
+
+          <div class="form-field">
+            <div class="field-label-row">
+              <label for="department" class="form-label">Department</label>
+              <button type="button" class="field-edit-btn" data-edit="department">Edit</button>
+            </div>
+            <select id="department" class="form-input form-select" disabled>
+              <option value="" disabled selected>Select department…</option>
+            <option value="Chemical Engineering">CHBE</option>
+            <option value="Other Engineering">Other Engineering Specialization</option>
+            <option value="Other UBC Major">Other Non-Engineering UBC Major</option>
+            <option value="Other">Other/Undeclared</option>
+            </select>
+          </div>
+
+          <div class="form-check-stack" id="prefsStack">
+            <div class="field-label-row">
+              <p class="form-label">Email preferences</p>
+              <button type="button" class="field-edit-btn" id="editPrefsBtn">Edit</button>
+            </div>
+            <label class="form-check">
+              <input type="checkbox" id="subImportant" disabled />
+              <span>Important announcements</span>
+            </label>
+            <label class="form-check">
+              <input type="checkbox" id="subGeneral" disabled />
+              <span>General announcements</span>
+            </label>
+            <label class="form-check">
+              <input type="checkbox" id="subEvents" disabled />
+              <span>Event updates</span>
+            </label>
+          </div>
+
+          <div class="profile-actions">
+            <button type="submit" class="form-submit" id="saveBtn" hidden>
+              <span class="btn-label">Save changes</span>
+              <span class="btn-spinner" aria-hidden="true"></span>
+            </button>
+            <button type="button" class="form-secondary" id="cancelEditBtn" hidden>Cancel</button>
+          </div>
+
+          <p class="form-feedback form-feedback--success" id="formSuccess" hidden></p>
+          <p class="form-feedback form-feedback--error" id="formError" hidden></p>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <!-- Change email modal -->
+  <div class="terms-modal" id="emailModal" aria-hidden="true" role="dialog" aria-labelledby="emailModalTitle">
+    <div class="terms-modal-backdrop" id="emailModalBackdrop"></div>
+    <div class="terms-modal-panel">
+      <h2 id="emailModalTitle">Change email</h2>
+      <p class="auth-block-sub" style="margin-bottom: 1.25rem;">
+        Enter your new email. We’ll send a verification code there.
+      </p>
+
+      <div id="emailStepEnter">
+        <div class="form-field">
+          <label for="newEmailInput" class="form-label">New email</label>
+          <input type="email" id="newEmailInput" class="form-input" autocomplete="email" placeholder="new@email.com" />
+          <p class="field-error" id="newEmailError">Please enter a valid email address.</p>
+        </div>
+        <div class="form-actions" style="margin-top: 1rem;">
+          <button type="button" class="form-submit" id="sendEmailCodeBtn">
+            <span class="btn-label">Send code</span>
+            <span class="btn-spinner" aria-hidden="true"></span>
+          </button>
+          <button type="button" class="form-secondary" id="cancelEmailModalBtn">Cancel</button>
+        </div>
+      </div>
+
+      <div id="emailStepCode" hidden>
+        <div class="form-field">
+          <label for="newEmailCode" class="form-label">Verification code</label>
+          <input type="text" id="newEmailCode" class="form-input" inputmode="numeric" placeholder="Code from your new email" />
+          <p class="field-error" id="newEmailCodeError">Please enter the verification code.</p>
+        </div>
+        <div class="form-actions" style="margin-top: 1rem;">
+          <button type="button" class="form-submit" id="confirmNewEmailBtn">
+            <span class="btn-label">Confirm email</span>
+            <span class="btn-spinner" aria-hidden="true"></span>
+          </button>
+          <button type="button" class="form-secondary" id="backEmailStepBtn">Back</button>
+        </div>
+      </div>
+
+      <p class="form-feedback form-feedback--error" id="emailModalError" hidden style="margin-top: 1rem;"></p>
+      <p class="form-feedback form-feedback--success" id="emailModalSuccess" hidden style="margin-top: 1rem;"></p>
+    </div>
+  </div>
+</BaseLayout>
+
+<script>
+  import {
+    getSessionProfile,
+    saveProfileDetails,
+    saveSubscriptionPrefs,
+    requestEmailChange,
+    sendEmailVerificationCode,
+    confirmEmailVerification,
+    canChangeEmail,
+    cognitoErrorMessage,
+    grantVerifyAccess,
+    type UserProfile,
+  } from "../../utils/auth";
+  import { isAuthConfigured } from "../../utils/auth-config";
+
+  const loadingEl = document.getElementById("profileLoading")!;
+  const contentEl = document.getElementById("profileContent")!;
+  const emailBanner = document.getElementById("emailBanner")!;
+  const incompleteBanner = document.getElementById("incompleteBanner")!;
+  const form = document.getElementById("profileForm") as HTMLFormElement;
+  const nameEl = document.getElementById("profileName") as HTMLInputElement;
+  const emailEl = document.getElementById("profileEmail") as HTMLInputElement;
+  const emailCooldownHint = document.getElementById("emailCooldownHint")!;
+  const changeEmailBtn = document.getElementById("changeEmailBtn") as HTMLButtonElement;
+  const studentEl = document.getElementById("studentNumber") as HTMLInputElement;
+  const yearEl = document.getElementById("enrollmentYear") as HTMLSelectElement;
+  const deptEl = document.getElementById("department") as HTMLSelectElement;
+  const subImportant = document.getElementById("subImportant") as HTMLInputElement;
+  const subGeneral = document.getElementById("subGeneral") as HTMLInputElement;
+  const subEvents = document.getElementById("subEvents") as HTMLInputElement;
+  const editPrefsBtn = document.getElementById("editPrefsBtn") as HTMLButtonElement;
+  const saveBtn = document.getElementById("saveBtn") as HTMLButtonElement;
+  const cancelEditBtn = document.getElementById("cancelEditBtn") as HTMLButtonElement;
+  const formSuccess = document.getElementById("formSuccess") as HTMLElement;
+  const formError = document.getElementById("formError") as HTMLElement;
+
+  const emailModal = document.getElementById("emailModal")!;
+  const emailModalBackdrop = document.getElementById("emailModalBackdrop")!;
+  const emailStepEnter = document.getElementById("emailStepEnter")!;
+  const emailStepCode = document.getElementById("emailStepCode")!;
+  const newEmailInput = document.getElementById("newEmailInput") as HTMLInputElement;
+  const newEmailCode = document.getElementById("newEmailCode") as HTMLInputElement;
+  const sendEmailCodeBtn = document.getElementById("sendEmailCodeBtn") as HTMLButtonElement;
+  const confirmNewEmailBtn = document.getElementById("confirmNewEmailBtn") as HTMLButtonElement;
+  const cancelEmailModalBtn = document.getElementById("cancelEmailModalBtn") as HTMLButtonElement;
+  const backEmailStepBtn = document.getElementById("backEmailStepBtn") as HTMLButtonElement;
+  const emailModalError = document.getElementById("emailModalError") as HTMLElement;
+  const emailModalSuccess = document.getElementById("emailModalSuccess") as HTMLElement;
+  const newEmailError = document.getElementById("newEmailError")!;
+  const newEmailCodeError = document.getElementById("newEmailCodeError")!;
+
+  let profile: UserProfile | null = null;
+  let snapshot: {
+    name: string;
+    studentNumber: string;
+    enrollmentYear: string;
+    department: string;
+    subImportant: boolean;
+    subGeneral: boolean;
+    subEvents: boolean;
+  } | null = null;
+
+  const editableFields = [nameEl, studentEl, yearEl, deptEl] as const;
+
+  function lockAll() {
+    editableFields.forEach((el) => {
+      el.disabled = true;
+    });
+    subImportant.disabled = true;
+    subGeneral.disabled = true;
+    subEvents.disabled = true;
+    emailEl.disabled = true;
+    saveBtn.hidden = true;
+    cancelEditBtn.hidden = true;
+  }
+
+  function showSaveBar() {
+    saveBtn.hidden = false;
+    cancelEditBtn.hidden = false;
+  }
+
+  function takeSnapshot() {
+    snapshot = {
+      name: nameEl.value,
+      studentNumber: studentEl.value,
+      enrollmentYear: yearEl.value,
+      department: deptEl.value,
+      subImportant: subImportant.checked,
+      subGeneral: subGeneral.checked,
+      subEvents: subEvents.checked,
+    };
+  }
+
+  function restoreSnapshot() {
+    if (!snapshot) return;
+    nameEl.value = snapshot.name;
+    studentEl.value = snapshot.studentNumber;
+    yearEl.value = snapshot.enrollmentYear;
+    deptEl.value = snapshot.department;
+    subImportant.checked = snapshot.subImportant;
+    subGeneral.checked = snapshot.subGeneral;
+    subEvents.checked = snapshot.subEvents;
+  }
+
+  function fillForm(p: UserProfile) {
+    nameEl.value = p.name;
+    emailEl.value = p.email;
+    studentEl.value = p.studentNumber;
+    yearEl.value = p.enrollmentYear || "";
+    deptEl.value = p.department || "";
+    subImportant.checked = p.subImportant;
+    subGeneral.checked = p.subGeneral;
+    subEvents.checked = p.subEvents;
+
+    emailBanner.hidden = p.emailVerified;
+    incompleteBanner.hidden = p.profileComplete;
+
+    const cooldown = canChangeEmail(p.emailChangedAt);
+    if (!cooldown.allowed) {
+      changeEmailBtn.disabled = true;
+      emailCooldownHint.hidden = false;
+      emailCooldownHint.textContent = `Email can be changed again in ${cooldown.daysLeft} day(s).`;
+    } else {
+      changeEmailBtn.disabled = false;
+      emailCooldownHint.hidden = true;
+    }
+
+    if (!p.emailVerified) {
+      grantVerifyAccess(p.email, p.name);
+    }
+
+    lockAll();
+    takeSnapshot();
+  }
+
+  document.querySelectorAll<HTMLButtonElement>("[data-edit]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.edit;
+      if (!id) return;
+      const el = document.getElementById(id) as HTMLInputElement | HTMLSelectElement | null;
+      if (!el) return;
+      el.disabled = false;
+      el.focus();
+      showSaveBar();
+    });
+  });
+
+  editPrefsBtn.addEventListener("click", () => {
+    subImportant.disabled = false;
+    subGeneral.disabled = false;
+    subEvents.disabled = false;
+    showSaveBar();
+  });
+
+  cancelEditBtn.addEventListener("click", () => {
+    restoreSnapshot();
+    lockAll();
+    formError.hidden = true;
+    formSuccess.hidden = true;
+  });
+
+  (async () => {
+    if (!isAuthConfigured()) {
+      loadingEl.textContent = "Auth is not configured yet.";
+      return;
+    }
+    profile = await getSessionProfile();
+    if (!profile) {
+      window.location.replace("/account/sign-in?next=/account/profile");
+      return;
+    }
+    if (!profile.emailVerified) {
+      grantVerifyAccess(profile.email, profile.name);
+      window.location.replace("/account/verify-email");
+      return;
+    }
+    fillForm(profile);
+    loadingEl.hidden = true;
+    contentEl.hidden = false;
+  })();
+
+  function openEmailModal() {
+    if (!profile) return;
+    const cooldown = canChangeEmail(profile.emailChangedAt);
+    if (!cooldown.allowed) {
+      formError.textContent = `Email can only be changed once per week. Try again in ${cooldown.daysLeft} day(s).`;
+      formError.hidden = false;
+      return;
+    }
+    emailModalError.hidden = true;
+    emailModalSuccess.hidden = true;
+    newEmailInput.value = "";
+    newEmailCode.value = "";
+    newEmailError.classList.remove("visible");
+    newEmailCodeError.classList.remove("visible");
+    emailStepEnter.hidden = false;
+    emailStepCode.hidden = true;
+    emailModal.classList.add("open");
+    emailModal.setAttribute("aria-hidden", "false");
+    document.body.style.overflow = "hidden";
+    newEmailInput.focus();
+  }
+
+  function closeEmailModal() {
+    emailModal.classList.remove("open");
+    emailModal.setAttribute("aria-hidden", "true");
+    document.body.style.overflow = "";
+  }
+
+  changeEmailBtn.addEventListener("click", openEmailModal);
+  cancelEmailModalBtn.addEventListener("click", closeEmailModal);
+  emailModalBackdrop.addEventListener("click", closeEmailModal);
+  backEmailStepBtn.addEventListener("click", () => {
+    emailStepCode.hidden = true;
+    emailStepEnter.hidden = false;
+    emailModalError.hidden = true;
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && emailModal.classList.contains("open")) closeEmailModal();
+  });
+
+  sendEmailCodeBtn.addEventListener("click", async () => {
+    emailModalError.hidden = true;
+    emailModalSuccess.hidden = true;
+    const email = newEmailInput.value.trim().toLowerCase();
+    const ok = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    newEmailError.classList.toggle("visible", !ok);
+    if (!ok) return;
+    if (profile && email === profile.email.toLowerCase()) {
+      emailModalError.textContent = "That’s already your current email.";
+      emailModalError.hidden = false;
+      return;
+    }
+
+    sendEmailCodeBtn.classList.add("loading");
+    sendEmailCodeBtn.disabled = true;
+    try {
+      await requestEmailChange(email);
+      await sendEmailVerificationCode();
+      emailStepEnter.hidden = true;
+      emailStepCode.hidden = false;
+      emailModalSuccess.textContent = "Code sent. Check your new inbox.";
+      emailModalSuccess.hidden = false;
+      newEmailCode.focus();
+    } catch (err) {
+      emailModalError.textContent = cognitoErrorMessage(err);
+      emailModalError.hidden = false;
+    } finally {
+      sendEmailCodeBtn.classList.remove("loading");
+      sendEmailCodeBtn.disabled = false;
+    }
+  });
+
+  confirmNewEmailBtn.addEventListener("click", async () => {
+    emailModalError.hidden = true;
+    emailModalSuccess.hidden = true;
+    const code = newEmailCode.value.trim();
+    newEmailCodeError.classList.toggle("visible", !code);
+    if (!code) return;
+
+    confirmNewEmailBtn.classList.add("loading");
+    confirmNewEmailBtn.disabled = true;
+    try {
+      await confirmEmailVerification(code);
+      closeEmailModal();
+      formSuccess.textContent = "Email updated successfully.";
+      formSuccess.hidden = false;
+      profile = await getSessionProfile();
+      if (profile) fillForm(profile);
+    } catch (err) {
+      emailModalError.textContent = cognitoErrorMessage(err);
+      emailModalError.hidden = false;
+    } finally {
+      confirmNewEmailBtn.classList.remove("loading");
+      confirmNewEmailBtn.disabled = false;
+    }
+  });
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    formError.hidden = true;
+    formSuccess.hidden = true;
+    if (!profile) return;
+
+    const complete =
+      studentEl.value.trim().length > 0 &&
+      yearEl.value.trim().length > 0 &&
+      deptEl.value.trim().length > 0;
+
+    saveBtn.classList.add("loading");
+    saveBtn.disabled = true;
+
+    try {
+      // Temporarily enable disabled fields so values are readable (already have .value)
+      await saveProfileDetails({
+        name: nameEl.value.trim(),
+        studentNumber: studentEl.value.trim(),
+        enrollmentYear: yearEl.value.trim(),
+        department: deptEl.value.trim(),
+        complete,
+      });
+
+      await saveSubscriptionPrefs({
+        important: subImportant.checked,
+        general: subGeneral.checked,
+        events: subEvents.checked,
+      });
+
+      formSuccess.textContent = "Profile saved.";
+      formSuccess.hidden = false;
+
+      profile = await getSessionProfile();
+      if (profile) fillForm(profile);
+    } catch (err) {
+      formError.textContent = cognitoErrorMessage(err);
+      formError.hidden = false;
+    } finally {
+      saveBtn.classList.remove("loading");
+      saveBtn.disabled = false;
+    }
+  });
+</script>

@@ -1,0 +1,68 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import "../../styles/auth.css";
+---
+
+<BaseLayout title="Orders — UBC CHBE">
+  <section class="auth-hero">
+    <img src="/home/index-lower.jpg" alt="" class="auth-hero-bg" />
+    <div class="auth-hero-overlay"></div>
+    <div class="auth-hero-content">
+      <h1 class="auth-hero-title">Orders</h1>
+      <p class="auth-hero-sub">Merch and purchases</p>
+    </div>
+  </section>
+
+  <section class="auth-section">
+    <div class="auth-shell">
+      <div id="gate" class="auth-status-panel" hidden>
+        <h2>Sign in required</h2>
+        <p>Please sign in to view your orders.</p>
+        <a class="form-submit" href="/account/sign-in?next=/account/orders" style="text-decoration:none;">Sign in</a>
+      </div>
+
+      <div id="unverified" class="auth-status-panel" hidden>
+        <h2>Verify your email</h2>
+        <p>Orders require a verified email address. Verify now to unlock this page.</p>
+        <a class="form-submit" href="/account/verify-email" style="text-decoration:none;">Verify now</a>
+      </div>
+
+      <div id="ordersContent" hidden>
+        <h2 class="auth-block-title">Your orders</h2>
+        <p class="auth-block-sub">Order history will appear here once you place an order for merch or lockers.</p>
+        <div class="auth-status-panel">
+          <h2>No orders yet</h2>
+          <p>When you place an order from the merch shop, it will show up here.</p>
+          <a class="form-submit" href="/merch" style="text-decoration:none;">Browse merch</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  import { getSessionProfile, grantVerifyAccess } from "../../utils/auth";
+  import { isAuthConfigured } from "../../utils/auth-config";
+
+  const gate = document.getElementById("gate")!;
+  const unverified = document.getElementById("unverified")!;
+  const content = document.getElementById("ordersContent")!;
+
+  (async () => {
+    if (!isAuthConfigured()) {
+      gate.hidden = false;
+      return;
+    }
+    const profile = await getSessionProfile();
+    if (!profile) {
+      gate.hidden = false;
+      return;
+    }
+    if (!profile.emailVerified) {
+      grantVerifyAccess(profile.email, profile.name);
+      unverified.hidden = false;
+      return;
+    }
+    content.hidden = false;
+  })();
+</script>

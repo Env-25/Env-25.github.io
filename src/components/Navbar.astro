@@ -6,11 +6,9 @@ import "../styles/navbar.css";
   <div class="navbar-inner">
 
     <a href="/" class="nav-brand">
-      <!-- <img src="/logos/logo-round.png" alt="CHBE Council" class="nav-logo" /> -->
       <img src="/logos/logo-text-white.png" alt="CHBE" class="nav-text-logo" />
     </a>
 
-    <!-- Desktop links (hidden on mobile) -->
     <div class="nav-links">
       <a href="/council">Council</a>
       <a href="/events">Events</a>
@@ -18,18 +16,33 @@ import "../styles/navbar.css";
       <a href="/locker-rental">Lockers</a>
       <a href="/contact">Contact</a>
       <a href="/resources">Resources</a>
-      <a href="/sign-in" class="nav-account disabled" aria-disabled="true">
-        <svg class="account-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <circle cx="12" cy="8" r="4"/>
-          <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
-        </svg>
-        Sign In
-      </a>
+
+      <div class="nav-account-wrap" id="navAccountWrap">
+        <a href="/account/sign-in" class="nav-account" id="navAccountBtn">
+          <svg class="account-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+               viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="8" r="4"/>
+            <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+          </svg>
+          <span id="navAccountLabel">Sign In</span>
+          <svg class="account-caret" id="navAccountCaret" xmlns="http://www.w3.org/2000/svg" width="12" height="12"
+               viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" hidden>
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        </a>
+
+        <div class="nav-account-menu" id="navAccountMenu" hidden role="menu" aria-label="Account menu">
+          <a href="/account/profile" role="menuitem">Profile</a>
+          <a href="/account/orders" role="menuitem">Orders</a>
+          <a href="/account/subscriptions" role="menuitem">Subscriptions</a>
+          <a href="/account/admin" role="menuitem" id="navAdminLink">Admin</a>
+          <button type="button" role="menuitem" id="navLogoutBtn">Log out</button>
+        </div>
+      </div>
     </div>
 
-    <!-- Burger button (mobile only) -->
     <button class="nav-burger" id="navBurger" aria-label="Toggle menu" aria-expanded="false">
       <span class="burger-line"></span>
       <span class="burger-line"></span>
@@ -37,41 +50,47 @@ import "../styles/navbar.css";
     </button>
 
   </div>
-
-
 </nav>
 
-<!-- Mobile drawer -->
 <div class="mobile-menu" id="mobileMenu" aria-hidden="true">
   <div class="mobile-menu-inner">
-    <a href="/council"       class="mobile-link">Council</a>
-    <a href="/events"        class="mobile-link">Events</a>
-    <a href="/merch"         class="mobile-link">Merch</a>
+    <a href="/council" class="mobile-link">Council</a>
+    <a href="/events" class="mobile-link">Events</a>
+    <a href="/merch" class="mobile-link">Merch</a>
     <a href="/locker-rental" class="mobile-link">Lockers</a>
-    <a href="/contact"       class="mobile-link">Contact</a>
-    <a href="/resources"     class="mobile-link">Resources</a>
-    <a href="/sign-in"       class="mobile-link mobile-account disabled" aria-disabled="true">
-      <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15"
-           viewBox="0 0 24 24" fill="none" stroke="currentColor"
-           stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <circle cx="12" cy="8" r="4"/>
-        <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
-      </svg>
-      Sign In
-    </a>
+    <a href="/contact" class="mobile-link">Contact</a>
+    <a href="/resources" class="mobile-link">Resources</a>
+
+    <div class="mobile-account-area" id="mobileAccountArea">
+      <a href="/account/sign-in" class="mobile-link mobile-account" id="mobileAccountBtn">
+        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15"
+             viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="8" r="4"/>
+          <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+        </svg>
+        <span id="mobileAccountLabel">Sign In</span>
+      </a>
+
+      <div class="mobile-account-links auth-hidden" id="mobileAccountLinks" hidden>
+        <a href="/account/profile" class="mobile-link">Profile</a>
+        <a href="/account/orders" class="mobile-link">Orders</a>
+        <a href="/account/subscriptions" class="mobile-link">Subscriptions</a>
+        <a href="/account/admin" class="mobile-link" id="mobileAdminLink">Admin</a>
+        <button type="button" class="mobile-link mobile-logout" id="mobileLogoutBtn">Log out</button>
+      </div>
+    </div>
   </div>
 </div>
 
-<!-- Backdrop -->
 <div class="mobile-backdrop" id="mobileBackdrop" aria-hidden="true"></div>
 
 <script>
-  const navbar   = document.getElementById("navbar")   as HTMLElement;
-  const burger   = document.getElementById("navBurger") as HTMLButtonElement;
-  const menu     = document.getElementById("mobileMenu") as HTMLElement;
+  const navbar = document.getElementById("navbar") as HTMLElement;
+  const burger = document.getElementById("navBurger") as HTMLButtonElement;
+  const menu = document.getElementById("mobileMenu") as HTMLElement;
   const backdrop = document.getElementById("mobileBackdrop") as HTMLElement;
 
-  // Scroll → .scrolled
   window.addEventListener("scroll", () => {
     navbar.classList.toggle("scrolled", window.scrollY > 80);
   }, { passive: true });
@@ -97,10 +116,119 @@ import "../styles/navbar.css";
   );
 
   backdrop.addEventListener("click", closeMenu);
-  document.addEventListener("keydown", e => { if (e.key === "Escape") closeMenu(); });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeMenu();
+  });
 
-  // Close drawer when a mobile link is tapped
-  menu.querySelectorAll(".mobile-link").forEach(l =>
+  menu.querySelectorAll("a.mobile-link").forEach((l) =>
     l.addEventListener("click", closeMenu)
   );
+</script>
+
+<script>
+  import {
+    getSessionProfile,
+    firstName,
+    logoutUser,
+  } from "../utils/auth";
+  import { isAuthConfigured } from "../utils/auth-config";
+
+  const accountWrap = document.getElementById("navAccountWrap")!;
+  const accountBtn = document.getElementById("navAccountBtn") as HTMLAnchorElement;
+  const accountLabel = document.getElementById("navAccountLabel")!;
+  const accountCaret = document.getElementById("navAccountCaret")!;
+  const accountMenu = document.getElementById("navAccountMenu")!;
+  const logoutBtn = document.getElementById("navLogoutBtn") as HTMLButtonElement;
+
+  const mobileAccountBtn = document.getElementById("mobileAccountBtn") as HTMLAnchorElement;
+  const mobileAccountLabel = document.getElementById("mobileAccountLabel")!;
+  const mobileAccountLinks = document.getElementById("mobileAccountLinks")!;
+  const mobileAccountArea = document.getElementById("mobileAccountArea")!;
+  const mobileLogoutBtn = document.getElementById("mobileLogoutBtn") as HTMLButtonElement;
+
+  let menuOpen = false;
+
+  function setSignedOut() {
+    accountLabel.textContent = "Sign In";
+    accountBtn.href = "/account/sign-in";
+    accountCaret.hidden = true;
+    accountMenu.hidden = true;
+    accountWrap.classList.remove("is-authed", "menu-open");
+    menuOpen = false;
+
+    mobileAccountLabel.textContent = "Sign In";
+    mobileAccountBtn.href = "/account/sign-in";
+    mobileAccountBtn.hidden = false;
+    mobileAccountBtn.classList.remove("is-authed");
+    mobileAccountLinks.hidden = true;
+    mobileAccountLinks.classList.add("auth-hidden");
+    mobileAccountArea.classList.remove("is-authed");
+  }
+
+  function setSignedIn(name: string) {
+    const label = firstName(name);
+    accountLabel.textContent = label;
+    accountBtn.href = "#";
+    accountCaret.hidden = false;
+    accountWrap.classList.add("is-authed");
+
+    mobileAccountLabel.textContent = label;
+    mobileAccountBtn.href = "/account/profile";
+    mobileAccountBtn.hidden = false;
+    mobileAccountBtn.classList.add("is-authed");
+    mobileAccountLinks.hidden = false;
+    mobileAccountLinks.classList.remove("auth-hidden");
+    mobileAccountArea.classList.add("is-authed");
+  }
+
+  function closeAccountMenu() {
+    menuOpen = false;
+    accountMenu.hidden = true;
+    accountWrap.classList.remove("menu-open");
+  }
+
+  function toggleAccountMenu(e: Event) {
+    if (!accountWrap.classList.contains("is-authed")) return;
+    e.preventDefault();
+    menuOpen = !menuOpen;
+    accountMenu.hidden = !menuOpen;
+    accountWrap.classList.toggle("menu-open", menuOpen);
+  }
+
+  accountBtn.addEventListener("click", toggleAccountMenu);
+
+  document.addEventListener("click", (e) => {
+    if (!menuOpen) return;
+    if (!accountWrap.contains(e.target as Node)) closeAccountMenu();
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeAccountMenu();
+  });
+
+  async function doLogout() {
+    try {
+      await logoutUser();
+    } catch {
+      /* ignore */
+    }
+    window.location.href = "/";
+  }
+
+  logoutBtn.addEventListener("click", doLogout);
+  mobileLogoutBtn.addEventListener("click", doLogout);
+
+  (async () => {
+    if (!isAuthConfigured()) {
+      setSignedOut();
+      return;
+    }
+    try {
+      const profile = await getSessionProfile();
+      if (profile) setSignedIn(profile.name || profile.email);
+      else setSignedOut();
+    } catch {
+      setSignedOut();
+    }
+  })();
 </script>

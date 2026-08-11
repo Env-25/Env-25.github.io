@@ -1,0 +1,415 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import "../../styles/auth.css";
+---
+
+<BaseLayout title="Verify Email — UBC CHBE">
+  <section class="auth-hero">
+    <img src="/home/index-lower.jpg" alt="" class="auth-hero-bg" />
+    <div class="auth-hero-overlay"></div>
+    <div class="auth-hero-content">
+      <h1 class="auth-hero-title">Verify Email</h1>
+      <p class="auth-hero-sub">Confirm your address to continue</p>
+    </div>
+  </section>
+
+  <section class="auth-section">
+    <div class="auth-shell auth-shell--wide" id="verifyShell" hidden>
+      <h2 class="auth-block-title">Check your inbox</h2>
+      <p class="auth-block-sub" id="verifyIntro">
+        We sent a verification code to your email. Enter it below to finish creating your account.
+        If you left earlier, use Resend code to get a new one.
+      </p>
+
+      <form class="auth-form" id="verifyForm" novalidate>
+        <div class="form-field">
+          <div class="field-label-row">
+            <label for="verifyEmail" class="form-label">Email</label>
+            <button type="button" class="field-edit-btn" id="correctEmailBtn">Incorrect email?</button>
+          </div>
+          <input type="email" id="verifyEmail" class="form-input" autocomplete="email" required readonly disabled />
+          <p class="field-error" id="emailError">Please enter a valid email address.</p>
+        </div>
+
+        <div class="form-field auth-hidden" id="passwordField" hidden>
+          <label for="correctPassword" class="form-label">
+            Password <span class="required">*</span>
+          </label>
+          <input
+            type="password"
+            id="correctPassword"
+            class="form-input"
+            autocomplete="current-password"
+            placeholder="Password you used at sign-up"
+          />
+          <p class="form-hint">
+            Required to update your Cognito account to the corrected email and send a new code.
+          </p>
+          <p class="field-error" id="passwordError">Please enter your password.</p>
+        </div>
+
+        <div class="form-actions auth-hidden" id="correctEmailActions" hidden>
+          <button type="button" class="form-submit" id="updateEmailBtn">
+            <span class="btn-label">Update email &amp; send code</span>
+            <span class="btn-spinner" aria-hidden="true"></span>
+          </button>
+          <button type="button" class="form-secondary" id="cancelCorrectEmailBtn">Cancel</button>
+        </div>
+
+        <div class="form-field">
+          <label for="verifyCode" class="form-label">
+            Verification code <span class="required">*</span>
+          </label>
+          <input
+            type="text"
+            id="verifyCode"
+            class="form-input"
+            inputmode="numeric"
+            autocomplete="one-time-code"
+            placeholder="6-digit code"
+            required
+          />
+          <p class="field-error" id="codeError">Please enter the verification code.</p>
+        </div>
+
+        <div class="form-check-stack" aria-label="Email preferences">
+          <p class="form-label" style="margin-bottom: 0.15rem;">Email preferences</p>
+          <label class="form-check">
+            <input type="checkbox" id="subImportant" checked />
+            <span>Subscribe to important announcements <span class="form-optional">(recommended)</span></span>
+          </label>
+          <label class="form-check">
+            <input type="checkbox" id="subGeneral" />
+            <span>General announcements</span>
+          </label>
+          <label class="form-check">
+            <input type="checkbox" id="subEvents" />
+            <span>Event updates</span>
+          </label>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="form-submit" id="submitBtn">
+            <span class="btn-label">Verify email</span>
+            <span class="btn-spinner" aria-hidden="true"></span>
+          </button>
+          <button type="button" class="form-secondary" id="resendBtn">
+            Resend code
+          </button>
+        </div>
+
+        <p class="form-hint" id="resendHint" hidden></p>
+        <p class="form-feedback form-feedback--success" id="formSuccess" hidden></p>
+        <p class="form-feedback form-feedback--error" id="formError" hidden></p>
+      </form>
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  import {
+    verifyEmailCode,
+    resendConfirmation,
+    correctSignupEmail,
+    getPendingSignup,
+    clearPendingSignup,
+    hasVerifyAccess,
+    grantVerifyAccess,
+    getResendRemainingSec,
+    markResendSent,
+    saveSubscriptionPrefs,
+    getSessionProfile,
+    cognitoErrorMessage,
+  } from "../../utils/auth";
+  import { isAuthConfigured } from "../../utils/auth-config";
+
+  const verifyShell = document.getElementById("verifyShell")!;
+  const form = document.getElementById("verifyForm") as HTMLFormElement;
+  const emailEl = document.getElementById("verifyEmail") as HTMLInputElement;
+  const codeEl = document.getElementById("verifyCode") as HTMLInputElement;
+  const passwordField = document.getElementById("passwordField")!;
+  const passwordEl = document.getElementById("correctPassword") as HTMLInputElement;
+  const correctEmailActions = document.getElementById("correctEmailActions")!;
+  const updateEmailBtn = document.getElementById("updateEmailBtn") as HTMLButtonElement;
+  const cancelCorrectEmailBtn = document.getElementById("cancelCorrectEmailBtn") as HTMLButtonElement;
+  const submitBtn = document.getElementById("submitBtn") as HTMLButtonElement;
+  const resendBtn = document.getElementById("resendBtn") as HTMLButtonElement;
+  const correctEmailBtn = document.getElementById("correctEmailBtn") as HTMLButtonElement;
+  const formError = document.getElementById("formError") as HTMLElement;
+  const formSuccess = document.getElementById("formSuccess") as HTMLElement;
+  const resendHint = document.getElementById("resendHint")!;
+  const intro = document.getElementById("verifyIntro")!;
+  const passwordError = document.getElementById("passwordError")!;
+
+  const subImportant = document.getElementById("subImportant") as HTMLInputElement;
+  const subGeneral = document.getElementById("subGeneral") as HTMLInputElement;
+  const subEvents = document.getElementById("subEvents") as HTMLInputElement;
+
+  let correctingEmail = false;
+  let cognitoUsername = "";
+  /** Email shown before "Incorrect email?" — restored on Cancel */
+  let emailBeforeEdit = "";
+  let resendTimer: number | undefined;
+
+  // Ensure correction UI starts hidden (only shown after Incorrect email?)
+  passwordField.hidden = true;
+  passwordField.classList.add("auth-hidden");
+  correctEmailActions.hidden = true;
+  correctEmailActions.classList.add("auth-hidden");
+  passwordEl.value = "";
+  correctEmailBtn.hidden = false;
+
+  (async () => {
+    if (!isAuthConfigured()) {
+      window.location.replace("/account/sign-in");
+      return;
+    }
+
+    const profile = await getSessionProfile();
+    if (profile?.emailVerified) {
+      window.location.replace(profile.profileComplete ? "/account/profile" : "/account/complete-profile");
+      return;
+    }
+
+    // Signed-in but unverified (rare) — grant access for this session only
+    if (profile && !profile.emailVerified) {
+      grantVerifyAccess(profile.email, profile.name, profile.email);
+    }
+
+    // Block cold URL visits / forged navigation without a real signup or unconfirmed sign-in
+    if (!hasVerifyAccess()) {
+      window.location.replace("/account/sign-in");
+      return;
+    }
+
+    const pending = getPendingSignup();
+    if (!pending?.email) {
+      window.location.replace("/account/sign-in");
+      return;
+    }
+
+    emailEl.value = pending.email;
+    cognitoUsername = pending.cognitoUsername || pending.email;
+    emailBeforeEdit = pending.email;
+    intro.textContent = `We sent a verification code to ${pending.email}. Enter it below to finish creating your account. If you left earlier, use Resend code to get a new one.`;
+    verifyShell.hidden = false;
+  })();
+
+  function updateResendUi() {
+    const remaining = getResendRemainingSec();
+    if (remaining > 0) {
+      resendBtn.disabled = true;
+      resendHint.hidden = false;
+      resendHint.textContent = `You can resend a code in ${remaining}s.`;
+      window.clearInterval(resendTimer);
+      resendTimer = window.setInterval(() => {
+        const left = getResendRemainingSec();
+        if (left <= 0) {
+          window.clearInterval(resendTimer);
+          resendBtn.disabled = false;
+          resendHint.hidden = true;
+          return;
+        }
+        resendHint.textContent = `You can resend a code in ${left}s.`;
+      }, 1000);
+    } else {
+      resendBtn.disabled = false;
+      resendHint.hidden = true;
+    }
+  }
+  updateResendUi();
+
+  function validateEmail(): boolean {
+    const ok = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailEl.value.trim());
+    emailEl.classList.toggle("error", !ok);
+    document.getElementById("emailError")?.classList.toggle("visible", !ok);
+    return ok;
+  }
+
+  function validateCode(): boolean {
+    const ok = codeEl.value.trim().length > 0;
+    codeEl.classList.toggle("error", !ok);
+    document.getElementById("codeError")?.classList.toggle("visible", !ok);
+    return ok;
+  }
+
+  function exitCorrectEmailMode(opts?: { revertEmail?: boolean; keepEmail?: string }) {
+    correctingEmail = false;
+    if (opts?.revertEmail) {
+      emailEl.value = emailBeforeEdit || cognitoUsername;
+    } else if (opts?.keepEmail) {
+      emailEl.value = opts.keepEmail;
+      emailBeforeEdit = opts.keepEmail;
+    }
+    emailEl.disabled = true;
+    emailEl.readOnly = true;
+    emailEl.classList.remove("error");
+    document.getElementById("emailError")?.classList.remove("visible");
+    passwordField.hidden = true;
+    passwordField.classList.add("auth-hidden");
+    correctEmailActions.hidden = true;
+    correctEmailActions.classList.add("auth-hidden");
+    passwordEl.value = "";
+    passwordError.classList.remove("visible");
+    correctEmailBtn.hidden = false;
+  }
+
+  correctEmailBtn.addEventListener("click", () => {
+    correctingEmail = true;
+    emailBeforeEdit = emailEl.value;
+    emailEl.disabled = false;
+    emailEl.readOnly = false;
+    emailEl.focus();
+    emailEl.select();
+    passwordField.hidden = false;
+    passwordField.classList.remove("auth-hidden");
+    correctEmailActions.hidden = false;
+    correctEmailActions.classList.remove("auth-hidden");
+    correctEmailBtn.hidden = true;
+    formError.hidden = true;
+    formSuccess.hidden = true;
+  });
+
+  cancelCorrectEmailBtn.addEventListener("click", () => {
+    exitCorrectEmailMode({ revertEmail: true });
+    formError.hidden = true;
+    formSuccess.hidden = true;
+  });
+
+  updateEmailBtn.addEventListener("click", async () => {
+    formError.hidden = true;
+    formSuccess.hidden = true;
+
+    if (!isAuthConfigured()) {
+      formError.textContent = "Auth is not configured yet.";
+      formError.hidden = false;
+      return;
+    }
+    if (!validateEmail()) return;
+
+    const password = passwordEl.value;
+    if (!password) {
+      passwordError.classList.add("visible");
+      return;
+    }
+    passwordError.classList.remove("visible");
+
+    const newEmail = emailEl.value.trim().toLowerCase();
+    const previous = cognitoUsername || getPendingSignup()?.cognitoUsername || newEmail;
+    const name = getPendingSignup()?.name || "";
+
+    updateEmailBtn.classList.add("loading");
+    updateEmailBtn.disabled = true;
+
+    try {
+      await correctSignupEmail({
+        newEmail,
+        password,
+        name,
+        previousUsername: previous,
+      });
+      cognitoUsername = newEmail;
+      exitCorrectEmailMode({ keepEmail: newEmail });
+      intro.textContent = `We sent a verification code to ${newEmail}. Enter it below.`;
+      formSuccess.textContent = "Email updated. A new verification code was sent.";
+      formSuccess.hidden = false;
+      markResendSent();
+      updateResendUi();
+      codeEl.focus();
+    } catch (err) {
+      formError.textContent = cognitoErrorMessage(err);
+      formError.hidden = false;
+    } finally {
+      updateEmailBtn.classList.remove("loading");
+      updateEmailBtn.disabled = false;
+    }
+  });
+
+  resendBtn.addEventListener("click", async () => {
+    formError.hidden = true;
+    formSuccess.hidden = true;
+
+    if (!isAuthConfigured()) {
+      formError.textContent = "Auth is not configured yet.";
+      formError.hidden = false;
+      return;
+    }
+    if (correctingEmail) {
+      formError.textContent = "Finish updating your email first (Update email & send code), or cancel by refreshing.";
+      formError.hidden = false;
+      return;
+    }
+    if (!validateEmail()) return;
+    if (getResendRemainingSec() > 0) {
+      updateResendUi();
+      return;
+    }
+
+    resendBtn.disabled = true;
+    try {
+      const email = (cognitoUsername || emailEl.value).trim();
+      await resendConfirmation(email);
+      markResendSent();
+      formSuccess.textContent = "A new verification code was sent.";
+      formSuccess.hidden = false;
+      updateResendUi();
+    } catch (err) {
+      formError.textContent = cognitoErrorMessage(err);
+      formError.hidden = false;
+    } finally {
+      resendBtn.disabled = false;
+    }
+  });
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    formError.hidden = true;
+    formSuccess.hidden = true;
+
+    if (!isAuthConfigured()) {
+      formError.textContent = "Auth is not configured yet.";
+      formError.hidden = false;
+      return;
+    }
+
+    if (correctingEmail) {
+      formError.textContent = "Finish updating your email first, then enter the new code.";
+      formError.hidden = false;
+      return;
+    }
+
+    if (![validateEmail(), validateCode()].every(Boolean)) return;
+
+    submitBtn.classList.add("loading");
+    submitBtn.disabled = true;
+
+    try {
+      const username = (cognitoUsername || emailEl.value).trim();
+      await verifyEmailCode(username, codeEl.value.trim());
+
+      try {
+        await saveSubscriptionPrefs({
+          important: subImportant.checked,
+          general: subGeneral.checked,
+          events: subEvents.checked,
+        });
+      } catch {
+        /* prefs can be set later once signed in */
+      }
+
+      clearPendingSignup();
+      window.location.href = "/account/complete-profile";
+    } catch (err) {
+      if ((err as { name?: string }).name === "AutoSignInFailed") {
+        clearPendingSignup();
+        window.location.href = "/account/sign-in?next=/account/complete-profile";
+        return;
+      }
+      formError.textContent = cognitoErrorMessage(err);
+      formError.hidden = false;
+    } finally {
+      submitBtn.classList.remove("loading");
+      submitBtn.disabled = false;
+    }
+  });
+</script>

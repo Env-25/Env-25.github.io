@@ -3,9 +3,9 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 import "../styles/home.css";
 
 // Flip to false to hide. On other pages: <BaseLayout title="..." notice="Your message">
-const SHOW_NOTICE = true;
+const SHOW_NOTICE = false;
 const notice = SHOW_NOTICE
-  ? "Website will be under maintenance from X to Y. Expected downtime: Z minutes."
+  ? "Website will be under maintenance from August 1 to August 20. Expected downtime: unknown"
   : undefined;
 ---
 <BaseLayout title="UBC CHBE Council" notice={notice}>

@@ -1,0 +1,499 @@
+/* auth.css — shared styles for account / auth pages */
+
+/* ── Hero (matches contact) ── */
+.auth-hero {
+  position: relative;
+  min-height: 15rem;
+  padding-block: 3.5rem 2.5rem;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+}
+.auth-hero-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: blur(4px);
+  transform: scale(1.08);
+}
+.auth-hero-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(20, 30, 30, 0.65);
+}
+.auth-hero-content {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-bottom: 2.5rem;
+  padding-top: var(--nav-height, 72px);
+  gap: 0.6rem;
+  text-align: center;
+}
+.auth-hero-title {
+  font-family: "RocaTwo-Bl", sans-serif;
+  font-size: clamp(2.5rem, 6vw, 5rem);
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.05em;
+  line-height: 1;
+}
+.auth-hero-sub {
+  font-family: "Telegraf", sans-serif;
+  font-size: 0.95rem;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.65);
+  text-transform: uppercase;
+}
+
+/* ── Section ── */
+.auth-section {
+  background: var(--clr-cream);
+  padding: 3.5rem 2rem 6rem;
+}
+.auth-shell {
+  max-width: 520px;
+  margin: 0 auto;
+}
+.auth-shell--wide {
+  max-width: 640px;
+}
+.auth-block-title {
+  font-family: "RocaTwo-Bl", sans-serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--clr-dark-teal);
+  margin: 0 0 0.4rem;
+}
+.auth-block-sub {
+  font-family: "Telegraf", sans-serif;
+  font-size: 0.85rem;
+  color: rgba(58, 75, 74, 0.65);
+  line-height: 1.6;
+  margin-bottom: 2rem;
+}
+
+/* ── Form (aligned with contact) ── */
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+/* `.form-field { display:flex }` otherwise overrides the HTML hidden attribute */
+[hidden],
+.auth-hidden {
+  display: none !important;
+}
+.form-label {
+  font-family: "Telegraf", sans-serif;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--clr-dark-teal);
+}
+.required {
+  color: #c0392b;
+  margin-left: 0.1rem;
+}
+.form-optional {
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  opacity: 0.55;
+  font-size: 0.72rem;
+}
+.form-hint {
+  font-family: "Telegraf", sans-serif;
+  font-size: 0.72rem;
+  color: rgba(58, 75, 74, 0.5);
+  line-height: 1.45;
+}
+.form-input {
+  font-family: "Telegraf", sans-serif;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--clr-dark-teal);
+  background: #fff;
+  border: 1.5px solid rgba(0, 60, 55, 0.2);
+  padding: 0.65rem 0.85rem;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  width: 100%;
+  box-sizing: border-box;
+}
+.form-input::placeholder {
+  color: rgba(0, 60, 55, 0.35);
+}
+.form-input:focus {
+  border-color: var(--clr-teal);
+  box-shadow: 0 0 0 3px rgba(0, 120, 110, 0.1);
+}
+.form-input.error {
+  border-color: #c0392b;
+  box-shadow: 0 0 0 3px rgba(192, 57, 43, 0.1);
+}
+.form-input:disabled {
+  opacity: 0.65;
+  background: rgba(0, 60, 55, 0.04);
+  cursor: not-allowed;
+}
+.form-select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%233a4b4a' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  padding-right: 2.75rem;
+  cursor: pointer;
+}
+.field-error {
+  font-family: "Telegraf", sans-serif;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #c0392b;
+  display: none;
+}
+.field-error.visible {
+  display: block;
+}
+
+/* Checkboxes / terms */
+.form-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  font-family: "Telegraf", sans-serif;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--clr-dark-teal);
+}
+.form-check input[type="checkbox"] {
+  margin-top: 0.2rem;
+  width: 1rem;
+  height: 1rem;
+  accent-color: var(--clr-dark-teal);
+  flex-shrink: 0;
+}
+.form-check-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem 0 0.25rem;
+}
+.form-link {
+  color: var(--clr-teal);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+}
+.form-link:hover {
+  opacity: 0.75;
+}
+
+/* Submit */
+.form-submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  height: 48px;
+  padding: 0 2rem;
+  font-family: "Telegraf", sans-serif;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  background: var(--clr-dark-teal);
+  color: var(--clr-cream);
+  border: none;
+  align-self: flex-start;
+  transition: opacity 0.2s, background 0.2s;
+}
+.form-submit:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.form-submit:not(:disabled) {
+  opacity: 1;
+  cursor: pointer;
+}
+.form-submit:not(:disabled):hover {
+  background: #2f3d3c;
+}
+.form-submit.loading .btn-label {
+  display: none;
+}
+.form-submit .btn-spinner {
+  display: none;
+}
+.form-submit.loading .btn-spinner {
+  display: inline-block;
+  width: 1.1rem;
+  height: 1.1rem;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: auth-spin 0.65s linear infinite;
+}
+@keyframes auth-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+.form-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 48px;
+  padding: 0 1.25rem;
+  font-family: "Telegraf", sans-serif;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  background: transparent;
+  color: var(--clr-dark-teal);
+  border: 1.5px solid rgba(58, 75, 74, 0.35);
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+.form-secondary:hover:not(:disabled) {
+  background: rgba(58, 75, 74, 0.06);
+  border-color: var(--clr-dark-teal);
+}
+.form-secondary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.auth-switch {
+  margin-top: 1.75rem;
+  font-family: "Telegraf", sans-serif;
+  font-size: 0.85rem;
+  color: rgba(58, 75, 74, 0.7);
+}
+.auth-switch a {
+  color: var(--clr-teal);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.turnstile-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.form-feedback {
+  font-family: "Telegraf", sans-serif;
+  font-size: 0.88rem;
+  letter-spacing: 0.04em;
+  padding: 0.8rem 1.1rem;
+  border-radius: 3px;
+  text-align: center;
+}
+.form-feedback--success {
+  color: var(--clr-forest);
+  background: rgba(58, 75, 74, 0.08);
+  border: 1px solid rgba(58, 75, 74, 0.2);
+}
+.form-feedback--error {
+  color: #a83232;
+  background: rgba(168, 50, 50, 0.07);
+  border: 1px solid rgba(168, 50, 50, 0.2);
+}
+
+/* Banners on profile */
+.auth-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1.25rem;
+  padding: 0.9rem 1.1rem;
+  margin-bottom: 1.5rem;
+  font-family: "Telegraf", sans-serif;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  border: 1.5px solid transparent;
+}
+.auth-banner--warn {
+  color: #8a5a00;
+  background: rgba(200, 140, 20, 0.1);
+  border-color: rgba(200, 140, 20, 0.35);
+}
+.auth-banner--info {
+  color: var(--clr-dark-teal);
+  background: rgba(114, 166, 145, 0.12);
+  border-color: rgba(114, 166, 145, 0.4);
+}
+.auth-banner a,
+.auth-banner-action {
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+/* Field edit controls */
+.field-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+.field-edit-btn {
+  font-family: "Telegraf", sans-serif;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--clr-teal);
+  background: none;
+  border: none;
+  padding: 0.15rem 0;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  flex-shrink: 0;
+}
+.field-edit-btn:hover:not(:disabled) {
+  opacity: 0.75;
+}
+.field-edit-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  text-decoration: none;
+}
+
+.profile-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+/* Admin / status panels */
+.auth-status-panel {
+  text-align: center;
+  padding: 2.5rem 1.5rem;
+  border: 1.5px solid rgba(58, 75, 74, 0.15);
+  background: #fff;
+}
+.auth-status-panel h2 {
+  font-family: "RocaTwo-Bl", sans-serif;
+  font-size: 1.35rem;
+  color: var(--clr-dark-teal);
+  margin-bottom: 0.6rem;
+}
+.auth-status-panel p {
+  font-family: "Telegraf", sans-serif;
+  font-size: 0.9rem;
+  color: rgba(58, 75, 74, 0.7);
+  line-height: 1.6;
+  margin-bottom: 1.5rem;
+}
+
+/* Terms modal */
+.terms-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+.terms-modal.open {
+  display: flex;
+}
+.terms-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(20, 30, 30, 0.55);
+}
+.terms-modal-panel {
+  position: relative;
+  z-index: 1;
+  width: min(560px, 100%);
+  max-height: min(70vh, 640px);
+  overflow: auto;
+  background: var(--clr-cream);
+  border: 1.5px solid rgba(58, 75, 74, 0.2);
+  padding: 1.75rem 1.5rem 1.5rem;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.25);
+}
+.terms-modal-panel h2 {
+  font-family: "RocaTwo-Bl", sans-serif;
+  font-size: 1.25rem;
+  color: var(--clr-dark-teal);
+  margin-bottom: 1rem;
+}
+.terms-modal-body {
+  font-family: "Telegraf", sans-serif;
+  font-size: 0.88rem;
+  line-height: 1.65;
+  color: rgba(58, 75, 74, 0.85);
+  white-space: pre-wrap;
+  margin-bottom: 1.25rem;
+}
+.terms-modal-close {
+  display: inline-flex;
+  height: 42px;
+  padding: 0 1.25rem;
+  align-items: center;
+  font-family: "Telegraf", sans-serif;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  background: var(--clr-dark-teal);
+  color: var(--clr-cream);
+  border: none;
+  cursor: pointer;
+}
+
+@media (max-width: 600px) {
+  .auth-section {
+    padding: 2.5rem 1.25rem 4rem;
+  }
+  .form-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .form-submit,
+  .form-secondary {
+    width: 100%;
+  }
+}

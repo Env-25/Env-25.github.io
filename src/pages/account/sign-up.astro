@@ -1,0 +1,338 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { AUTH_CONFIG } from "../../utils/auth-config";
+import "../../styles/auth.css";
+
+const turnstileSiteKey = AUTH_CONFIG.turnstileSiteKey;
+---
+
+<BaseLayout title="Sign Up — UBC CHBE">
+  <script is:inline>
+    window.__chbeTurnstileToken = null;
+    window.onTurnstileVerified = function (token) {
+      window.__chbeTurnstileToken = token;
+      var err = document.getElementById("captchaError");
+      if (err) err.classList.remove("visible");
+    };
+    window.onTurnstileExpired = function () {
+      window.__chbeTurnstileToken = null;
+    };
+    window.onTurnstileError = function () {
+      window.__chbeTurnstileToken = null;
+      var err = document.getElementById("captchaError");
+      if (err) err.classList.add("visible");
+    };
+  </script>
+  <script is:inline src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+
+  <section class="auth-hero">
+    <img src="/home/index-lower.jpg" alt="" class="auth-hero-bg" />
+    <div class="auth-hero-overlay"></div>
+    <div class="auth-hero-content">
+      <h1 class="auth-hero-title">Sign Up</h1>
+      <p class="auth-hero-sub">Create your CHBE Council account</p>
+    </div>
+  </section>
+
+  <section class="auth-section">
+    <div class="auth-shell">
+      <h2 class="auth-block-title">Create an account</h2>
+      <p class="auth-block-sub">
+        All fields are required. You’ll verify your email next.
+      </p>
+
+      <form class="auth-form" id="signUpForm" novalidate>
+        <div class="form-field">
+          <label for="signUpName" class="form-label">
+            Full name <span class="required">*</span>
+          </label>
+          <input
+            type="text"
+            id="signUpName"
+            class="form-input"
+            autocomplete="name"
+            placeholder="Your full name"
+            required
+          />
+          <p class="field-error" id="nameError">Please enter your name.</p>
+        </div>
+
+        <div class="form-field">
+          <label for="signUpEmail" class="form-label">
+            Email <span class="required">*</span>
+          </label>
+          <input
+            type="email"
+            id="signUpEmail"
+            class="form-input"
+            autocomplete="email"
+            placeholder="your@email.com"
+            required
+          />
+          <p class="field-error" id="emailError">Please enter a valid email address.</p>
+        </div>
+
+        <div class="form-field">
+          <label for="signUpPassword" class="form-label">
+            Password <span class="required">*</span>
+          </label>
+          <input
+            type="password"
+            id="signUpPassword"
+            class="form-input"
+            autocomplete="new-password"
+            placeholder="At least 8 characters"
+            required
+          />
+          <p class="form-hint">Use 8+ characters with upper, lower, a number, and a symbol (e.g. !@#).</p>
+          <p class="field-error" id="passwordError">Please enter a valid password.</p>
+        </div>
+
+        <div class="form-field">
+          <label for="signUpPasswordConfirm" class="form-label">
+            Confirm password <span class="required">*</span>
+          </label>
+          <input
+            type="password"
+            id="signUpPasswordConfirm"
+            class="form-input"
+            autocomplete="new-password"
+            placeholder="Re-enter password"
+            required
+          />
+          <p class="field-error" id="passwordConfirmError">Passwords do not match.</p>
+        </div>
+
+        <div class="form-field">
+          <label class="form-check">
+            <input type="checkbox" id="signUpTerms" required />
+            <span>
+              I agree to the
+              <button type="button" class="form-link" id="openTermsBtn">
+                Terms and Conditions
+              </button>
+              <span class="required">*</span>
+            </span>
+          </label>
+          <p class="field-error" id="termsError">You must agree to the terms and conditions.</p>
+        </div>
+
+        <div class="form-field turnstile-wrap">
+          <div
+            class="cf-turnstile"
+            data-sitekey={turnstileSiteKey}
+            data-callback="onTurnstileVerified"
+            data-expired-callback="onTurnstileExpired"
+            data-error-callback="onTurnstileError"
+            data-theme="light"
+          ></div>
+          <p class="field-error" id="captchaError">Please complete the CAPTCHA verification.</p>
+        </div>
+
+        <button type="submit" class="form-submit" id="submitBtn">
+          <span class="btn-label">Create account</span>
+          <span class="btn-spinner" aria-hidden="true"></span>
+        </button>
+
+        <p class="form-feedback form-feedback--error" id="formError" hidden></p>
+      </form>
+
+      <p class="auth-switch">
+        Already have an account? <a href="/account/sign-in">Sign in</a>
+      </p>
+    </div>
+  </section>
+
+  <div class="terms-modal" id="termsModal" aria-hidden="true" role="dialog" aria-labelledby="termsTitle">
+    <div class="terms-modal-backdrop" id="termsBackdrop"></div>
+    <div class="terms-modal-panel">
+      <h2 id="termsTitle">Terms and Conditions</h2>
+      <div class="terms-modal-body" id="termsBody">TERMS TO BE ADDED
+
+This placeholder will be replaced with the official UBC CHBE Council website terms and conditions.</div>
+      <button type="button" class="terms-modal-close" id="closeTermsBtn">Close</button>
+    </div>
+  </div>
+</BaseLayout>
+
+<script>
+  import {
+    registerUser,
+    grantVerifyAccess,
+    validateEmailRemote,
+    cognitoErrorMessage,
+  } from "../../utils/auth";
+  import { isAuthConfigured } from "../../utils/auth-config";
+
+  const form = document.getElementById("signUpForm") as HTMLFormElement;
+  const nameEl = document.getElementById("signUpName") as HTMLInputElement;
+  const emailEl = document.getElementById("signUpEmail") as HTMLInputElement;
+  const passwordEl = document.getElementById("signUpPassword") as HTMLInputElement;
+  const confirmEl = document.getElementById("signUpPasswordConfirm") as HTMLInputElement;
+  const termsEl = document.getElementById("signUpTerms") as HTMLInputElement;
+  const submitBtn = document.getElementById("submitBtn") as HTMLButtonElement;
+  const formError = document.getElementById("formError") as HTMLElement;
+  const captchaError = document.getElementById("captchaError")!;
+  const termsError = document.getElementById("termsError")!;
+  const passwordConfirmError = document.getElementById("passwordConfirmError")!;
+  const passwordError = document.getElementById("passwordError")!;
+
+  const termsModal = document.getElementById("termsModal")!;
+  const openTermsBtn = document.getElementById("openTermsBtn")!;
+  const closeTermsBtn = document.getElementById("closeTermsBtn")!;
+  const termsBackdrop = document.getElementById("termsBackdrop")!;
+
+  let turnstileToken: string | null =
+    (window as any).__chbeTurnstileToken || null;
+
+  const prevVerified = (window as any).onTurnstileVerified;
+  (window as any).onTurnstileVerified = (token: string) => {
+    turnstileToken = token;
+    (window as any).__chbeTurnstileToken = token;
+    if (typeof prevVerified === "function") prevVerified(token);
+    captchaError.classList.remove("visible");
+  };
+  (window as any).onTurnstileExpired = () => {
+    turnstileToken = null;
+    (window as any).__chbeTurnstileToken = null;
+  };
+  (window as any).onTurnstileError = () => {
+    turnstileToken = null;
+    (window as any).__chbeTurnstileToken = null;
+    captchaError.classList.add("visible");
+  };
+
+  function openTerms() {
+    termsModal.classList.add("open");
+    termsModal.setAttribute("aria-hidden", "false");
+    document.body.style.overflow = "hidden";
+  }
+  function closeTerms() {
+    termsModal.classList.remove("open");
+    termsModal.setAttribute("aria-hidden", "true");
+    document.body.style.overflow = "";
+  }
+  openTermsBtn.addEventListener("click", openTerms);
+  closeTermsBtn.addEventListener("click", closeTerms);
+  termsBackdrop.addEventListener("click", closeTerms);
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeTerms();
+  });
+
+  function showFieldError(id: string, show: boolean) {
+    document.getElementById(id)?.classList.toggle("visible", show);
+  }
+
+  function validateName(): boolean {
+    const ok = nameEl.value.trim().length > 0;
+    nameEl.classList.toggle("error", !ok);
+    showFieldError("nameError", !ok);
+    return ok;
+  }
+
+  function validateEmail(): boolean {
+    const ok = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailEl.value.trim());
+    emailEl.classList.toggle("error", !ok);
+    showFieldError("emailError", !ok);
+    return ok;
+  }
+
+  function validatePassword(): boolean {
+    const v = passwordEl.value;
+    const ok =
+      v.length >= 8 &&
+      /[A-Z]/.test(v) &&
+      /[a-z]/.test(v) &&
+      /\d/.test(v) &&
+      /[^A-Za-z0-9]/.test(v);
+    passwordEl.classList.toggle("error", !ok);
+    showFieldError("passwordError", !ok);
+    return ok;
+  }
+
+  function validateConfirm(): boolean {
+    const ok = confirmEl.value === passwordEl.value && confirmEl.value.length > 0;
+    confirmEl.classList.toggle("error", !ok);
+    passwordConfirmError.classList.toggle("visible", !ok);
+    return ok;
+  }
+
+  function validateTerms(): boolean {
+    const ok = termsEl.checked;
+    termsError.classList.toggle("visible", !ok);
+    return ok;
+  }
+
+  [nameEl, emailEl, passwordEl, confirmEl].forEach((el) => {
+    el.addEventListener("input", () => {
+      el.classList.remove("error");
+      el.closest(".form-field")?.querySelector(".field-error")?.classList.remove("visible");
+      formError.hidden = true;
+    });
+  });
+  termsEl.addEventListener("change", () => {
+    termsError.classList.remove("visible");
+  });
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    formError.hidden = true;
+
+    if (!isAuthConfigured()) {
+      formError.textContent =
+        "Sign-up is not configured yet. Add Cognito environment variables to enable accounts.";
+      formError.hidden = false;
+      return;
+    }
+
+    const fieldsOk = [
+      validateName(),
+      validateEmail(),
+      validatePassword(),
+      validateConfirm(),
+      validateTerms(),
+    ].every(Boolean);
+
+    if (!turnstileToken) {
+      turnstileToken = (window as any).__chbeTurnstileToken || null;
+    }
+    if (!turnstileToken) captchaError.classList.add("visible");
+    if (!fieldsOk || !turnstileToken) return;
+
+    submitBtn.classList.add("loading");
+    submitBtn.disabled = true;
+
+    try {
+      const email = emailEl.value.trim();
+      const remote = await validateEmailRemote(email, turnstileToken);
+      if (!remote.ok) {
+        formError.textContent = remote.message || "Invalid email address.";
+        formError.hidden = false;
+        return;
+      }
+
+      try {
+        await registerUser({
+          name: nameEl.value.trim(),
+          email,
+          password: passwordEl.value,
+        });
+      } catch (err) {
+        // Never send existing accounts to verify — that allowed account takeover UX
+        throw err;
+      }
+      grantVerifyAccess(email, nameEl.value.trim(), email, passwordEl.value);
+      window.location.href = "/account/verify-email";
+    } catch (err) {
+      console.error("Sign-up error:", err);
+      formError.textContent = cognitoErrorMessage(err);
+      formError.hidden = false;
+      (window as any).turnstile?.reset?.();
+      turnstileToken = null;
+      (window as any).__chbeTurnstileToken = null;
+    } finally {
+      submitBtn.classList.remove("loading");
+      submitBtn.disabled = false;
+    }
+  });
+</script>

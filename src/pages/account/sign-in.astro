@@ -1,0 +1,185 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import "../../styles/auth.css";
+---
+
+<BaseLayout title="Sign In — UBC CHBE">
+  <section class="auth-hero">
+    <img src="/home/index-lower.jpg" alt="" class="auth-hero-bg" />
+    <div class="auth-hero-overlay"></div>
+    <div class="auth-hero-content">
+      <h1 class="auth-hero-title">Sign In</h1>
+      <p class="auth-hero-sub">Welcome back</p>
+    </div>
+  </section>
+
+  <section class="auth-section">
+    <div class="auth-shell">
+      <h2 class="auth-block-title">Sign in to your account</h2>
+      <p class="auth-block-sub">Use the email and password for your CHBE Council account.</p>
+
+      <form class="auth-form" id="signInForm" novalidate>
+        <div class="form-field">
+          <label for="signInEmail" class="form-label">
+            Email <span class="required">*</span>
+          </label>
+          <input
+            type="email"
+            id="signInEmail"
+            class="form-input"
+            autocomplete="email"
+            placeholder="your@email.com"
+            required
+          />
+          <p class="field-error" id="emailError">Please enter a valid email address.</p>
+        </div>
+
+        <div class="form-field">
+          <label for="signInPassword" class="form-label">
+            Password <span class="required">*</span>
+          </label>
+          <input
+            type="password"
+            id="signInPassword"
+            class="form-input"
+            autocomplete="current-password"
+            placeholder="Your password"
+            required
+          />
+          <p class="field-error" id="passwordError">Please enter your password.</p>
+        </div>
+
+        <button type="submit" class="form-submit" id="submitBtn">
+          <span class="btn-label">Sign in</span>
+          <span class="btn-spinner" aria-hidden="true"></span>
+        </button>
+
+        <p class="form-feedback form-feedback--error" id="formError" hidden></p>
+      </form>
+
+      <p class="auth-switch">
+        Don’t have an account? <a href="/account/sign-up">Sign up</a>
+      </p>
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  import {
+    loginUser,
+    getSessionProfile,
+    cognitoErrorMessage,
+    grantVerifyAccess,
+  } from "../../utils/auth";
+  import { isAuthConfigured } from "../../utils/auth-config";
+
+  const form = document.getElementById("signInForm") as HTMLFormElement;
+  const emailEl = document.getElementById("signInEmail") as HTMLInputElement;
+  const passwordEl = document.getElementById("signInPassword") as HTMLInputElement;
+  const submitBtn = document.getElementById("submitBtn") as HTMLButtonElement;
+  const formError = document.getElementById("formError") as HTMLElement;
+
+  // If already signed in, send to profile / onboarding
+  (async () => {
+    if (!isAuthConfigured()) return;
+    try {
+      const profile = await getSessionProfile();
+      if (!profile) return;
+      if (!profile.emailVerified) {
+        grantVerifyAccess(profile.email, profile.name);
+        window.location.replace("/account/verify-email");
+        return;
+      }
+      if (!profile.profileComplete) {
+        window.location.replace("/account/complete-profile");
+        return;
+      }
+      window.location.replace("/account/profile");
+    } catch {
+      /* stay on sign-in */
+    }
+  })();
+
+  function validateEmail(): boolean {
+    const ok = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailEl.value.trim());
+    emailEl.classList.toggle("error", !ok);
+    document.getElementById("emailError")?.classList.toggle("visible", !ok);
+    return ok;
+  }
+
+  function validatePassword(): boolean {
+    const ok = passwordEl.value.length > 0;
+    passwordEl.classList.toggle("error", !ok);
+    document.getElementById("passwordError")?.classList.toggle("visible", !ok);
+    return ok;
+  }
+
+  [emailEl, passwordEl].forEach((el) => {
+    el.addEventListener("input", () => {
+      el.classList.remove("error");
+      el.closest(".form-field")?.querySelector(".field-error")?.classList.remove("visible");
+      formError.hidden = true;
+    });
+  });
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    formError.hidden = true;
+
+    if (!isAuthConfigured()) {
+      formError.textContent =
+        "Sign-in is not configured yet. Add Cognito environment variables to enable accounts.";
+      formError.hidden = false;
+      return;
+    }
+
+    if (![validateEmail(), validatePassword()].every(Boolean)) return;
+
+    submitBtn.classList.add("loading");
+    submitBtn.disabled = true;
+
+    try {
+      const email = emailEl.value.trim();
+      await loginUser(email, passwordEl.value);
+      const profile = await getSessionProfile();
+
+      if (!profile || !profile.emailVerified) {
+        grantVerifyAccess(email, profile?.name || "", email, passwordEl.value);
+        window.location.href = "/account/verify-email";
+        return;
+      }
+
+      const params = new URLSearchParams(window.location.search);
+      const next = params.get("next");
+      if (next && next.startsWith("/")) {
+        window.location.href = next;
+        return;
+      }
+      if (!profile.profileComplete) {
+        window.location.href = "/account/complete-profile";
+        return;
+      }
+      window.location.href = "/account/profile";
+    } catch (err) {
+      const e = err as { name?: string; message?: string; code?: string; cause?: { name?: string; message?: string } };
+      const name = e?.name || e?.code || e?.cause?.name || "";
+      const message = `${e?.message || ""} ${e?.cause?.message || ""}`.toLowerCase();
+      if (
+        name === "UserNotConfirmedException" ||
+        message.includes("user is not confirmed") ||
+        message.includes("not confirmed") ||
+        message.includes("confirm_sign_up")
+      ) {
+        grantVerifyAccess(emailEl.value.trim(), "", emailEl.value.trim(), passwordEl.value);
+        window.location.href = "/account/verify-email";
+        return;
+      }
+      console.error("Sign-in error:", err);
+      formError.textContent = cognitoErrorMessage(err);
+      formError.hidden = false;
+    } finally {
+      submitBtn.classList.remove("loading");
+      submitBtn.disabled = false;
+    }
+  });
+</script>

@@ -1,0 +1,189 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import "../../styles/auth.css";
+
+const currentYear = new Date().getFullYear();
+const years = Array.from({ length: 12 }, (_, i) => String(currentYear - i));
+---
+
+<BaseLayout title="Complete Profile — UBC CHBE">
+  <section class="auth-hero">
+    <img src="/home/index-lower.jpg" alt="" class="auth-hero-bg" />
+    <div class="auth-hero-overlay"></div>
+    <div class="auth-hero-content">
+      <h1 class="auth-hero-title">Complete Profile</h1>
+      <p class="auth-hero-sub">Tell us a bit about you</p>
+    </div>
+  </section>
+
+  <section class="auth-section">
+    <div class="auth-shell">
+      <h2 class="auth-block-title">Student details</h2>
+      <p class="auth-block-sub">
+        Add your student number, enrollment year, and department. You can finish later — your
+        profile will stay marked incomplete until saved.
+      </p>
+
+      <form class="auth-form" id="completeForm" novalidate>
+        <div class="form-field">
+          <label for="studentNumber" class="form-label">
+            Student number <span class="required">*</span>
+          </label>
+          <input
+            type="text"
+            id="studentNumber"
+            class="form-input"
+            inputmode="numeric"
+            placeholder="e.g. 12345678"
+            required
+          />
+          <p class="field-error" id="studentError">Please enter your student number.</p>
+        </div>
+
+        <div class="form-field">
+          <label for="enrollmentYear" class="form-label">
+            UBC enrollment year <span class="required">*</span>
+          </label>
+          <select id="enrollmentYear" class="form-input form-select" required>
+            <option value="" disabled selected>Select year…</option>
+            {years.map((y) => <option value={y}>{y}</option>)}
+          </select>
+          <p class="field-error" id="yearError">Please select your enrollment year.</p>
+        </div>
+
+        <div class="form-field">
+          <label for="department" class="form-label">
+            Department <span class="required">*</span>
+          </label>
+          <select id="department" class="form-input form-select" required>
+            <option value="" disabled selected>Select department…</option>
+            <option value="Chemical Engineering">CHBE</option>
+            <option value="Other Engineering">Other Engineering Specialization</option>
+            <option value="Other UBC Major">Other Non-Engineering UBC Major</option>
+            <option value="Other">Other/Undeclared</option>
+          </select>
+          <p class="field-error" id="deptError">Please select your department.</p>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="form-submit" id="submitBtn">
+            <span class="btn-label">Save &amp; continue</span>
+            <span class="btn-spinner" aria-hidden="true"></span>
+          </button>
+          <button type="button" class="form-secondary" id="laterBtn">Complete later</button>
+        </div>
+
+        <p class="form-feedback form-feedback--error" id="formError" hidden></p>
+      </form>
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  import {
+    getSessionProfile,
+    saveProfileDetails,
+    cognitoErrorMessage,
+    grantVerifyAccess,
+  } from "../../utils/auth";
+  import { isAuthConfigured } from "../../utils/auth-config";
+
+  const form = document.getElementById("completeForm") as HTMLFormElement;
+  const studentEl = document.getElementById("studentNumber") as HTMLInputElement;
+  const yearEl = document.getElementById("enrollmentYear") as HTMLSelectElement;
+  const deptEl = document.getElementById("department") as HTMLSelectElement;
+  const submitBtn = document.getElementById("submitBtn") as HTMLButtonElement;
+  const laterBtn = document.getElementById("laterBtn") as HTMLButtonElement;
+  const formError = document.getElementById("formError") as HTMLElement;
+
+  (async () => {
+    if (!isAuthConfigured()) {
+      formError.textContent = "Auth is not configured yet.";
+      formError.hidden = false;
+      return;
+    }
+    const profile = await getSessionProfile();
+    if (!profile) {
+      window.location.replace("/account/sign-in?next=/account/complete-profile");
+      return;
+    }
+    if (!profile.emailVerified) {
+      grantVerifyAccess(profile.email, profile.name);
+      window.location.replace("/account/verify-email");
+      return;
+    }
+    if (profile.profileComplete) {
+      window.location.replace("/account/profile");
+      return;
+    }
+    if (profile.studentNumber) studentEl.value = profile.studentNumber;
+    if (profile.enrollmentYear) yearEl.value = profile.enrollmentYear;
+    if (profile.department) deptEl.value = profile.department;
+  })();
+
+  function showErr(id: string, show: boolean) {
+    document.getElementById(id)?.classList.toggle("visible", show);
+  }
+
+  function validateAll(): boolean {
+    const studentOk = studentEl.value.trim().length > 0;
+    const yearOk = yearEl.value.trim().length > 0;
+    const deptOk = deptEl.value.trim().length > 0;
+    studentEl.classList.toggle("error", !studentOk);
+    yearEl.classList.toggle("error", !yearOk);
+    deptEl.classList.toggle("error", !deptOk);
+    showErr("studentError", !studentOk);
+    showErr("yearError", !yearOk);
+    showErr("deptError", !deptOk);
+    return studentOk && yearOk && deptOk;
+  }
+
+  laterBtn.addEventListener("click", async () => {
+    formError.hidden = true;
+    laterBtn.disabled = true;
+    try {
+      // Keep incomplete flag; save any partial values if present
+      await saveProfileDetails({
+        studentNumber: studentEl.value.trim(),
+        enrollmentYear: yearEl.value.trim(),
+        department: deptEl.value.trim(),
+        complete: false,
+      });
+      window.location.href = "/account/profile";
+    } catch (err) {
+      // Not signed in yet (verify later without session) — still allow visiting profile/sign-in
+      if ((err as { name?: string }).name === "UserUnAuthenticatedException") {
+        window.location.href = "/account/sign-in?next=/account/profile";
+        return;
+      }
+      formError.textContent = cognitoErrorMessage(err);
+      formError.hidden = false;
+      laterBtn.disabled = false;
+    }
+  });
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    formError.hidden = true;
+    if (!validateAll()) return;
+
+    submitBtn.classList.add("loading");
+    submitBtn.disabled = true;
+
+    try {
+      await saveProfileDetails({
+        studentNumber: studentEl.value.trim(),
+        enrollmentYear: yearEl.value.trim(),
+        department: deptEl.value.trim(),
+        complete: true,
+      });
+      window.location.href = "/account/profile";
+    } catch (err) {
+      formError.textContent = cognitoErrorMessage(err);
+      formError.hidden = false;
+    } finally {
+      submitBtn.classList.remove("loading");
+      submitBtn.disabled = false;
+    }
+  });
+</script>

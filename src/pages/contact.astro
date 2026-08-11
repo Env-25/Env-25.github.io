@@ -1,6 +1,9 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
+import { AUTH_CONFIG } from "../utils/auth-config";
 import "../styles/contact.css";
+
+const turnstileSiteKey = AUTH_CONFIG.turnstileSiteKey;
 ---
 
 <BaseLayout title="Contact — UBC CHBE">
@@ -124,12 +127,11 @@ import "../styles/contact.css";
             <p class="file-hint">Accepted: PDF, DOC, DOCX, PNG, JPG — max 10 MB</p>
           </div>
 
-          <!-- Cloudflare Turnstile 1x00000000000000000000AA 0x4AAAAAAEMqYwV0KpphnPTl-->
+          <!-- Cloudflare Turnstile (PUBLIC_TURNSTILE_SITE_KEY) -->
           <div class="form-field turnstile-wrap">
             <div
               class="cf-turnstile"
-              
-              data-sitekey="1x00000000000000000000AA"
+              data-sitekey={turnstileSiteKey}
               data-callback="onTurnstileVerified"
               data-expired-callback="onTurnstileExpired"
               data-error-callback="onTurnstileError"
@@ -234,7 +236,7 @@ import "../styles/contact.css";
   const EMAILJS_PUBLIC_KEY  = "YOUR_EMAILJS_PUBLIC_KEY";
   const EMAILJS_SERVICE_ID  = "YOUR_EMAILJS_SERVICE_ID";
   const EMAILJS_TEMPLATE_ID = "YOUR_EMAILJS_TEMPLATE_ID";
-  // Turnstile sitekey lives in the HTML data-sitekey attribute above
+  // Turnstile site key from PUBLIC_TURNSTILE_SITE_KEY (baked at build time)
   // ────────────────────────────────────────────────────────────────────────
 
   // ── ② Inquiry → recipient email map ─────────────────────────────────────

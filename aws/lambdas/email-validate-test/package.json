@@ -1,0 +1,11 @@
+{
+  "name": "chbe-email-validate-test",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@aws-sdk/client-sesv2": "^3.1108.0"
+  }
+}

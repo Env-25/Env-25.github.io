@@ -1,0 +1,129 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import "../../styles/auth.css";
+---
+
+<BaseLayout title="Subscriptions — UBC CHBE">
+  <section class="auth-hero">
+    <img src="/home/index-lower.jpg" alt="" class="auth-hero-bg" />
+    <div class="auth-hero-overlay"></div>
+    <div class="auth-hero-content">
+      <h1 class="auth-hero-title">Subscriptions</h1>
+      <p class="auth-hero-sub">Email preferences</p>
+    </div>
+  </section>
+
+  <section class="auth-section">
+    <div class="auth-shell">
+      <div id="gate" class="auth-status-panel" hidden>
+        <h2>Sign in required</h2>
+        <p>Please sign in to manage subscriptions.</p>
+        <a class="form-submit" href="/account/sign-in?next=/account/subscriptions" style="text-decoration:none;">
+          Sign in
+        </a>
+      </div>
+
+      <div id="unverified" class="auth-status-panel" hidden>
+        <h2>Verify your email</h2>
+        <p>Email updates require a verified address.</p>
+        <a class="form-submit" href="/account/verify-email" style="text-decoration:none;">Verify now</a>
+      </div>
+
+      <div id="subsContent" hidden>
+        <h2 class="auth-block-title">Email updates</h2>
+        <p class="auth-block-sub">Choose which announcements you want from CHBE Council.</p>
+
+        <form class="auth-form" id="subsForm">
+          <div class="form-check-stack">
+            <label class="form-check">
+              <input type="checkbox" id="subImportant" />
+              <span>Important announcements <span class="form-optional">(recommended)</span></span>
+            </label>
+            <label class="form-check">
+              <input type="checkbox" id="subGeneral" />
+              <span>General announcements</span>
+            </label>
+            <label class="form-check">
+              <input type="checkbox" id="subEvents" />
+              <span>Event updates</span>
+            </label>
+          </div>
+
+          <button type="submit" class="form-submit" id="saveBtn">
+            <span class="btn-label">Save preferences</span>
+            <span class="btn-spinner" aria-hidden="true"></span>
+          </button>
+
+          <p class="form-feedback form-feedback--success" id="formSuccess" hidden>
+            Preferences saved.
+          </p>
+          <p class="form-feedback form-feedback--error" id="formError" hidden></p>
+        </form>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  import {
+    getSessionProfile,
+    saveSubscriptionPrefs,
+    cognitoErrorMessage,
+    grantVerifyAccess,
+  } from "../../utils/auth";
+  import { isAuthConfigured } from "../../utils/auth-config";
+
+  const gate = document.getElementById("gate")!;
+  const unverified = document.getElementById("unverified")!;
+  const content = document.getElementById("subsContent")!;
+  const form = document.getElementById("subsForm") as HTMLFormElement;
+  const subImportant = document.getElementById("subImportant") as HTMLInputElement;
+  const subGeneral = document.getElementById("subGeneral") as HTMLInputElement;
+  const subEvents = document.getElementById("subEvents") as HTMLInputElement;
+  const saveBtn = document.getElementById("saveBtn") as HTMLButtonElement;
+  const formSuccess = document.getElementById("formSuccess") as HTMLElement;
+  const formError = document.getElementById("formError") as HTMLElement;
+
+  (async () => {
+    if (!isAuthConfigured()) {
+      gate.hidden = false;
+      return;
+    }
+    const profile = await getSessionProfile();
+    if (!profile) {
+      gate.hidden = false;
+      return;
+    }
+    if (!profile.emailVerified) {
+      grantVerifyAccess(profile.email, profile.name);
+      unverified.hidden = false;
+      return;
+    }
+    subImportant.checked = profile.subImportant;
+    subGeneral.checked = profile.subGeneral;
+    subEvents.checked = profile.subEvents;
+    content.hidden = false;
+  })();
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    formError.hidden = true;
+    formSuccess.hidden = true;
+    saveBtn.classList.add("loading");
+    saveBtn.disabled = true;
+    try {
+      await saveSubscriptionPrefs({
+        important: subImportant.checked,
+        general: subGeneral.checked,
+        events: subEvents.checked,
+      });
+      formSuccess.hidden = false;
+    } catch (err) {
+      formError.textContent = cognitoErrorMessage(err);
+      formError.hidden = false;
+    } finally {
+      saveBtn.classList.remove("loading");
+      saveBtn.disabled = false;
+    }
+  });
+</script>

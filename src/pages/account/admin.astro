@@ -1,0 +1,93 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import "../../styles/auth.css";
+---
+
+<BaseLayout title="Admin — UBC CHBE">
+  <section class="auth-hero">
+    <img src="/home/index-lower.jpg" alt="" class="auth-hero-bg" />
+    <div class="auth-hero-overlay"></div>
+    <div class="auth-hero-content">
+      <h1 class="auth-hero-title">Admin</h1>
+      <p class="auth-hero-sub">Council console</p>
+    </div>
+  </section>
+
+  <section class="auth-section">
+    <div class="auth-shell">
+      <div id="loading" class="auth-block-sub">Checking access…</div>
+
+      <div id="gate" class="auth-status-panel" hidden>
+        <h2>Sign in required</h2>
+        <p>Please sign in to continue.</p>
+        <a class="form-submit" href="/account/sign-in?next=/account/admin" style="text-decoration:none;">Sign in</a>
+      </div>
+
+      <div id="restricted" class="auth-status-panel" hidden>
+        <h2>Restricted access</h2>
+        <p>
+          This area is only available to website superusers. If you need access, contact a council
+          administrator.
+        </p>
+        <a class="form-submit" href="/" style="text-decoration:none;">Back to home</a>
+      </div>
+
+      <div id="mobileBlocked" class="auth-status-panel" hidden>
+        <h2>No mobile access</h2>
+        <p>Please access the admin console using a larger screen.</p>
+        <a class="form-submit" href="/account/profile" style="text-decoration:none;">Back to profile</a>
+      </div>
+
+      <div id="console" class="auth-status-panel admin-console-panel" hidden>
+        <h2>Admin console</h2>
+        <p>Coming soon. Superuser tools for events, merch, and site content will live here.</p>
+        <a class="form-submit" href="/account/profile" style="text-decoration:none;">Back to profile</a>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  import { getSessionProfile } from "../../utils/auth";
+  import { AUTH_CONFIG, isAuthConfigured } from "../../utils/auth-config";
+
+  const loading = document.getElementById("loading")!;
+  const gate = document.getElementById("gate")!;
+  const restricted = document.getElementById("restricted")!;
+  const mobileBlocked = document.getElementById("mobileBlocked")!;
+  const consolePanel = document.getElementById("console")!;
+
+  const MOBILE_MAX = 1050;
+
+  function isMobileViewport() {
+    return window.matchMedia(`(max-width: ${MOBILE_MAX}px)`).matches;
+  }
+
+  function showAdminForViewport() {
+    const mobile = isMobileViewport();
+    consolePanel.hidden = mobile;
+    mobileBlocked.hidden = !mobile;
+  }
+
+  (async () => {
+    if (!isAuthConfigured()) {
+      loading.hidden = true;
+      gate.hidden = false;
+      return;
+    }
+    const profile = await getSessionProfile({ forceRefresh: true });
+    loading.hidden = true;
+    if (!profile) {
+      gate.hidden = false;
+      return;
+    }
+    if (profile.isAdmin) {
+      showAdminForViewport();
+      window.addEventListener("resize", showAdminForViewport, { passive: true });
+    } else {
+      restricted.querySelector("p")!.textContent =
+        `This area is only available to members of the Cognito group “${AUTH_CONFIG.adminGroup}”. If you need access, ask an administrator to add you to that group.`;
+      restricted.hidden = false;
+    }
+  })();
+</script>

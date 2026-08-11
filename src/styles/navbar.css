@@ -124,6 +124,65 @@
   top: -1px;
 }
 
+.account-caret {
+  flex-shrink: 0;
+  opacity: 0.85;
+  transition: transform 0.2s ease;
+}
+.nav-account-wrap.menu-open .account-caret {
+  transform: rotate(180deg);
+}
+
+/* ── Account dropdown ── */
+.nav-account-wrap {
+  position: relative;
+}
+
+.nav-account-menu {
+  position: absolute;
+  top: calc(100% + 0.55rem);
+  right: 0;
+  min-width: 190px;
+  padding: 0.4rem 0;
+  background: #fff;
+  border: 1.5px solid rgba(58, 75, 74, 0.15);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
+  z-index: 1200;
+}
+
+.nav-account-menu a,
+.nav-account-menu button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.7rem 1rem;
+  font-family: "Telegraf", sans-serif;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--clr-dark-teal);
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s;
+}
+
+.nav-account-menu a:hover,
+.nav-account-menu button:hover {
+  background: rgba(58, 75, 74, 0.06);
+}
+
+/* Keep dropdown label color (don't inherit .nav-links a:hover white) */
+.nav-links .nav-account-menu a:hover {
+  color: var(--clr-dark-teal);
+}
+
+.nav-account-menu button {
+  border-top: 1px solid rgba(58, 75, 74, 0.1);
+  color: #a83232;
+}
 
 /* ── Disabled ── */
 .disabled {
@@ -216,10 +275,16 @@
 .mobile-link:active     { color: #fff; background: rgba(255, 255, 255, 0.05); }
 
 
-/* ── Mobile Sign In pill — fixed width, centered ── */
+/* ── Mobile account ── */
+.mobile-account-area {
+  display: flex;
+  flex-direction: column;
+  margin-top: 0.5rem;
+}
+
 .mobile-account {
-  align-self: center;           /* ← stops it stretching full width */
-  width: fit-content;           /* ← shrinks to content */
+  align-self: center;
+  width: fit-content;
   margin-top: 1.25rem;
   margin-bottom: 0.5rem;
   justify-content: center;
@@ -227,7 +292,6 @@
   border-radius: 999px;
   padding: 0.65rem 1.75rem;
   color: rgba(255, 255, 255, 0.7);
-  /* override the full-width border-bottom from .mobile-link */
   border-bottom: 1.5px solid rgba(255, 255, 255, 0.2) !important;
 }
 
@@ -236,6 +300,42 @@
   background: rgba(255, 255, 255, 0.07);
   border-color: rgba(255, 255, 255, 0.4) !important;
   color: #fff;
+}
+
+.mobile-account.is-authed {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.45) !important;
+}
+
+.mobile-account-links {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  margin-top: 0.35rem;
+}
+
+.mobile-account-links[hidden],
+.mobile-account-links.auth-hidden {
+  display: none !important;
+}
+
+.mobile-account-area.is-authed .mobile-account {
+  margin-bottom: 0.75rem;
+}
+
+.mobile-logout {
+  width: 100%;
+  background: none;
+  border: none;
+  border-bottom: none;
+  cursor: pointer;
+  color: #f0a8a8;
+  text-align: left;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
 }
 
 
