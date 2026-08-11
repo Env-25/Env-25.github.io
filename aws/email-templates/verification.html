@@ -1,0 +1,132 @@
+<!--
+  Cognito Verification Email (Code)
+  ─────────────────────────────────
+  Paste into Cognito → User pool → Messaging → Message templates
+  → Verification message → Email message
+
+  Requirements:
+  - Must include {####} (replaced with the verification code)
+  - Verification type: Code
+  - Max length: 20,000 characters
+
+  Suggested subject:
+  Verify your CHBE Council account
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light" />
+  <title>Verify your email</title>
+</head>
+<body style="margin:0;padding:0;background-color:#fdf9ef;-webkit-text-size-adjust:100%;">
+  <!-- Preheader (inbox preview) -->
+  <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">
+    Your CHBE Council verification code.
+  </div>
+
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#fdf9ef;">
+    <tr>
+      <td align="center" style="padding:32px 16px;">
+
+        <!-- Card -->
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width:560px;background-color:#ffffff;border:1px solid rgba(58,75,74,0.15);">
+
+          <!-- Header / logo -->
+          <tr>
+            <td align="center" style="background-color:#3a4b4a;padding:28px 24px 24px;">
+              <a href="https://ubcchbecouncil.com" target="_blank" rel="noopener" style="text-decoration:none;">
+                <img
+                  src="https://ubcchbecouncil.com/logos/logo-text-white.png"
+                  alt="CHBE"
+                  width="168"
+                  style="display:block;width:168px;max-width:70%;height:auto;border:0;outline:none;text-decoration:none;"
+                />
+              </a>
+              <p style="margin:14px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:rgba(253,249,239,0.65);">
+                UBC CHBE Council
+              </p>
+            </td>
+          </tr>
+
+          <!-- Accent bar -->
+          <tr>
+            <td style="height:4px;background-color:#72a691;font-size:0;line-height:0;">&nbsp;</td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding:36px 32px 16px;font-family:Arial,Helvetica,sans-serif;color:#3a4b4a;">
+              <h1 style="margin:0 0 12px;font-family:Georgia,'Times New Roman',serif;font-size:26px;font-weight:700;line-height:1.25;color:#3a4b4a;">
+                Verify your email
+              </h1>
+              <p style="margin:0 0 18px;font-size:15px;line-height:1.6;color:rgba(58,75,74,0.8);">
+                Thanks for joining the CHBE Council community. Enter this code on the website to confirm your email address.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Code block -->
+          <tr>
+            <td align="center" style="padding:8px 32px 24px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#fdf9ef;border:1.5px solid rgba(58,75,74,0.18);">
+                <tr>
+                  <td align="center" style="padding:22px 16px;">
+                    <p style="margin:0 0 8px;font-family:Arial,Helvetica,sans-serif;font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:rgba(58,75,74,0.55);">
+                      Verification code
+                    </p>
+                    <p style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:36px;font-weight:700;letter-spacing:0.28em;color:#3a4b4a;line-height:1.2;">
+                      {####}
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Helper copy -->
+          <tr>
+            <td style="padding:0 32px 28px;font-family:Arial,Helvetica,sans-serif;color:#3a4b4a;">
+              <p style="margin:0 0 14px;font-size:14px;line-height:1.6;color:rgba(58,75,74,0.75);">
+                This code expires soon. If you didn’t create a CHBE Council account, you can ignore this email.
+              </p>
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td style="background-color:#3a4b4a;">
+                    <a
+                      href="https://ubcchbecouncil.com/account/verify-email"
+                      target="_blank"
+                      rel="noopener"
+                      style="display:inline-block;padding:14px 22px;font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#fdf9ef;text-decoration:none;"
+                    >
+                      Open verification page
+                    </a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color:#f7f3e8;border-top:1px solid rgba(58,75,74,0.12);padding:20px 32px;">
+              <p style="margin:0 0 6px;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.5;color:rgba(58,75,74,0.65);">
+                UBC Chemical &amp; Biological Engineering Student Council
+              </p>
+              <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.5;">
+                <a href="https://ubcchbecouncil.com" target="_blank" rel="noopener" style="color:#4a8550;text-decoration:underline;">ubcchbecouncil.com</a>
+              </p>
+            </td>
+          </tr>
+        </table>
+
+        <p style="margin:18px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:11px;line-height:1.5;color:rgba(58,75,74,0.45);max-width:560px;">
+          You’re receiving this because an account was created with this email on the CHBE Council website.
+        </p>
+
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

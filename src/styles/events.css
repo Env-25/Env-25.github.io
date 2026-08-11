@@ -314,6 +314,10 @@
   max-width: 1200px;
   margin: 0 auto;
   overflow: hidden;
+  /* Keep Add to Calendar left border from being clipped by overflow */
+  padding-left: 0.5rem;
+  padding-right: 0.25rem;
+  box-sizing: border-box;
 }
 
 .carousel-track {
@@ -553,9 +557,9 @@
   font-weight: 700;
   letter-spacing: 0.15em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.5);
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.35);
   padding: 0 1.25rem;
   min-width: 220px;
   height: 42px;
@@ -563,6 +567,102 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+.events-action-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.55);
+  color: #fff;
+}
+.events-action-btn:disabled {
+  color: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.2);
+  cursor: not-allowed;
+}
+.events-action-btn.is-subscribed {
+  border-color: rgba(160, 220, 180, 0.55);
+  color: rgba(200, 255, 220, 0.95);
+}
+
+/* Subscribe confirm modal */
+.events-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+.events-modal.open {
+  display: flex;
+}
+.events-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(20, 30, 30, 0.55);
+}
+.events-modal-panel {
+  position: relative;
+  z-index: 1;
+  width: min(420px, 100%);
+  background: var(--clr-cream);
+  border: 1.5px solid rgba(58, 75, 74, 0.2);
+  padding: 1.75rem 1.5rem 1.5rem;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.25);
+}
+.events-modal-panel h2 {
+  font-family: "RocaTwo-Bl", sans-serif;
+  font-size: 1.25rem;
+  color: var(--clr-dark-teal);
+  margin: 0 0 0.65rem;
+}
+.events-modal-panel p {
+  font-family: "Telegraf", sans-serif;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: rgba(58, 75, 74, 0.75);
+  margin: 0 0 1.35rem;
+}
+.events-modal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+.events-modal-btn {
+  font-family: "Telegraf", sans-serif;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  height: 44px;
+  padding: 0 1.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: 1.5px solid transparent;
+}
+.events-modal-btn--primary {
+  background: var(--clr-dark-teal);
+  color: var(--clr-cream);
+  border-color: var(--clr-dark-teal);
+}
+.events-modal-btn--primary:hover {
+  background: #2f3d3c;
+}
+.events-modal-btn--secondary {
+  background: transparent;
+  color: var(--clr-dark-teal);
+  border-color: rgba(58, 75, 74, 0.35);
+}
+.events-modal-btn--secondary:hover {
+  background: rgba(58, 75, 74, 0.06);
+}
+.events-modal-btn:disabled {
+  opacity: 0.45;
   cursor: not-allowed;
 }
 /* ─────────────────────────────────────────────

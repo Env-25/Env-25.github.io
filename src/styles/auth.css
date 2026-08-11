@@ -262,6 +262,36 @@
   gap: 0.75rem;
   align-items: center;
 }
+
+.auth-step {
+  flex-direction: column;
+  gap: 1.25rem;
+}
+.auth-step:not([hidden]):not(.auth-hidden) {
+  display: flex;
+}
+
+.form-forgot {
+  margin: -0.35rem 0 0;
+  font-family: "Telegraf", sans-serif;
+  font-size: 0.8rem;
+}
+.form-forgot a {
+  color: var(--clr-teal);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.form-forgot a:hover {
+  opacity: 0.75;
+}
+
+.profile-security {
+  margin-top: 0.5rem;
+  padding-top: 1.5rem;
+  border-top: 1.5px solid rgba(58, 75, 74, 0.12);
+}
+
 .form-secondary {
   display: inline-flex;
   align-items: center;
@@ -277,6 +307,7 @@
   color: var(--clr-dark-teal);
   border: 1.5px solid rgba(58, 75, 74, 0.35);
   cursor: pointer;
+  text-decoration: none;
   transition: background 0.2s, border-color 0.2s;
 }
 .form-secondary:hover:not(:disabled) {
@@ -401,7 +432,6 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
-  margin-top: 0.5rem;
 }
 
 /* Admin / status panels */

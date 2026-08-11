@@ -38,6 +38,10 @@ const calEventsData = sorted.map((e) => ({
   time: e.Time,
   slug: e.slug,
 }));
+
+const upcomingCalLinks = upcoming
+  .map((e) => (e.CalendarLink || "").trim())
+  .filter(Boolean);
 ---
 <BaseLayout title="Events — UBC CHBE">
 
@@ -49,10 +53,16 @@ const calEventsData = sorted.map((e) => ({
       <h1 class="events-hero-title">CHBE Events</h1>
       <p class="events-hero-tagline">Your community, your calendar</p>
       <div class="events-hero-actions">
-        <button class="events-action-btn" disabled title="Coming soon">
+        <button
+          type="button"
+          class="events-action-btn"
+          id="addAllCalBtn"
+          disabled={upcomingCalLinks.length === 0}
+          title={upcomingCalLinks.length === 0 ? "No upcoming calendar links" : "Add upcoming events to your calendar"}
+        >
           + Add all to Calendar
         </button>
-        <button class="events-action-btn" disabled title="Coming soon">
+        <button type="button" class="events-action-btn" id="subscribeEventsBtn">
           ✉ Subscribe to Email Updates
         </button>
       </div>
@@ -201,9 +211,19 @@ const calEventsData = sorted.map((e) => ({
     </>
   )}
 
+  <!-- Event email subscribe modal -->
+  <div class="events-modal" id="eventsSubModal" aria-hidden="true" role="dialog" aria-labelledby="eventsSubModalTitle">
+    <div class="events-modal-backdrop" id="eventsSubModalBackdrop"></div>
+    <div class="events-modal-panel">
+      <h2 id="eventsSubModalTitle">Event notifications</h2>
+      <p id="eventsSubModalBody">Loading…</p>
+      <div class="events-modal-actions" id="eventsSubModalActions"></div>
+    </div>
+  </div>
+
 </BaseLayout>
 
-<script define:vars={{ calEventsData, spotlightIndex }}>
+<script define:vars={{ calEventsData, spotlightIndex, upcomingCalLinks }}>
   // ── Carousel ────────────────────────────────────────────────────────────
   const viewport = document.getElementById("carouselViewport");
   const track    = document.getElementById("carouselTrack");
@@ -223,7 +243,9 @@ const calEventsData = sorted.map((e) => ({
     function render() {
       const vis   = visibleCount();
       const gap   = parseFloat(getComputedStyle(track).columnGap) || 32;
-      const vpW   = viewport.offsetWidth;
+      const cs    = getComputedStyle(viewport);
+      const pad   = (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0);
+      const vpW   = viewport.clientWidth - pad;
       const cardW = (vpW - gap * (vis - 1)) / vis;
       const max   = Math.max(0, cards.length - vis);
 
@@ -258,6 +280,17 @@ const calEventsData = sorted.map((e) => ({
     window.addEventListener("resize", render);
     render();
   }
+
+  // ── Add all upcoming calendar links ─────────────────────────────────────
+  const addAllCalBtn = document.getElementById("addAllCalBtn");
+  addAllCalBtn?.addEventListener("click", () => {
+    const links = Array.isArray(upcomingCalLinks) ? upcomingCalLinks : [];
+    if (!links.length) return;
+    // Open each upcoming invite link (same-tick opens avoid most popup blockers)
+    links.forEach((url) => {
+      window.open(url, "_blank", "noopener,noreferrer");
+    });
+  });
 
   // ── Calendar ────────────────────────────────────────────────────────────
   const calGrid   = document.getElementById("calGrid");
@@ -345,4 +378,185 @@ const calEventsData = sorted.map((e) => ({
 
     build();
   }
+</script>
+
+<script>
+  import {
+    getSessionProfile,
+    saveSubscriptionPrefs,
+    cognitoErrorMessage,
+  } from "../../utils/auth";
+  import { isAuthConfigured } from "../../utils/auth-config";
+
+  const subscribeBtn = document.getElementById("subscribeEventsBtn") as HTMLButtonElement | null;
+  const modal = document.getElementById("eventsSubModal") as HTMLElement | null;
+  const backdrop = document.getElementById("eventsSubModalBackdrop") as HTMLElement | null;
+  const titleEl = document.getElementById("eventsSubModalTitle") as HTMLElement | null;
+  const bodyEl = document.getElementById("eventsSubModalBody") as HTMLElement | null;
+  const actionsEl = document.getElementById("eventsSubModalActions") as HTMLElement | null;
+
+  let subscribed = false;
+  let busy = false;
+
+  function setSubscribeLabel() {
+    if (!subscribeBtn) return;
+    if (subscribed) {
+      subscribeBtn.textContent = "✉ Subscribed to email notifications";
+      subscribeBtn.classList.add("is-subscribed");
+    } else {
+      subscribeBtn.textContent = "✉ Subscribe to Email Updates";
+      subscribeBtn.classList.remove("is-subscribed");
+    }
+  }
+
+  function closeModal() {
+    if (!modal) return;
+    modal.classList.remove("open");
+    modal.setAttribute("aria-hidden", "true");
+    document.body.style.overflow = "";
+  }
+
+  function openModal(opts: {
+    title: string;
+    body: string;
+    actions: { label: string; primary?: boolean; onClick: () => void | Promise<void> }[];
+  }) {
+    if (!modal || !titleEl || !bodyEl || !actionsEl) return;
+    titleEl.textContent = opts.title;
+    bodyEl.textContent = opts.body;
+    actionsEl.innerHTML = "";
+    opts.actions.forEach((action) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = `events-modal-btn ${
+        action.primary ? "events-modal-btn--primary" : "events-modal-btn--secondary"
+      }`;
+      btn.textContent = action.label;
+      btn.addEventListener("click", async () => {
+        if (busy) return;
+        busy = true;
+        btn.disabled = true;
+        try {
+          await action.onClick();
+        } finally {
+          busy = false;
+        }
+      });
+      actionsEl.appendChild(btn);
+    });
+    modal.classList.add("open");
+    modal.setAttribute("aria-hidden", "false");
+    document.body.style.overflow = "hidden";
+  }
+
+  async function refreshSubscribeState() {
+    if (!subscribeBtn) return;
+    if (!isAuthConfigured()) {
+      subscribed = false;
+      setSubscribeLabel();
+      return;
+    }
+    try {
+      const profile = await getSessionProfile();
+      subscribed = Boolean(profile?.subEvents);
+    } catch {
+      subscribed = false;
+    }
+    setSubscribeLabel();
+  }
+
+  backdrop?.addEventListener("click", () => closeModal());
+
+  subscribeBtn?.addEventListener("click", async () => {
+    if (!isAuthConfigured()) {
+      window.location.href = "/account/sign-in?next=/events";
+      return;
+    }
+
+    const profile = await getSessionProfile();
+    if (!profile) {
+      window.location.href = "/account/sign-in?next=/events";
+      return;
+    }
+    if (!profile.emailVerified) {
+      window.location.href = "/account/verify-email";
+      return;
+    }
+
+    subscribed = Boolean(profile.subEvents);
+    setSubscribeLabel();
+
+    if (subscribed) {
+      openModal({
+        title: "Unsubscribe?",
+        body: "Stop receiving event email notifications?",
+        actions: [
+          {
+            label: "Cancel",
+            onClick: () => closeModal(),
+          },
+          {
+            label: "Unsubscribe",
+            primary: true,
+            onClick: async () => {
+              try {
+                await saveSubscriptionPrefs({
+                  important: profile.subImportant,
+                  general: profile.subGeneral,
+                  events: false,
+                });
+                subscribed = false;
+                setSubscribeLabel();
+                closeModal();
+              } catch (err) {
+                if (bodyEl) bodyEl.textContent = cognitoErrorMessage(err);
+              }
+            },
+          },
+        ],
+      });
+      return;
+    }
+
+    openModal({
+      title: "Add event notifications?",
+      body: "Get emails about upcoming CHBE events.",
+      actions: [
+        {
+          label: "Cancel",
+          onClick: () => closeModal(),
+        },
+        {
+          label: "Subscribe",
+          primary: true,
+          onClick: async () => {
+            try {
+              await saveSubscriptionPrefs({
+                important: profile.subImportant,
+                general: profile.subGeneral,
+                events: true,
+              });
+              subscribed = true;
+              setSubscribeLabel();
+              openModal({
+                title: "You’re subscribed",
+                body: "Added to the event notification list.",
+                actions: [
+                  {
+                    label: "Close",
+                    primary: true,
+                    onClick: () => closeModal(),
+                  },
+                ],
+              });
+            } catch (err) {
+              if (bodyEl) bodyEl.textContent = cognitoErrorMessage(err);
+            }
+          },
+        },
+      ],
+    });
+  });
+
+  void refreshSubscribeState();
 </script>

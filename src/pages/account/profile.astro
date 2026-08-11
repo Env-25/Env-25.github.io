@@ -101,16 +101,22 @@ const years = Array.from({ length: 12 }, (_, i) => String(currentYear - i));
             </label>
             <label class="form-check">
               <input type="checkbox" id="subEvents" disabled />
-              <span>Event updates</span>
+              <span>Event notifications</span>
             </label>
           </div>
 
-          <div class="profile-actions">
+          <div class="profile-actions" id="profileEditActions" hidden>
             <button type="submit" class="form-submit" id="saveBtn" hidden>
               <span class="btn-label">Save changes</span>
               <span class="btn-spinner" aria-hidden="true"></span>
             </button>
             <button type="button" class="form-secondary" id="cancelEditBtn" hidden>Cancel</button>
+          </div>
+
+          <div class="profile-security">
+            <a class="form-secondary" id="resetPasswordLink" href="/account/reset-password">
+              Reset password
+            </a>
           </div>
 
           <p class="form-feedback form-feedback--success" id="formSuccess" hidden></p>
@@ -198,6 +204,7 @@ const years = Array.from({ length: 12 }, (_, i) => String(currentYear - i));
   const editPrefsBtn = document.getElementById("editPrefsBtn") as HTMLButtonElement;
   const saveBtn = document.getElementById("saveBtn") as HTMLButtonElement;
   const cancelEditBtn = document.getElementById("cancelEditBtn") as HTMLButtonElement;
+  const profileEditActions = document.getElementById("profileEditActions") as HTMLElement;
   const formSuccess = document.getElementById("formSuccess") as HTMLElement;
   const formError = document.getElementById("formError") as HTMLElement;
 
@@ -239,11 +246,13 @@ const years = Array.from({ length: 12 }, (_, i) => String(currentYear - i));
     emailEl.disabled = true;
     saveBtn.hidden = true;
     cancelEditBtn.hidden = true;
+    profileEditActions.hidden = true;
   }
 
   function showSaveBar() {
     saveBtn.hidden = false;
     cancelEditBtn.hidden = false;
+    profileEditActions.hidden = false;
   }
 
   function takeSnapshot() {
@@ -342,6 +351,10 @@ const years = Array.from({ length: 12 }, (_, i) => String(currentYear - i));
       return;
     }
     fillForm(profile);
+    const resetLink = document.getElementById("resetPasswordLink") as HTMLAnchorElement | null;
+    if (resetLink && profile.email) {
+      resetLink.href = `/account/reset-password?email=${encodeURIComponent(profile.email)}`;
+    }
     loadingEl.hidden = true;
     contentEl.hidden = false;
   })();

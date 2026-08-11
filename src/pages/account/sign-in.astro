@@ -1,9 +1,30 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
+import { AUTH_CONFIG } from "../../utils/auth-config";
 import "../../styles/auth.css";
+
+const turnstileSiteKey = AUTH_CONFIG.turnstileSiteKey;
 ---
 
 <BaseLayout title="Sign In — UBC CHBE">
+  <script is:inline>
+    window.__chbeTurnstileToken = null;
+    window.onTurnstileVerified = function (token) {
+      window.__chbeTurnstileToken = token;
+      var err = document.getElementById("captchaError");
+      if (err) err.classList.remove("visible");
+    };
+    window.onTurnstileExpired = function () {
+      window.__chbeTurnstileToken = null;
+    };
+    window.onTurnstileError = function () {
+      window.__chbeTurnstileToken = null;
+      var err = document.getElementById("captchaError");
+      if (err) err.classList.add("visible");
+    };
+  </script>
+  <script is:inline src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+
   <section class="auth-hero">
     <img src="/home/index-lower.jpg" alt="" class="auth-hero-bg" />
     <div class="auth-hero-overlay"></div>
@@ -49,6 +70,22 @@ import "../../styles/auth.css";
           <p class="field-error" id="passwordError">Please enter your password.</p>
         </div>
 
+        <p class="form-forgot">
+          <a href="/account/reset-password" id="forgotPasswordLink">Forgot password?</a>
+        </p>
+
+        <div class="form-field turnstile-wrap">
+          <div
+            class="cf-turnstile"
+            data-sitekey={turnstileSiteKey}
+            data-callback="onTurnstileVerified"
+            data-expired-callback="onTurnstileExpired"
+            data-error-callback="onTurnstileError"
+            data-theme="light"
+          ></div>
+          <p class="field-error" id="captchaError">Please complete the CAPTCHA verification.</p>
+        </div>
+
         <button type="submit" class="form-submit" id="submitBtn">
           <span class="btn-label">Sign in</span>
           <span class="btn-spinner" aria-hidden="true"></span>
@@ -78,6 +115,17 @@ import "../../styles/auth.css";
   const passwordEl = document.getElementById("signInPassword") as HTMLInputElement;
   const submitBtn = document.getElementById("submitBtn") as HTMLButtonElement;
   const formError = document.getElementById("formError") as HTMLElement;
+  const captchaError = document.getElementById("captchaError") as HTMLElement;
+  const forgotLink = document.getElementById("forgotPasswordLink") as HTMLAnchorElement;
+
+  function syncForgotLink() {
+    const email = emailEl.value.trim();
+    forgotLink.href = email
+      ? `/account/reset-password?email=${encodeURIComponent(email)}`
+      : "/account/reset-password";
+  }
+  emailEl.addEventListener("input", syncForgotLink);
+  syncForgotLink();
 
   // If already signed in, send to profile / onboarding
   (async () => {
@@ -125,6 +173,7 @@ import "../../styles/auth.css";
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     formError.hidden = true;
+    captchaError.classList.remove("visible");
 
     if (!isAuthConfigured()) {
       formError.textContent =
@@ -133,7 +182,10 @@ import "../../styles/auth.css";
       return;
     }
 
-    if (![validateEmail(), validatePassword()].every(Boolean)) return;
+    const fieldsOk = [validateEmail(), validatePassword()].every(Boolean);
+    const turnstileToken = (window as any).__chbeTurnstileToken || null;
+    if (!turnstileToken) captchaError.classList.add("visible");
+    if (!fieldsOk || !turnstileToken) return;
 
     submitBtn.classList.add("loading");
     submitBtn.disabled = true;
@@ -177,6 +229,8 @@ import "../../styles/auth.css";
       console.error("Sign-in error:", err);
       formError.textContent = cognitoErrorMessage(err);
       formError.hidden = false;
+      (window as any).__chbeTurnstileToken = null;
+      (window as any).turnstile?.reset?.();
     } finally {
       submitBtn.classList.remove("loading");
       submitBtn.disabled = false;

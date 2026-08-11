@@ -9,6 +9,8 @@ import {
   signOut,
   confirmSignUp,
   resendSignUpCode,
+  resetPassword,
+  confirmResetPassword,
   getCurrentUser,
   fetchAuthSession,
   fetchUserAttributes,
@@ -93,8 +95,8 @@ export async function getSessionProfile(options?: {
       department: attr(record, "department"),
       profileComplete: asBool(attr(record, "profile_complete")),
       subImportant: asBool(attr(record, "sub_important"), true),
-      subGeneral: asBool(attr(record, "sub_general")),
-      subEvents: asBool(attr(record, "sub_events")),
+      subGeneral: asBool(attr(record, "sub_general"), true),
+      subEvents: asBool(attr(record, "sub_events"), true),
       emailChangedAt: attr(record, "email_changed_at"),
       isAdmin: groups.includes(AUTH_CONFIG.adminGroup),
     };
@@ -126,8 +128,8 @@ export async function registerUser(input: SignUpInput) {
         name: input.name.trim(),
         "custom:profile_complete": "false",
         "custom:sub_important": "true",
-        "custom:sub_general": "false",
-        "custom:sub_events": "false",
+        "custom:sub_general": "true",
+        "custom:sub_events": "true",
       },
       autoSignIn: true,
     },
@@ -215,6 +217,26 @@ export async function resendConfirmation(email: string) {
   }
   await resendSignUpCode({ username: email.toLowerCase().trim() });
   return { mode: "signup" as const };
+}
+
+/** Send a Cognito forgot-password code to the email. */
+export async function requestPasswordReset(email: string) {
+  ensureAmplify();
+  return resetPassword({ username: email.toLowerCase().trim() });
+}
+
+/** Confirm forgot-password with code + new password. */
+export async function confirmPasswordReset(
+  email: string,
+  code: string,
+  newPassword: string
+) {
+  ensureAmplify();
+  return confirmResetPassword({
+    username: email.toLowerCase().trim(),
+    confirmationCode: code.trim(),
+    newPassword,
+  });
 }
 
 export async function loginUser(email: string, password: string) {
@@ -524,8 +546,8 @@ export async function correctSignupEmail(input: {
           name: input.name.trim() || "Member",
           "custom:profile_complete": "false",
           "custom:sub_important": "true",
-          "custom:sub_general": "false",
-          "custom:sub_events": "false",
+          "custom:sub_general": "true",
+          "custom:sub_events": "true",
         },
         autoSignIn: true,
       },

@@ -11,6 +11,7 @@ export default defineConfig({
     '/orders': '/account/orders',
     '/subscriptions': '/account/subscriptions',
     '/admin': '/account/admin',
+    '/reset-password': '/account/reset-password',
   },
   server: {
     host: '0.0.0.0',
