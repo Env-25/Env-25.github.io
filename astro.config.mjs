@@ -14,6 +14,7 @@ export default defineConfig({
         'elwood-unimagined-tasha.ngrok-free.dev',
         'localhost',
         'chbe-site.akshajs.org',
+        'ubcchbecouncil.com',
       ]
     }
   }
