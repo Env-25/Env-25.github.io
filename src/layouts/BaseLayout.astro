@@ -2,12 +2,17 @@
 import "../styles/global.css";
 import Navbar from "../components/Navbar.astro";
 import Footer from "../components/Footer.astro";
+import NoticeBar from "../components/NoticeBar.astro";
 
 export interface Props {
   title: string;
   hideNav?: boolean;
+  hideFooter?: boolean;
+  /** Pass a string to show the notice bar above the navbar. Omit or comment out to hide. */
+  notice?: string;
 }
-const { title, hideNav = false } = Astro.props;
+const { title, hideNav = false, hideFooter = false, notice } = Astro.props;
+const showNotice = Boolean(notice) || Astro.slots.has("notice");
 ---
 <!DOCTYPE html>
 <html lang="en">
@@ -22,11 +27,16 @@ const { title, hideNav = false } = Astro.props;
     <link rel="preload" href="/fonts/Telegraf-UltraBold.otf" as="font" type="font/otf" crossorigin />
     <title>{title}</title>
   </head>
-  <body>
+  <body class:list={[{ "has-notice": showNotice }]}>
+    {notice ? (
+      <NoticeBar message={notice} />
+    ) : (
+      <slot name="notice" />
+    )}
     {!hideNav && <Navbar />}
     <main>
       <slot />
     </main>
-    <Footer />
+    {!hideFooter && <Footer />}
   </body>
 </html>

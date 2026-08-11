@@ -1,119 +1,37 @@
 ---
+/**
+ * Down-for-maintenance page.
+ *
+ * To take the site offline temporarily:
+ *   1. Rename src/pages/index.astro → src/pages/index.offline.astro
+ *   2. Rename this file → src/pages/index.astro
+ *
+ * To bring the site back:
+ *   1. Rename index.astro → maintenance.astro
+ *   2. Rename index.offline.astro → index.astro
+ */
 import BaseLayout from "../layouts/BaseLayout.astro";
-import "../styles/home.css";
+import "../styles/status.css";
 ---
-<BaseLayout title="UBC CHBE Council">
 
-  <div class="notice-bar" role="status" aria-live="polite">
-    <div class="notice-bar-inner">
-      Website will be under maintenance from X to Y. Expected downtime: Z minutes.
-    </div>
-  </div>
-  
-  <!-- ── Hero ── -->
-  <section class="hero">
-    <img src="/home/index-lower.jpg" alt="Chemical plant" class="hero-bg" />
-    <div class="hero-overlay"></div>
-    <div class="hero-content">
-      <img src="/logos/logo-text-1915.png" alt="UBC CHBE Council Logo" class="hero-logo" />
-      <div class="hero-divider"></div>
-      <p class="hero-title">
-        <span>UBC</span>
-        <span>CHBE</span>
-        <span>Council</span>
+<BaseLayout title="Under Maintenance — UBC CHBE" hideNav hideFooter>
+  <section class="status-page">
+    <img src="/home/index-lower.jpg" alt="" class="status-page-bg" />
+    <div class="status-page-overlay"></div>
+
+    <div class="status-page-content">
+      <img src="/logos/logo-text-1915.png" alt="UBC CHBE Council" class="status-logo" />
+      <p class="status-eyebrow">Please stand by</p>
+      <h1 class="status-title">Down for Maintenance</h1>
+      <p class="status-text">
+        We’re performing scheduled updates to improve the CHBE Council website.
+        Thanks for your patience — we’ll be back shortly.
       </p>
-    </div>
-    <div class="scroll-indicator">
-      <span class="scroll-label">Scroll</span>
-      <div class="scroll-chevrons">
-        <span></span>
-        <span></span>
-        <span></span>
+      <p class="status-meta">Expected downtime: till 22-28 August</p>
+      <div class="status-actions">
+        <a href="mailto:chbevpinternal@gmail.com" class="status-btn">Contact Us</a>
+        <a href="/" class="status-btn primary">Try Again</a>
       </div>
     </div>
   </section>
-
-  <!-- Section 1: Who We Are — img LEFT | text RIGHT -->
-  <section class="content-section">
-    <div class="section-media">
-      <div class="section-img-placeholder">
-        <img src="/home/about_us.jpg" alt="Image of UBC CHBE Building" class="section-img" />
-      </div>
-    </div>
-    <div class="section-text light">
-      <span class="section-eyebrow">About Us</span>
-      <h2>Who We Are</h2>
-      <p>The UBC Chemical and Biological Engineering (CHBE) Council is the official undergraduate student council of the CHBE department at the University of British Columbia.</p>
-      <p>We represent, support, and advocate for students — bridging the gap between peers, faculty, and industry while building a tight-knit engineering community.</p>
-    </div>
-  </section>
-
-  <!-- Section 2: Our Mission — text LEFT | img RIGHT -->
-  <section class="content-section reverse">
-    <div class="section-media">
-      <div class="section-img-placeholder">
-        <img src="/home/section2.jpg" alt="UBC CHBE presentation" class="section-img" />
-      </div>
-    </div>
-    <div class="section-text dark">
-      <span class="section-eyebrow">Purpose</span>
-      <h2>Our Mission</h2>
-      <p>We exist to elevate the CHBE student experience through professional development, academic support, social connection, and industry engagement.</p>
-      <p>From first-year orientation to fourth-year graduation, we are here every step of the way — ensuring every student feels informed, supported, and proud to be a CHBE engineer.</p>
-    </div>
-  </section>
-
-  <!-- Section 3: History — img LEFT | text RIGHT -->
-  <section class="content-section">
-    <div class="section-media">
-      <div class="section-img-placeholder">
-        <img src="/home/century-of-excellence.png" alt="CHBE Research Day award winners group photo" class="section-img" />
-      </div>
-    </div>
-    <div class="section-text light">
-      <span class="section-eyebrow">Est. 1915</span>
-      <h2>A Century of Excellence</h2>
-      <p>Since 1915, UBC's chemical engineering program has stood at the forefront of innovation in Canada. The CHBE Council carries that legacy forward — connecting generations of students through shared purpose and a drive to engineer a better world.</p>
-      <p>Our alumni lead in industries spanning energy transition, pharmaceuticals, biotechnology, and environmental remediation worldwide.</p>
-    </div>
-  </section>
-
-  <!-- Section 4: Events — text LEFT | img RIGHT -->
-  <section class="content-section reverse">
-    <div class="section-media">
-      <div class="section-img-placeholder">
-        <img src="/home/event.jpg" alt="Image of UBC Engineering Industry talk" class="section-img" />
-      </div>
-    </div>
-    <div class="section-text dark">
-      <span class="section-eyebrow">What We Do</span>
-      <h2>Events &amp; Initiatives</h2>
-      <p>We run a full slate of events throughout the year — something for every CHBE student, whether you're chasing career leads or just looking for community.</p>
-      <ul>
-        <li>Industry Networking Nights</li>
-        <li>Plant &amp; Facility Tours</li>
-        <li>Academic Help Sessions &amp; Tutoring</li>
-        <li>Annual CHBE Banquet &amp; Awards</li>
-        <li>Peer Mentorship Program</li>
-        <li>Intramurals &amp; Social Events</li>
-      </ul>
-      <a href="/events" class="cta-btn">Browse Events</a>
-    </div>
-  </section>
-
-  <!-- Section 5: Get Involved — img LEFT | text RIGHT -->
-  <section class="content-section">
-    <div class="section-media">
-      <div class="section-img-placeholder">
-        <img src="/home/solar_panels.jpg" alt="Image of Solar Panels from CHBE Capstone project" class="section-img" />
-      </div>
-    </div>
-    <div class="section-text light">
-      <span class="section-eyebrow">Join Us</span>
-      <h2>Get Involved</h2>
-      <p>Whether you're a first-year finding your footing or a fourth-year wrapping up your degree, there is a place for you in the CHBE Council. Run for a council position, volunteer at events, or simply attend — we are better together.</p>
-      <a href="/contact" class="cta-btn">Get in Touch</a>
-    </div>
-  </section>
-
 </BaseLayout>

@@ -51,6 +51,7 @@
   --font-heading: "RocaTwo-Bl", sans-serif;
   --font-body:    "Telegraf", sans-serif;
   --nav-height:      72px;
+  --notice-height:   0px;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
