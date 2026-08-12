@@ -17,6 +17,9 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # Secrets live on the github-pages environment; without this,
+    # ${{ secrets.PUBLIC_* }} resolve to empty strings at build time.
+    environment: github-pages
     steps:
       - name: Checkout
         uses: actions/checkout@v4
