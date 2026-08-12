@@ -160,11 +160,9 @@ const levels = [
       </div>
     </div>
   </div>
-</BaseLayout>
 
-<script define:vars={{ locker }}>
-  window.__CHBE_LOCKER__ = locker;
-</script>
+  <script type="application/json" id="chbe-locker" set:html={JSON.stringify(locker)} />
+</BaseLayout>
 
 <script>
   import { addToCart, fetchInventoryStock, inventorySku } from "../../utils/cart";
@@ -208,7 +206,9 @@ const levels = [
   }
 
   function init() {
-    const locker = window.__CHBE_LOCKER__;
+    const locker = JSON.parse(
+      document.getElementById("chbe-locker")?.textContent || "null"
+    );
     if (!locker) return;
 
     controller?.abort();

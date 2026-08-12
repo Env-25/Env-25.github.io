@@ -90,43 +90,49 @@ import "../styles/navbar.css";
 <div class="mobile-backdrop" id="mobileBackdrop" aria-hidden="true"></div>
 
 <script>
-  const navbar = document.getElementById("navbar") as HTMLElement;
-  const burger = document.getElementById("navBurger") as HTMLButtonElement;
-  const menu = document.getElementById("mobileMenu") as HTMLElement;
-  const backdrop = document.getElementById("mobileBackdrop") as HTMLElement;
+  // Production bundling can load this chunk on hideNav pages — bail if nav is absent.
+  const navbar = document.getElementById("navbar");
+  const burger = document.getElementById("navBurger");
+  const menu = document.getElementById("mobileMenu");
+  const backdrop = document.getElementById("mobileBackdrop");
+  if (navbar && burger && menu && backdrop) {
+    window.addEventListener(
+      "scroll",
+      () => {
+        navbar.classList.toggle("scrolled", window.scrollY > 80);
+      },
+      { passive: true }
+    );
 
-  window.addEventListener("scroll", () => {
-    navbar.classList.toggle("scrolled", window.scrollY > 80);
-  }, { passive: true });
+    function openMenu() {
+      burger.classList.add("open");
+      menu.classList.add("open");
+      backdrop.classList.add("open");
+      burger.setAttribute("aria-expanded", "true");
+      document.body.style.overflow = "hidden";
+    }
 
-  function openMenu() {
-    burger.classList.add("open");
-    menu.classList.add("open");
-    backdrop.classList.add("open");
-    burger.setAttribute("aria-expanded", "true");
-    document.body.style.overflow = "hidden";
+    function closeMenu() {
+      burger.classList.remove("open");
+      menu.classList.remove("open");
+      backdrop.classList.remove("open");
+      burger.setAttribute("aria-expanded", "false");
+      document.body.style.overflow = "";
+    }
+
+    burger.addEventListener("click", () =>
+      burger.classList.contains("open") ? closeMenu() : openMenu()
+    );
+
+    backdrop.addEventListener("click", closeMenu);
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closeMenu();
+    });
+
+    menu.querySelectorAll("a.mobile-link").forEach((l) =>
+      l.addEventListener("click", closeMenu)
+    );
   }
-
-  function closeMenu() {
-    burger.classList.remove("open");
-    menu.classList.remove("open");
-    backdrop.classList.remove("open");
-    burger.setAttribute("aria-expanded", "false");
-    document.body.style.overflow = "";
-  }
-
-  burger.addEventListener("click", () =>
-    burger.classList.contains("open") ? closeMenu() : openMenu()
-  );
-
-  backdrop.addEventListener("click", closeMenu);
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") closeMenu();
-  });
-
-  menu.querySelectorAll("a.mobile-link").forEach((l) =>
-    l.addEventListener("click", closeMenu)
-  );
 </script>
 
 <script>
@@ -139,91 +145,111 @@ import "../styles/navbar.css";
   import { cartCount, bindCartUser } from "../utils/cart";
   import "../styles/cart.css";
 
-  const accountWrap = document.getElementById("navAccountWrap")!;
-  const accountBtn = document.getElementById("navAccountBtn") as HTMLAnchorElement;
-  const accountLabel = document.getElementById("navAccountLabel")!;
-  const accountCaret = document.getElementById("navAccountCaret")!;
-  const accountMenu = document.getElementById("navAccountMenu")!;
-  const logoutBtn = document.getElementById("navLogoutBtn") as HTMLButtonElement;
+  // Shared with cart utils in production — must not crash when navbar is hidden.
+  const accountWrap = document.getElementById("navAccountWrap");
+  const accountBtn = document.getElementById("navAccountBtn") as HTMLAnchorElement | null;
+  const accountLabel = document.getElementById("navAccountLabel");
+  const accountCaret = document.getElementById("navAccountCaret");
+  const accountMenu = document.getElementById("navAccountMenu");
+  const logoutBtn = document.getElementById("navLogoutBtn") as HTMLButtonElement | null;
 
-  const mobileAccountBtn = document.getElementById("mobileAccountBtn") as HTMLAnchorElement;
-  const mobileAccountLabel = document.getElementById("mobileAccountLabel")!;
-  const mobileAccountLinks = document.getElementById("mobileAccountLinks")!;
-  const mobileAccountArea = document.getElementById("mobileAccountArea")!;
-  const mobileLogoutBtn = document.getElementById("mobileLogoutBtn") as HTMLButtonElement;
+  const mobileAccountBtn = document.getElementById("mobileAccountBtn") as HTMLAnchorElement | null;
+  const mobileAccountLabel = document.getElementById("mobileAccountLabel");
+  const mobileAccountLinks = document.getElementById("mobileAccountLinks");
+  const mobileAccountArea = document.getElementById("mobileAccountArea");
+  const mobileLogoutBtn = document.getElementById("mobileLogoutBtn") as HTMLButtonElement | null;
+
+  const hasAccountUi = Boolean(
+    accountWrap &&
+      accountBtn &&
+      accountLabel &&
+      accountCaret &&
+      accountMenu &&
+      logoutBtn &&
+      mobileAccountBtn &&
+      mobileAccountLabel &&
+      mobileAccountLinks &&
+      mobileAccountArea &&
+      mobileLogoutBtn
+  );
 
   let menuOpen = false;
 
   function setSignedOut() {
-    accountLabel.textContent = "Sign In";
-    accountBtn.href = "/account/sign-in";
-    accountCaret.hidden = true;
-    accountMenu.hidden = true;
-    accountWrap.classList.remove("is-authed", "menu-open");
+    if (!hasAccountUi) return;
+    accountLabel!.textContent = "Sign In";
+    accountBtn!.href = "/account/sign-in";
+    accountCaret!.hidden = true;
+    accountMenu!.hidden = true;
+    accountWrap!.classList.remove("is-authed", "menu-open");
     menuOpen = false;
 
-    mobileAccountLabel.textContent = "Sign In";
-    mobileAccountBtn.href = "/account/sign-in";
-    mobileAccountBtn.hidden = false;
-    mobileAccountBtn.classList.remove("is-authed");
-    mobileAccountLinks.hidden = true;
-    mobileAccountLinks.classList.add("auth-hidden");
-    mobileAccountArea.classList.remove("is-authed");
+    mobileAccountLabel!.textContent = "Sign In";
+    mobileAccountBtn!.href = "/account/sign-in";
+    mobileAccountBtn!.hidden = false;
+    mobileAccountBtn!.classList.remove("is-authed");
+    mobileAccountLinks!.hidden = true;
+    mobileAccountLinks!.classList.add("auth-hidden");
+    mobileAccountArea!.classList.remove("is-authed");
   }
 
   function setSignedIn(name: string) {
+    if (!hasAccountUi) return;
     const label = firstName(name);
-    accountLabel.textContent = label;
-    accountBtn.href = "#";
-    accountCaret.hidden = false;
-    accountWrap.classList.add("is-authed");
+    accountLabel!.textContent = label;
+    accountBtn!.href = "#";
+    accountCaret!.hidden = false;
+    accountWrap!.classList.add("is-authed");
 
-    mobileAccountLabel.textContent = label;
-    mobileAccountBtn.href = "/account/profile";
-    mobileAccountBtn.hidden = false;
-    mobileAccountBtn.classList.add("is-authed");
-    mobileAccountLinks.hidden = false;
-    mobileAccountLinks.classList.remove("auth-hidden");
-    mobileAccountArea.classList.add("is-authed");
+    mobileAccountLabel!.textContent = label;
+    mobileAccountBtn!.href = "/account/profile";
+    mobileAccountBtn!.hidden = false;
+    mobileAccountBtn!.classList.add("is-authed");
+    mobileAccountLinks!.hidden = false;
+    mobileAccountLinks!.classList.remove("auth-hidden");
+    mobileAccountArea!.classList.add("is-authed");
   }
 
   function closeAccountMenu() {
+    if (!hasAccountUi) return;
     menuOpen = false;
-    accountMenu.hidden = true;
-    accountWrap.classList.remove("menu-open");
+    accountMenu!.hidden = true;
+    accountWrap!.classList.remove("menu-open");
   }
 
   function toggleAccountMenu(e: Event) {
-    if (!accountWrap.classList.contains("is-authed")) return;
+    if (!hasAccountUi || !accountWrap!.classList.contains("is-authed")) return;
     e.preventDefault();
     menuOpen = !menuOpen;
-    accountMenu.hidden = !menuOpen;
-    accountWrap.classList.toggle("menu-open", menuOpen);
+    accountMenu!.hidden = !menuOpen;
+    accountWrap!.classList.toggle("menu-open", menuOpen);
   }
 
-  accountBtn.addEventListener("click", toggleAccountMenu);
+  if (hasAccountUi) {
+    accountBtn!.addEventListener("click", toggleAccountMenu);
 
-  document.addEventListener("click", (e) => {
-    if (!menuOpen) return;
-    if (!accountWrap.contains(e.target as Node)) closeAccountMenu();
-  });
+    document.addEventListener("click", (e) => {
+      if (!menuOpen) return;
+      if (!accountWrap!.contains(e.target as Node)) closeAccountMenu();
+    });
 
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") closeAccountMenu();
-  });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closeAccountMenu();
+    });
 
-  async function doLogout() {
-    try {
-      bindCartUser(null);
-      await logoutUser();
-    } catch {
-      /* ignore */
+    async function doLogout() {
+      try {
+        bindCartUser(null);
+        await logoutUser();
+      } catch {
+        /* ignore */
+      }
+      window.location.href = "/";
     }
-    window.location.href = "/";
-  }
 
-  logoutBtn.addEventListener("click", doLogout);
-  mobileLogoutBtn.addEventListener("click", doLogout);
+    logoutBtn!.addEventListener("click", doLogout);
+    mobileLogoutBtn!.addEventListener("click", doLogout);
+  }
 
   function refreshCartBadge() {
     const n = cartCount();

@@ -210,16 +210,16 @@ const firstImage = activeVariant?.cover_image ?? product.Cover_image;
       </div>
     </div>
   </div>
-</BaseLayout>
 
-<script define:vars={{ product }}>
-  window.__CHBE_MERCH_PRODUCT__ = product;
-</script>
+  <script type="application/json" id="chbe-merch-product" set:html={JSON.stringify(product)} />
+</BaseLayout>
 
 <script>
   import { addToCart, fetchInventoryStock, inventorySku } from "../../utils/cart";
 
-  const product = window.__CHBE_MERCH_PRODUCT__;
+  const product = JSON.parse(
+    document.getElementById("chbe-merch-product")?.textContent || "null"
+  );
   if (!product) {
     console.error("Merch product data missing");
   } else {

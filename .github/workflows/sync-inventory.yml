@@ -1,0 +1,117 @@
+# Sync DynamoDB inventory quantities → merch.csv / lockers.csv
+# Schedule (UTC): 01:00, 07:00, 13:00, 19:00
+#   = 6pm / 12am / 6am / 12pm America/Vancouver during PDT (UTC-7)
+#
+# Required repo secrets:
+#   AWS_ACCESS_KEY_ID
+#   AWS_SECRET_ACCESS_KEY
+#   (+ the same PUBLIC_* secrets used by Deploy, for rebuild when CSVs change)
+# IAM needs dynamodb:Scan on table `inventory` (us-east-2).
+
+name: Sync inventory CSVs
+
+on:
+  schedule:
+    # 1:00, 7:00, 13:00, 19:00 UTC ≈ 6pm / 12am / 6am / 12pm Pacific (PDT)
+    - cron: "0 1,7,13,19 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: sync-inventory
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.sync.outputs.changed }}
+      sha: ${{ steps.commit.outputs.sha }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-2
+
+      - name: Sync DynamoDB → CSV
+        id: sync
+        env:
+          AWS_REGION: us-east-2
+          INVENTORY_TABLE: inventory
+        run: |
+          set -euo pipefail
+          node aws/scripts/sync-inventory-to-csv.mjs | tee /tmp/sync-out.txt
+          if grep -q '^CHANGED=1$' /tmp/sync-out.txt; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Commit and push CSV updates
+        id: commit
+        if: steps.sync.outputs.changed == 'true'
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/merch/merch.csv public/lockers/lockers.csv
+          git commit -m "$(cat <<'EOF'
+          chore: sync inventory quantities from DynamoDB
+
+          EOF
+          )"
+          git push
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+  # GITHUB_TOKEN pushes do not re-trigger Deploy — rebuild Pages here when stock CSVs change.
+  deploy:
+    needs: sync
+    if: needs.sync.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.sync.outputs.sha }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        env:
+          PUBLIC_COGNITO_USER_POOL_ID: ${{ secrets.PUBLIC_COGNITO_USER_POOL_ID }}
+          PUBLIC_COGNITO_CLIENT_ID: ${{ secrets.PUBLIC_COGNITO_CLIENT_ID }}
+          PUBLIC_TURNSTILE_SITE_KEY: ${{ secrets.PUBLIC_TURNSTILE_SITE_KEY }}
+          PUBLIC_EMAIL_VALIDATE_URL: ${{ secrets.PUBLIC_EMAIL_VALIDATE_URL }}
+          PUBLIC_ORDERS_API_URL: ${{ secrets.PUBLIC_ORDERS_API_URL }}
+        run: npm run build
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./dist
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
