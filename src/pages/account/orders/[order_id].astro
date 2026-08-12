@@ -1,0 +1,219 @@
+---
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import "../../../styles/auth.css";
+import "../../../styles/cart.css";
+
+/**
+ * Static hosting cannot prebuild every UUID. Build /account/orders/view/
+ * and resolve id from ?id= (or path). Pretty /account/orders/{uuid} is
+ * redirected via public/404.html on GitHub Pages.
+ */
+export function getStaticPaths() {
+  return [{ params: { order_id: "view" } }];
+}
+
+const { order_id } = Astro.params;
+---
+<BaseLayout title="Order status — UBC CHBE">
+  <section class="order-hero">
+    <img src="/home/index-lower.jpg" alt="" class="order-hero-bg" />
+    <div class="order-hero-overlay"></div>
+    <div class="order-hero-content">
+      <h1 class="order-hero-title">Order</h1>
+      <p class="order-hero-sub">Status & details</p>
+    </div>
+  </section>
+
+  <section class="order-section">
+    <div class="order-shell">
+      <div id="orderGate" class="order-panel" hidden>
+        <h2>Sign in required</h2>
+        <p>Sign in to view this order.</p>
+        <a class="form-submit" id="orderSignIn" href="/account/sign-in" style="text-decoration:none;">Sign in</a>
+      </div>
+
+      <div id="orderUnverified" class="order-panel" hidden>
+        <h2>Verify your email</h2>
+        <p>Orders require a verified email address.</p>
+        <a class="form-submit" href="/account/verify-email" style="text-decoration:none;">Verify now</a>
+      </div>
+
+      <div id="orderLoading" class="order-panel">
+        <h2>Loading order…</h2>
+        <p>Please wait.</p>
+      </div>
+
+      <div id="orderError" class="order-panel" hidden>
+        <h2>Could not load order</h2>
+        <p id="orderErrorMsg"></p>
+        <a class="form-submit" href="/account/orders" style="text-decoration:none;">Back to orders</a>
+      </div>
+
+      <div id="orderContent" hidden>
+        <a href="/account/orders" class="order-back-link">← Back to all orders</a>
+
+        <div class="order-status-banner">
+          <h2 id="orderStatusTitle">Thank you for your order</h2>
+          <p id="orderStatusBody"></p>
+          <p>Status updates will be sent to registered emails.</p>
+          <p class="order-id" id="orderIdLine"></p>
+        </div>
+
+        <h3 class="order-items-title">In your order</h3>
+        <div class="cart-list" id="orderItems"></div>
+
+        <div class="cart-summary">
+          <div class="cart-totals">
+            <div class="cart-total-line">
+              <img src="/logos/cash.png" alt="" />
+              <span>Cash subtotal: <strong id="orderCash">$0.00</strong> CAD</span>
+            </div>
+            <div class="cart-total-line">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
+                <line x1="1" y1="10" x2="23" y2="10"/>
+              </svg>
+              <span>Card subtotal: <strong id="orderCard">$0.00</strong> CAD</span>
+            </div>
+          </div>
+        </div>
+
+        <p class="order-contact-cta">
+          Problem with your order? <a href="/contact">Contact Us</a> now.
+        </p>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<script define:vars={{ builtParam: order_id }}>
+  window.__CHBE_ORDER_BUILT_PARAM__ = builtParam;
+</script>
+
+<script>
+  import { getSessionProfile, grantVerifyAccess, getIdToken } from "../../../utils/auth";
+  import { isAuthConfigured } from "../../../utils/auth-config";
+  import { fetchOrder } from "../../../utils/cart";
+
+  function resolveOrderId() {
+    const builtParam = window.__CHBE_ORDER_BUILT_PARAM__;
+    const params = new URLSearchParams(window.location.search);
+    const q = params.get("id") || params.get("orderId") || "";
+    if (q) return q;
+    const parts = window.location.pathname.split("/").filter(Boolean);
+    const last = parts[parts.length - 1] || "";
+    if (last && last !== "_" && last !== "view") return decodeURIComponent(last);
+    if (builtParam && builtParam !== "_" && builtParam !== "view") return builtParam;
+    return "";
+  }
+
+  function money(n) {
+    return `$${Number(n || 0).toFixed(2)}`;
+  }
+
+  const orderId = resolveOrderId();
+  const signIn = document.getElementById("orderSignIn");
+  if (signIn) {
+    signIn.setAttribute(
+      "href",
+      `/account/sign-in?next=${encodeURIComponent(window.location.pathname + window.location.search)}`
+    );
+  }
+
+  const gate = document.getElementById("orderGate");
+  const unverified = document.getElementById("orderUnverified");
+  const loading = document.getElementById("orderLoading");
+  const errPanel = document.getElementById("orderError");
+  const errMsg = document.getElementById("orderErrorMsg");
+  const content = document.getElementById("orderContent");
+
+  function show(el) {
+    [gate, unverified, loading, errPanel, content].forEach((n) => {
+      if (n) n.hidden = true;
+    });
+    if (el) el.hidden = false;
+  }
+
+  (async () => {
+    if (!orderId) {
+      show(errPanel);
+      if (errMsg) errMsg.textContent = "Missing order id.";
+      return;
+    }
+    if (!isAuthConfigured()) {
+      show(gate);
+      return;
+    }
+    const profile = await getSessionProfile();
+    if (!profile) {
+      show(gate);
+      return;
+    }
+    if (!profile.emailVerified) {
+      grantVerifyAccess(profile.email, profile.name);
+      show(unverified);
+      return;
+    }
+
+    try {
+      const idToken = await getIdToken();
+      if (!idToken) {
+        show(gate);
+        return;
+      }
+      const order = await fetchOrder({ idToken, orderId });
+      const status = Number(order.status);
+      const title = document.getElementById("orderStatusTitle");
+      const body = document.getElementById("orderStatusBody");
+      if (status === 0) {
+        if (title) title.textContent = "Order cancelled";
+        if (body) body.textContent = "This order was cancelled.";
+      } else if (status === 2) {
+        if (title) title.textContent = "Order completed";
+        if (body) body.textContent = "This order has been marked completed.";
+      } else {
+        if (title) title.textContent = "Thank you for your order";
+        if (body) {
+          body.textContent =
+            "A member of our team will contact you shortly for more information.";
+        }
+      }
+      const idLine = document.getElementById("orderIdLine");
+      if (idLine) idLine.textContent = `Order ID: ${order.orderID || orderId}`;
+
+      const itemsEl = document.getElementById("orderItems");
+      const items = Array.isArray(order.items) ? order.items : [];
+      if (itemsEl) {
+        itemsEl.innerHTML = "";
+        items.forEach((it) => {
+          const row = document.createElement("div");
+          row.className = "cart-row";
+          const detail =
+            it.kind === "merch"
+              ? `${it.color || ""} · Size ${it.size || ""} × ${it.qty || 1}`
+              : `${it.level || ""} level · ${it.location || ""}`;
+          row.innerHTML = `
+            <img src="${it.image || ""}" alt="" />
+            <div>
+              <p class="cart-row-name">${it.name || ""}</p>
+              <p class="cart-row-meta">${detail}</p>
+            </div>
+            <div class="cart-row-actions">
+              <div class="cart-row-price">${money((it.unitPrice || 0) * (it.qty || 1))}</div>
+            </div>
+          `;
+          itemsEl.appendChild(row);
+        });
+      }
+      const cash = document.getElementById("orderCash");
+      const card = document.getElementById("orderCard");
+      if (cash) cash.textContent = money(order.cashSubtotal);
+      if (card) card.textContent = money(order.cardSubtotal);
+      show(content);
+    } catch (e) {
+      console.error(e);
+      show(errPanel);
+      if (errMsg) errMsg.textContent = e?.message || "Order not found.";
+    }
+  })();
+</script>

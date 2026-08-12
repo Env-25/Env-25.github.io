@@ -1,0 +1,290 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import "../styles/auth.css";
+import "../styles/cart.css";
+---
+<BaseLayout title="Cart — UBC CHBE">
+  <section class="cart-hero">
+    <img src="/home/index-lower.jpg" alt="" class="cart-hero-bg" />
+    <div class="cart-hero-overlay"></div>
+    <div class="cart-hero-content">
+      <h1 class="cart-hero-title">Cart</h1>
+      <p class="cart-hero-sub">Review your order</p>
+    </div>
+  </section>
+
+  <section class="cart-section">
+    <div class="cart-shell">
+      <div id="cartEmpty" class="cart-empty" hidden>
+        <h2>Your cart is empty</h2>
+        <p>Add merch or a locker rental to get started.</p>
+        <div class="cart-gate-links">
+          <a class="form-submit" href="/merch" style="text-decoration:none;">Browse merch</a>
+          <a class="form-submit" href="/locker-rental" style="text-decoration:none;">Browse lockers</a>
+        </div>
+      </div>
+
+      <div id="cartContent" hidden>
+        <div class="cart-list" id="cartList"></div>
+        <div class="cart-summary">
+          <div class="cart-totals">
+            <div class="cart-total-line">
+              <img src="/logos/cash.png" alt="" />
+              <span>Cash subtotal: <strong id="cashTotal">$0.00</strong> CAD</span>
+            </div>
+            <div class="cart-total-line">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
+                <line x1="1" y1="10" x2="23" y2="10"/>
+              </svg>
+              <span>
+                Card subtotal: <strong id="cardTotal">$0.00</strong> CAD
+                <span class="cart-total-note">incl. 3% surcharge</span>
+              </span>
+            </div>
+          </div>
+          <p class="cart-total-note">No payment is taken online. We will contact you to arrange cash or card.</p>
+
+          <div id="placeGate" class="cart-empty" hidden style="border:none;padding:0;text-align:left;">
+            <p>Sign in with a verified, complete profile to place your order.</p>
+            <div class="cart-gate-links" style="justify-content:flex-start;">
+              <a class="form-submit" id="cartSignInLink" href="/account/sign-in?next=/cart" style="text-decoration:none;">Sign in</a>
+            </div>
+          </div>
+
+          <div id="placeUnverified" class="cart-empty" hidden style="border:none;padding:0;text-align:left;">
+            <p>Verify your email before placing an order.</p>
+            <a class="form-submit" href="/account/verify-email" style="text-decoration:none;">Verify now</a>
+          </div>
+
+          <div id="placeIncomplete" class="cart-empty" hidden style="border:none;padding:0;text-align:left;">
+            <p>Complete your profile before placing an order.</p>
+            <a class="form-submit" href="/account/complete-profile" style="text-decoration:none;">Complete profile</a>
+          </div>
+
+          <div id="placeForm" hidden>
+            <div class="cart-student">
+              <label for="studentNumber">Student number (required)</label>
+              <input id="studentNumber" name="studentNumber" type="text" autocomplete="off" required />
+            </div>
+            <p class="cart-error" id="cartError" hidden></p>
+            <button type="button" class="cart-place-btn" id="placeOrderBtn">Place order</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cart-confirm-modal" id="confirmModal" hidden>
+      <div class="cart-confirm-backdrop" id="confirmBackdrop"></div>
+      <div class="cart-confirm-panel" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+        <h2 id="confirmTitle">Confirm order?</h2>
+        <p>Submit this order request? Stock will be reserved and you’ll get a confirmation email.</p>
+        <div class="cart-confirm-actions">
+          <button type="button" class="cart-confirm-btn cart-confirm-btn--secondary" id="confirmCancel">Cancel</button>
+          <button type="button" class="cart-confirm-btn cart-confirm-btn--primary" id="confirmSubmit">Confirm order</button>
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  import { getSessionProfile, grantVerifyAccess, getIdToken } from "../utils/auth";
+  import { isAuthConfigured } from "../utils/auth-config";
+  import {
+    readCart,
+    writeCart,
+    cartLineKey,
+    cashSubtotal,
+    cardSubtotal,
+    placeOrder,
+    clearCart,
+    bindCartUser,
+  } from "../utils/cart";
+
+  const empty = document.getElementById("cartEmpty")!;
+  const content = document.getElementById("cartContent")!;
+  const listEl = document.getElementById("cartList")!;
+  const cashEl = document.getElementById("cashTotal")!;
+  const cardEl = document.getElementById("cardTotal")!;
+  const studentInput = document.getElementById("studentNumber") as HTMLInputElement;
+  const errorEl = document.getElementById("cartError")!;
+  const placeBtn = document.getElementById("placeOrderBtn") as HTMLButtonElement;
+  const placeGate = document.getElementById("placeGate")!;
+  const placeUnverified = document.getElementById("placeUnverified")!;
+  const placeIncomplete = document.getElementById("placeIncomplete")!;
+  const placeForm = document.getElementById("placeForm")!;
+  const confirmModal = document.getElementById("confirmModal")!;
+  const confirmBackdrop = document.getElementById("confirmBackdrop")!;
+  const confirmCancel = document.getElementById("confirmCancel") as HTMLButtonElement;
+  const confirmSubmit = document.getElementById("confirmSubmit") as HTMLButtonElement;
+
+  let canPlace = false;
+
+  function openConfirm() {
+    confirmModal.hidden = false;
+  }
+
+  function closeConfirm() {
+    confirmModal.hidden = true;
+    confirmSubmit.disabled = false;
+    confirmSubmit.textContent = "Confirm order";
+  }
+
+  function money(n: number) {
+    return `$${n.toFixed(2)}`;
+  }
+
+  function setPlaceState(state: "gate" | "unverified" | "incomplete" | "ready") {
+    placeGate.hidden = state !== "gate";
+    placeUnverified.hidden = state !== "unverified";
+    placeIncomplete.hidden = state !== "incomplete";
+    placeForm.hidden = state !== "ready";
+    canPlace = state === "ready";
+  }
+
+  function renderCart() {
+    const items = readCart();
+    if (!items.length) {
+      empty.hidden = false;
+      content.hidden = true;
+      return;
+    }
+    empty.hidden = true;
+    content.hidden = false;
+    listEl.innerHTML = "";
+    items.forEach((it) => {
+      const key = cartLineKey(it);
+      const row = document.createElement("div");
+      row.className = "cart-row";
+      const detail =
+        it.kind === "merch"
+          ? `${it.color || ""} · Size ${it.size || ""}`
+          : `${it.level} level · ${it.location || ""}`;
+      row.innerHTML = `
+        <img src="${it.image}" alt="" />
+        <div>
+          <p class="cart-row-name">${it.name}</p>
+          <p class="cart-row-meta">${detail}</p>
+        </div>
+        <div class="cart-row-actions">
+          <div class="cart-row-price">${money(it.unitPrice * it.qty)}</div>
+          ${
+            it.kind === "merch"
+              ? `<div class="cart-qty">
+                  <button type="button" data-act="dec" data-key="${key}">−</button>
+                  <span>${it.qty}</span>
+                  <button type="button" data-act="inc" data-key="${key}">+</button>
+                </div>`
+              : `<div class="cart-row-meta">Qty 1</div>`
+          }
+          <button type="button" class="cart-remove" data-act="rm" data-key="${key}">Remove</button>
+        </div>
+      `;
+      listEl.appendChild(row);
+    });
+    cashEl.textContent = money(cashSubtotal(items));
+    cardEl.textContent = money(cardSubtotal(items));
+  }
+
+  listEl.addEventListener("click", (e) => {
+    const t = (e.target as HTMLElement).closest("button") as HTMLButtonElement | null;
+    if (!t?.dataset.act || !t.dataset.key) return;
+    const items = readCart();
+    const idx = items.findIndex((c) => cartLineKey(c) === t.dataset.key);
+    if (idx < 0) return;
+    if (t.dataset.act === "rm") items.splice(idx, 1);
+    if (t.dataset.act === "inc" && items[idx].kind === "merch") items[idx].qty += 1;
+    if (t.dataset.act === "dec" && items[idx].kind === "merch") {
+      items[idx].qty = Math.max(1, items[idx].qty - 1);
+    }
+    writeCart(items);
+    renderCart();
+  });
+
+  placeBtn.addEventListener("click", () => {
+    if (!canPlace) return;
+    errorEl.hidden = true;
+    const studentNumber = studentInput.value.trim();
+    if (!studentNumber) {
+      errorEl.textContent = "Student number is required.";
+      errorEl.hidden = false;
+      return;
+    }
+    if (!readCart().length) return;
+    openConfirm();
+  });
+
+  confirmCancel.addEventListener("click", closeConfirm);
+  confirmBackdrop.addEventListener("click", closeConfirm);
+
+  confirmSubmit.addEventListener("click", async () => {
+    if (!canPlace) return;
+    const studentNumber = studentInput.value.trim();
+    const items = readCart();
+    if (!studentNumber || !items.length) {
+      closeConfirm();
+      return;
+    }
+
+    confirmSubmit.disabled = true;
+    confirmSubmit.textContent = "Placing…";
+    placeBtn.disabled = true;
+    placeBtn.textContent = "Placing…";
+    try {
+      const idToken = await getIdToken({ forceRefresh: true });
+      if (!idToken) throw new Error("Sign in required.");
+      const result = await placeOrder({ idToken, studentNumber, items });
+      clearCart();
+      window.location.href = `/account/orders/view/?id=${encodeURIComponent(result.orderID)}`;
+    } catch (err: any) {
+      closeConfirm();
+      if (err?.code === "INSUFFICIENT_STOCK" && Array.isArray(err.outOfStock) && err.outOfStock.length) {
+        const lines = err.outOfStock.map((it: any) => {
+          const detail =
+            it.kind === "merch"
+              ? [it.color, it.size].filter(Boolean).join(" · ")
+              : `${it.level || ""} level`.trim();
+          const label = detail ? `${it.name} (${detail})` : it.name;
+          return `• ${label} — ${it.available} left (needed ${it.requested})`;
+        });
+        errorEl.textContent = `These items are out of stock:\n${lines.join("\n")}`;
+        errorEl.style.whiteSpace = "pre-line";
+      } else {
+        errorEl.textContent = err?.message || "Could not place order.";
+        errorEl.style.whiteSpace = "";
+      }
+      errorEl.hidden = false;
+      placeBtn.disabled = false;
+      placeBtn.textContent = "Place order";
+    }
+  });
+
+  (async () => {
+    renderCart();
+
+    if (!isAuthConfigured()) {
+      setPlaceState("gate");
+      return;
+    }
+    const profile = await getSessionProfile();
+    if (!profile) {
+      setPlaceState("gate");
+      return;
+    }
+    bindCartUser(profile.sub);
+    renderCart();
+
+    if (!profile.emailVerified) {
+      grantVerifyAccess(profile.email, profile.name);
+      setPlaceState("unverified");
+      return;
+    }
+    if (!profile.profileComplete) {
+      setPlaceState("incomplete");
+      return;
+    }
+    studentInput.value = profile.studentNumber || "";
+    setPlaceState("ready");
+  })();
+</script>

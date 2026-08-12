@@ -98,7 +98,7 @@
 
 /* ── Account pill (desktop) ── */
 .nav-account {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 0.4rem;
   border: 1.5px solid rgba(255, 255, 255, 0.35);
@@ -107,6 +107,12 @@
   padding-bottom: 0.35rem !important;
   line-height: 1;
   transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+.nav-account .nav-cart-badge {
+  margin-left: 0.15rem;
+}
+.mobile-account .nav-cart-badge {
+  margin-left: 0.35rem;
 }
 
 .nav-account::after { display: none !important; }

@@ -125,10 +125,12 @@ const levels = [
         <div class="item-divider"></div>
 
         <!-- Reserve button -->
-        <button class="purchase-btn" id="reserveBtn" disabled>
-          {locker.totalAvailable > 0 ? "Select a level to reserve" : "Currently Fully Rented"}
+        <button class="purchase-btn" id="reserveBtn" disabled type="button">
+          {locker.totalAvailable > 0 ? "Select a level to add" : "Currently Fully Rented"}
         </button>
-        <p class="purchase-note">Online reservations coming soon — contact us to inquire.</p>
+        <p class="purchase-note" id="reserveNote">
+          {locker.totalAvailable > 0 ? "Select a level, then add to cart." : "Online reservations unavailable."}
+        </p>
 
         <div class="item-divider"></div>
 
@@ -160,50 +162,146 @@ const levels = [
   </div>
 </BaseLayout>
 
+<script define:vars={{ locker }}>
+  window.__CHBE_LOCKER__ = locker;
+</script>
+
 <script>
-  let controller: AbortController | null = null;
+  import { addToCart, fetchInventoryStock, inventorySku } from "../../utils/cart";
+
+  let controller = null;
+
+  async function applyLiveStock(locker, levelBtns) {
+    const levels = ["Top", "Mid", "Bottom"];
+    const skus = levels.map((level) =>
+      inventorySku({ kind: "locker", id: locker.ID, level })
+    );
+    const stock = await fetchInventoryStock(skus);
+    let total = 0;
+
+    levelBtns.forEach((btn) => {
+      const level = btn.dataset.level || "";
+      const sku = inventorySku({ kind: "locker", id: locker.ID, level });
+      const count = Object.prototype.hasOwnProperty.call(stock, sku)
+        ? Math.max(0, Number(stock[sku]) || 0)
+        : Math.max(0, parseInt(btn.dataset.count || "0", 10));
+      btn.dataset.count = String(count);
+      total += count;
+      const isFull = count === 0;
+      btn.classList.toggle("is-full", isFull);
+      btn.classList.toggle("selected", false);
+      btn.title = isFull ? "None available" : `${count} left`;
+      const countEl = btn.querySelector(".level-select-count");
+      if (countEl) {
+        countEl.className = `level-select-count ${count > 0 ? "open" : "full"}`;
+        countEl.textContent = count > 0 ? `${count} left` : "Full";
+      }
+    });
+
+    const availTag = document.querySelector(".avail-tag-large");
+    if (availTag) {
+      availTag.className = `avail-tag-large ${total > 0 ? "avail" : "rented"}`;
+      availTag.textContent = total > 0 ? `${total} Available` : "Fully Rented";
+    }
+
+    return total;
+  }
 
   function init() {
-    // Tear down any previous listeners to prevent duplicates
+    const locker = window.__CHBE_LOCKER__;
+    if (!locker) return;
+
     controller?.abort();
     controller = new AbortController();
     const { signal } = controller;
 
-    // ── Gallery ──────────────────────────────────────────────────────────────
-    const thumbBtns = document.querySelectorAll<HTMLButtonElement>(".thumb-btn");
-    const mainImg   = document.getElementById("mainImage") as HTMLImageElement;
+    const thumbBtns = document.querySelectorAll(".thumb-btn");
+    const mainImg = document.getElementById("mainImage");
 
     thumbBtns.forEach((btn) => {
-      btn.addEventListener("click", () => {
-        thumbBtns.forEach((b) => b.classList.remove("active"));
-        btn.classList.add("active");
-        mainImg.src = btn.dataset.img!;
-      }, { signal });
+      btn.addEventListener(
+        "click",
+        () => {
+          thumbBtns.forEach((b) => b.classList.remove("active"));
+          btn.classList.add("active");
+          if (mainImg) mainImg.src = btn.dataset.img;
+        },
+        { signal }
+      );
     });
 
-    // ── Level selector ───────────────────────────────────────────────────────
-    const levelBtns          = document.querySelectorAll<HTMLButtonElement>(".level-select-btn");
-    const reserveBtn         = document.getElementById("reserveBtn") as HTMLButtonElement;
-    const levelSelectedLabel = document.getElementById("levelSelectedLabel")!;
+    const levelBtns = document.querySelectorAll(".level-select-btn");
+    const reserveBtn = document.getElementById("reserveBtn");
+    const levelSelectedLabel = document.getElementById("levelSelectedLabel");
+    const reserveNote = document.getElementById("reserveNote");
+    let selectedLevel = "";
 
     levelBtns.forEach((btn) => {
-      // ✅ FIX 2: check .is-full class — never btn.disabled
-      if (btn.classList.contains("is-full")) return;
+      btn.addEventListener(
+        "click",
+        () => {
+          if (parseInt(btn.dataset.count || "0", 10) <= 0) return;
+          levelBtns.forEach((b) => b.classList.remove("selected"));
+          btn.classList.add("selected");
 
-      btn.addEventListener("click", () => {
-        levelBtns.forEach((b) => b.classList.remove("selected"));
-        btn.classList.add("selected");
+          selectedLevel = btn.dataset.level || "";
+          if (levelSelectedLabel) levelSelectedLabel.textContent = `— ${selectedLevel}`;
+          if (reserveBtn) {
+            reserveBtn.disabled = false;
+            reserveBtn.textContent = `Add ${selectedLevel} Level to Cart`;
+          }
+          if (reserveNote) reserveNote.textContent = "";
+        },
+        { signal }
+      );
+    });
 
-        const level = btn.dataset.level!;
-        levelSelectedLabel.textContent = `— ${level}`;
-        reserveBtn.textContent = `Reserve ${level} Level (Coming Soon)`;
-      }, { signal });
+    reserveBtn?.addEventListener(
+      "click",
+      () => {
+        if (reserveBtn.disabled || !selectedLevel) return;
+        addToCart({
+          kind: "locker",
+          id: locker.ID,
+          slug: locker.slug,
+          name: locker.Name,
+          image: `/lockers/images/${locker.Cover_photo}`,
+          level: selectedLevel,
+          location: locker.Location,
+          qty: 1,
+          unitPrice: locker.Price,
+        });
+        reserveBtn.textContent = "Added ✓";
+        if (reserveNote) {
+          reserveNote.innerHTML = `Added to cart. <a href="/cart">View cart</a>`;
+        }
+        setTimeout(() => {
+          reserveBtn.textContent = `Add ${selectedLevel} Level to Cart`;
+        }, 1200);
+      },
+      { signal }
+    );
+
+    applyLiveStock(locker, levelBtns).then((total) => {
+      selectedLevel = "";
+      if (levelSelectedLabel) levelSelectedLabel.textContent = "";
+      if (reserveBtn) {
+        if (total > 0) {
+          reserveBtn.disabled = true;
+          reserveBtn.textContent = "Select a level to add";
+          if (reserveNote) reserveNote.textContent = "Select a level, then add to cart.";
+        } else {
+          reserveBtn.disabled = true;
+          reserveBtn.textContent = "Currently Fully Rented";
+          if (reserveNote) reserveNote.textContent = "Online reservations unavailable.";
+        }
+      }
     });
   }
 
-  // ✅ FIX 3: call init() directly — astro:page-load only fires if
-  //           <ClientRouter /> is in BaseLayout, which may not be the case
   init();
   document.addEventListener("astro:page-load", init);
-  window.addEventListener("pageshow", (e) => { if (e.persisted) init(); });
+  window.addEventListener("pageshow", (e) => {
+    if (e.persisted) init();
+  });
 </script>

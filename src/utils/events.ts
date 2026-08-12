@@ -4,13 +4,16 @@ import { join } from "node:path";
 export interface ChbeEvent {
   ID: string;
   Name: string;
-  Date: string;
-  Time: string;
+  StartDate: string;
+  StartTime: string;
+  EndDate: string;
+  EndTime: string;
   Location: string;
   Image: string;
   Email: string;
   CalendarLink: string;
   Desc: string;
+  Featured: string;
   slug: string;
 }
 
@@ -49,6 +52,8 @@ export function getEvents(): ChbeEvent[] {
       obj[h.trim()] = (values[i] || "").replace(/^"|"$/g, "");
     });
     if (!obj.Email) obj.Email = "contact@chbe.ubc.ca";
+    if (!obj.EndDate) obj.EndDate = obj.StartDate || "";
+    if (!obj.Featured) obj.Featured = "false";
     return { ...obj, slug: nameToSlug(obj.Name) } as ChbeEvent;
   });
 }

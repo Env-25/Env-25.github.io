@@ -1,8 +1,8 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import "../../styles/auth.css";
+import "../../styles/cart.css";
 ---
-
 <BaseLayout title="Orders — UBC CHBE">
   <section class="auth-hero">
     <img src="/home/index-lower.jpg" alt="" class="auth-hero-bg" />
@@ -13,8 +13,8 @@ import "../../styles/auth.css";
     </div>
   </section>
 
-  <section class="auth-section">
-    <div class="auth-shell">
+  <section class="auth-section orders-page">
+    <div class="orders-shell">
       <div id="gate" class="auth-status-panel" hidden>
         <h2>Sign in required</h2>
         <p>Please sign in to view your orders.</p>
@@ -28,25 +28,72 @@ import "../../styles/auth.css";
       </div>
 
       <div id="ordersContent" hidden>
-        <h2 class="auth-block-title">Your orders</h2>
-        <p class="auth-block-sub">Order history will appear here once you place an order for merch or lockers.</p>
-        <div class="auth-status-panel">
-          <h2>No orders yet</h2>
-          <p>When you place an order from the merch shop, it will show up here.</p>
-          <a class="form-submit" href="/merch" style="text-decoration:none;">Browse merch</a>
+        <header class="orders-header">
+          <h2 class="orders-heading">Your orders</h2>
+          <p class="orders-sub">Select an order to view status and details.</p>
+        </header>
+
+        <div id="ordersLoading" class="orders-state">
+          <p>Loading orders…</p>
         </div>
+        <div id="ordersEmpty" class="orders-state" hidden>
+          <h3>No orders yet</h3>
+          <p>When you place an order for merch or lockers, it will appear here.</p>
+          <div class="orders-state-actions">
+            <a class="form-submit" href="/merch" style="text-decoration:none;">Browse merch</a>
+            <a class="form-submit" href="/locker-rental" style="text-decoration:none;">Browse lockers</a>
+          </div>
+        </div>
+        <div id="ordersError" class="orders-state" hidden>
+          <h3>Could not load orders</h3>
+          <p id="ordersErrorMsg"></p>
+        </div>
+
+        <div class="orders-list" id="ordersList" hidden></div>
       </div>
     </div>
   </section>
 </BaseLayout>
 
 <script>
-  import { getSessionProfile, grantVerifyAccess } from "../../utils/auth";
+  import { getSessionProfile, grantVerifyAccess, getIdToken } from "../../utils/auth";
   import { isAuthConfigured } from "../../utils/auth-config";
+  import { listOrders } from "../../utils/cart";
 
   const gate = document.getElementById("gate")!;
   const unverified = document.getElementById("unverified")!;
   const content = document.getElementById("ordersContent")!;
+  const loading = document.getElementById("ordersLoading")!;
+  const empty = document.getElementById("ordersEmpty")!;
+  const errPanel = document.getElementById("ordersError")!;
+  const errMsg = document.getElementById("ordersErrorMsg")!;
+  const listEl = document.getElementById("ordersList")!;
+
+  function money(n: unknown) {
+    return `$${Number(n || 0).toFixed(2)}`;
+  }
+
+  function formatDate(iso: unknown) {
+    const d = new Date(String(iso || ""));
+    if (Number.isNaN(d.getTime())) return "";
+    return d.toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  }
+
+  function itemSummary(items: any[]) {
+    if (!items.length) return "No items";
+    const first = items[0];
+    const detail =
+      first.kind === "merch"
+        ? [first.color, first.size].filter(Boolean).join(" · ")
+        : `${first.level || ""} level`.trim();
+    const label = detail ? `${first.name} · ${detail}` : first.name;
+    if (items.length === 1) return label;
+    return `${label} +${items.length - 1} more`;
+  }
 
   (async () => {
     if (!isAuthConfigured()) {
@@ -64,5 +111,57 @@ import "../../styles/auth.css";
       return;
     }
     content.hidden = false;
+
+    try {
+      const idToken = await getIdToken();
+      if (!idToken) {
+        gate.hidden = false;
+        content.hidden = true;
+        return;
+      }
+      const orders = await listOrders({ idToken });
+      loading.hidden = true;
+      if (!orders.length) {
+        empty.hidden = false;
+        return;
+      }
+      listEl.hidden = false;
+      listEl.innerHTML = "";
+      orders.forEach((order) => {
+        const id = String(order.orderID || "");
+        const status = Number(order.status);
+        const items = Array.isArray(order.items) ? order.items : [];
+        const thumb = items[0]?.image || "/logos/logo-round.png";
+        const a = document.createElement("a");
+        a.className = "orders-row";
+        a.href = `/account/orders/view/?id=${encodeURIComponent(id)}`;
+        a.innerHTML = `
+          <div class="orders-row-media">
+            <img src="${thumb}" alt="" loading="lazy" />
+          </div>
+          <div class="orders-row-body">
+            <div class="orders-row-topline">
+              <span class="orders-row-date">${formatDate(order.createdAt)}</span>
+              <span class="orders-row-status ${
+                status === 0 ? "is-cancelled" : status === 2 ? "is-done" : "is-open"
+              }">
+                ${status === 0 ? "Cancelled" : status === 2 ? "Completed" : "Received"}
+              </span>
+            </div>
+            <p class="orders-row-summary">${itemSummary(items)}</p>
+            <p class="orders-row-id">${id}</p>
+          </div>
+          <div class="orders-row-aside">
+            <p class="orders-row-total">${money(order.cashSubtotal)}</p>
+            <span class="orders-row-chevron" aria-hidden="true">→</span>
+          </div>
+        `;
+        listEl.appendChild(a);
+      });
+    } catch (e: any) {
+      loading.hidden = true;
+      errPanel.hidden = false;
+      errMsg.textContent = e?.message || "Something went wrong.";
+    }
   })();
 </script>

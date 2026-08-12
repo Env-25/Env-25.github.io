@@ -26,6 +26,7 @@ import "../styles/navbar.css";
             <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
           </svg>
           <span id="navAccountLabel">Sign In</span>
+          <span class="nav-cart-badge" id="navCartBadge" data-count="0"></span>
           <svg class="account-caret" id="navAccountCaret" xmlns="http://www.w3.org/2000/svg" width="12" height="12"
                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" hidden>
@@ -34,6 +35,7 @@ import "../styles/navbar.css";
         </a>
 
         <div class="nav-account-menu" id="navAccountMenu" hidden role="menu" aria-label="Account menu">
+          <a href="/cart" role="menuitem" id="navCartMenuLink">Cart</a>
           <a href="/account/profile" role="menuitem">Profile</a>
           <a href="/account/orders" role="menuitem">Orders</a>
           <a href="/account/subscriptions" role="menuitem">Subscriptions</a>
@@ -70,9 +72,11 @@ import "../styles/navbar.css";
           <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
         </svg>
         <span id="mobileAccountLabel">Sign In</span>
+        <span class="nav-cart-badge" id="mobileCartBadge" data-count="0"></span>
       </a>
 
       <div class="mobile-account-links auth-hidden" id="mobileAccountLinks" hidden>
+        <a href="/cart" class="mobile-link">Cart</a>
         <a href="/account/profile" class="mobile-link">Profile</a>
         <a href="/account/orders" class="mobile-link">Orders</a>
         <a href="/account/subscriptions" class="mobile-link">Subscriptions</a>
@@ -132,6 +136,8 @@ import "../styles/navbar.css";
     logoutUser,
   } from "../utils/auth";
   import { isAuthConfigured } from "../utils/auth-config";
+  import { cartCount, bindCartUser } from "../utils/cart";
+  import "../styles/cart.css";
 
   const accountWrap = document.getElementById("navAccountWrap")!;
   const accountBtn = document.getElementById("navAccountBtn") as HTMLAnchorElement;
@@ -208,6 +214,7 @@ import "../styles/navbar.css";
 
   async function doLogout() {
     try {
+      bindCartUser(null);
       await logoutUser();
     } catch {
       /* ignore */
@@ -218,6 +225,25 @@ import "../styles/navbar.css";
   logoutBtn.addEventListener("click", doLogout);
   mobileLogoutBtn.addEventListener("click", doLogout);
 
+  function refreshCartBadge() {
+    const n = cartCount();
+    const badge = document.getElementById("navCartBadge");
+    const mobile = document.getElementById("mobileCartBadge");
+    const menuLink = document.getElementById("navCartMenuLink");
+    if (badge) {
+      badge.dataset.count = String(n);
+      badge.textContent = n > 0 ? String(n) : "";
+    }
+    if (mobile) {
+      mobile.dataset.count = String(n);
+      mobile.textContent = n > 0 ? String(n) : "";
+    }
+    if (menuLink) menuLink.textContent = n > 0 ? `Cart (${n})` : "Cart";
+  }
+  refreshCartBadge();
+  window.addEventListener("chbe-cart-updated", refreshCartBadge);
+  window.addEventListener("storage", refreshCartBadge);
+
   (async () => {
     if (!isAuthConfigured()) {
       setSignedOut();
@@ -225,8 +251,14 @@ import "../styles/navbar.css";
     }
     try {
       const profile = await getSessionProfile();
-      if (profile) setSignedIn(profile.name || profile.email);
-      else setSignedOut();
+      if (profile) {
+        bindCartUser(profile.sub);
+        setSignedIn(profile.name || profile.email);
+        refreshCartBadge();
+      } else {
+        bindCartUser(null);
+        setSignedOut();
+      }
     } catch {
       setSignedOut();
     }

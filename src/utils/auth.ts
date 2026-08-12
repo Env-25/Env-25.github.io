@@ -66,6 +66,21 @@ function asBool(v: string | undefined, fallback = false): boolean {
   return v === "true" || v === "1";
 }
 
+/** Cognito ID token for API calls (orders, etc.). */
+export async function getIdToken(options?: {
+  forceRefresh?: boolean;
+}): Promise<string | null> {
+  ensureAmplify();
+  try {
+    const session = await fetchAuthSession({
+      forceRefresh: options?.forceRefresh === true,
+    });
+    return session.tokens?.idToken?.toString() ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export async function getSessionProfile(options?: {
   forceRefresh?: boolean;
 }): Promise<UserProfile | null> {

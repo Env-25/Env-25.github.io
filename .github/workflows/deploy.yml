@@ -36,6 +36,7 @@ jobs:
           PUBLIC_COGNITO_CLIENT_ID: ${{ secrets.PUBLIC_COGNITO_CLIENT_ID }}
           PUBLIC_TURNSTILE_SITE_KEY: ${{ secrets.PUBLIC_TURNSTILE_SITE_KEY }}
           PUBLIC_EMAIL_VALIDATE_URL: ${{ secrets.PUBLIC_EMAIL_VALIDATE_URL }}
+          PUBLIC_ORDERS_API_URL: ${{ secrets.PUBLIC_ORDERS_API_URL }}
         run: npm run build
 
       - name: Upload Pages artifact

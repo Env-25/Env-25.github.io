@@ -1,5 +1,4 @@
 ---
-import { getEvents, nameToSlug } from "../../utils/events";
 import "../../styles/event.css";
 import "../../styles/global.css";
 
@@ -15,6 +14,10 @@ export async function getStaticPaths() {
 }
 
 const { event } = Astro.props;
+
+function mapsUrl(loc: string) {
+  return `https://maps.google.com/?q=${encodeURIComponent(loc)}`;
+}
 ---
 <!DOCTYPE html>
 <html lang="en">
@@ -53,15 +56,28 @@ const { event } = Astro.props;
         <div class="event-details">
           <div class="event-detail-row">
             <span class="detail-icon">📅</span>
-            <span class="detail-text">{event.Date}</span>
+            <span class="detail-text">Start Date: {event.StartDate}</span>
           </div>
           <div class="event-detail-row">
             <span class="detail-icon">🕐</span>
-            <span class="detail-text">{event.Time}</span>
+            <span class="detail-text">Start Time: {event.StartTime}</span>
+          </div>
+          <div class="event-detail-row">
+            <span class="detail-icon">📅</span>
+            <span class="detail-text">End Date: {event.EndDate}</span>
+          </div>
+          <div class="event-detail-row">
+            <span class="detail-icon">🕐</span>
+            <span class="detail-text">End Time: {event.EndTime}</span>
           </div>
           <div class="event-detail-row">
             <span class="detail-icon">📍</span>
-            <span class="detail-text">{event.Location}</span>
+            <a
+              href={mapsUrl(event.Location)}
+              class="detail-link"
+              target="_blank"
+              rel="noopener"
+            >{event.Location}</a>
           </div>
           {event.Email && (
             <div class="event-detail-row">

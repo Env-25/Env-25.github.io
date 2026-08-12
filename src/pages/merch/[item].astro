@@ -185,9 +185,9 @@ const firstImage = activeVariant?.cover_image ?? product.Cover_image;
         </div>
 
         <button class="purchase-btn" id="purchaseBtn" disabled type="button">
-          Select a size to purchase
+          Select a size to add
         </button>
-        <p class="purchase-note">Purchases coming soon — stay tuned!</p>
+        <p class="purchase-note" id="purchaseNote">Select a size, then add to cart.</p>
 
         <div class="item-divider"></div>
 
@@ -213,6 +213,16 @@ const firstImage = activeVariant?.cover_image ?? product.Cover_image;
 </BaseLayout>
 
 <script define:vars={{ product }}>
+  window.__CHBE_MERCH_PRODUCT__ = product;
+</script>
+
+<script>
+  import { addToCart, fetchInventoryStock, inventorySku } from "../../utils/cart";
+
+  const product = window.__CHBE_MERCH_PRODUCT__;
+  if (!product) {
+    console.error("Merch product data missing");
+  } else {
   const thumbBtns = Array.from(document.querySelectorAll(".thumb-btn"));
   const thumbGroups = Array.from(document.querySelectorAll(".thumb-group"));
   const mainImg = document.getElementById("mainImage");
@@ -221,7 +231,7 @@ const firstImage = activeVariant?.cover_image ?? product.Cover_image;
   const colorLabel = document.getElementById("selectedColorLabel");
   const colorInput = document.getElementById("selectedColorInput");
 
-  const sizeBtns = Array.from(document.querySelectorAll(".size-btn"));
+  const sizeGroup = document.getElementById("sizeGroup");
   const selectedSizeLabel = document.getElementById("selectedSizeLabel");
   const qtyBlock = document.getElementById("qtyBlock");
   const qtyValue = document.getElementById("qtyValue");
@@ -229,9 +239,21 @@ const firstImage = activeVariant?.cover_image ?? product.Cover_image;
   const qtyDown = document.getElementById("qtyDown");
   const qtyUp = document.getElementById("qtyUp");
   const purchaseBtn = document.getElementById("purchaseBtn");
+  const purchaseNote = document.getElementById("purchaseNote");
 
   let selectedStock = 0;
   let qty = 1;
+  let selectedSize = "";
+  let sizeBtns = [];
+  let liveStock = {};
+
+  function stockFor(variantId, size, csvStock) {
+    const sku = inventorySku({ kind: "merch", id: variantId, size });
+    if (Object.prototype.hasOwnProperty.call(liveStock, sku)) {
+      return Math.max(0, Number(liveStock[sku]) || 0);
+    }
+    return Math.max(0, Number(csvStock) || 0);
+  }
 
   function activateThumb(btn) {
     thumbBtns.forEach((b) => b.classList.remove("active"));
@@ -239,42 +261,94 @@ const firstImage = activeVariant?.cover_image ?? product.Cover_image;
     if (mainImg) mainImg.src = btn.dataset.img;
   }
 
-  function setSizesForColor(color) {
+  function updateColorAvailability() {
+    colorBtns.forEach((btn) => {
+      const color = btn.dataset.color;
+      const variant = product.colorVariants.find((v) => v.color === color);
+      if (!variant) return;
+      const anyInStock = (variant.sizesStock || []).some(({ size, stock }) =>
+        stockFor(variant.id || product.ID, size, stock) > 0
+      );
+      btn.classList.toggle("out", !anyInStock);
+      btn.title = anyInStock ? color : `${color} — sold out`;
+      const outLabel = btn.querySelector(".color-variant-out");
+      if (!anyInStock && !outLabel) {
+        const span = document.createElement("span");
+        span.className = "color-variant-out";
+        span.textContent = "sold out";
+        btn.appendChild(span);
+      } else if (anyInStock && outLabel) {
+        outLabel.remove();
+      }
+    });
+  }
+
+  function renderSizesForColor(color) {
     const variant = product.colorVariants.find((v) => v.color === color);
-    if (!variant) return;
+    if (!variant || !sizeGroup) return;
 
-    sizeBtns.forEach((btn) => {
-      const size = btn.dataset.size;
-      const entry = variant.sizesStock.find((s) => s.size === size);
-      const stock = entry ? entry.stock : 0;
+    sizeGroup.innerHTML = "";
+    selectedSize = "";
+    if (selectedSizeLabel) selectedSizeLabel.textContent = "";
+    if (qtyBlock) qtyBlock.style.display = "none";
+    if (qtyValue) qtyValue.textContent = "1";
+    if (qtyStockNote) qtyStockNote.textContent = "";
+    if (qtyDown) qtyDown.disabled = true;
+    if (qtyUp) qtyUp.disabled = true;
+    if (purchaseBtn) {
+      purchaseBtn.disabled = true;
+      purchaseBtn.textContent = "Select a size to add";
+    }
+    if (purchaseNote) purchaseNote.textContent = "Select a size, then add to cart.";
 
+    sizeBtns = variant.sizesStock.map(({ size, stock: csvStock }) => {
+      const stock = stockFor(variant.id || product.ID, size, csvStock);
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = `size-btn${stock === 0 ? " out" : ""}`;
+      btn.dataset.size = size;
       btn.dataset.stock = String(stock);
       btn.disabled = stock === 0;
-      btn.classList.toggle("out", stock === 0);
       btn.title = stock === 0 ? "Out of stock" : `${stock} left`;
-      btn.classList.remove("active");
-    });
+      btn.textContent = size;
+      btn.addEventListener("click", () => {
+        if (btn.disabled) return;
+        sizeBtns.forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
 
-    selectedSizeLabel.textContent = "";
-    qtyBlock.style.display = "none";
-    qtyValue.textContent = "1";
-    qtyStockNote.textContent = "";
-    qtyDown.disabled = true;
-    qtyUp.disabled = true;
-    purchaseBtn.disabled = true;
-    purchaseBtn.textContent = "Select a size to purchase";
+        selectedStock = parseInt(btn.dataset.stock || "0", 10);
+        selectedSize = btn.dataset.size || "";
+        qty = 1;
+
+        if (selectedSizeLabel) selectedSizeLabel.textContent = `— ${selectedSize}`;
+        if (qtyValue) qtyValue.textContent = "1";
+        if (qtyStockNote) qtyStockNote.textContent = `${selectedStock} in stock`;
+        if (qtyBlock) qtyBlock.style.display = "";
+        if (qtyDown) qtyDown.disabled = true;
+        if (qtyUp) qtyUp.disabled = selectedStock <= 1;
+        if (purchaseBtn) {
+          purchaseBtn.disabled = selectedStock < 1;
+          purchaseBtn.textContent = "Add to Cart";
+        }
+        if (purchaseNote) purchaseNote.textContent = "";
+      });
+      sizeGroup.appendChild(btn);
+      return btn;
+    });
   }
 
   function selectColor(color) {
     if (!color) return;
 
-    colorLabel.textContent = `— ${color}`;
+    if (colorLabel) colorLabel.textContent = `— ${color}`;
     if (colorInput) colorInput.value = color;
 
     colorBtns.forEach((b) => b.classList.toggle("active", b.dataset.color === color));
-    thumbGroups.forEach((g) => g.classList.toggle("active-group", g.dataset.groupColor === color));
+    thumbGroups.forEach((g) =>
+      g.classList.toggle("active-group", g.dataset.groupColor === color)
+    );
 
-    setSizesForColor(color);
+    renderSizesForColor(color);
 
     const firstThumb = thumbBtns.find((b) => b.dataset.color === color);
     if (firstThumb) {
@@ -289,47 +363,52 @@ const firstImage = activeVariant?.cover_image ?? product.Cover_image;
 
   colorBtns.forEach((btn) => {
     btn.addEventListener("click", () => {
-      if (!btn.classList.contains("out")) selectColor(btn.dataset.color);
-    });
-  });
-
-  sizeBtns.forEach((btn) => {
-    btn.addEventListener("click", () => {
-      if (btn.disabled) return;
-
-      sizeBtns.forEach((b) => b.classList.remove("active"));
-      btn.classList.add("active");
-
-      selectedStock = parseInt(btn.dataset.stock || "0", 10);
-      qty = 1;
-
-      selectedSizeLabel.textContent = `— ${btn.dataset.size}`;
-      qtyValue.textContent = "1";
-      qtyStockNote.textContent = `${selectedStock} in stock`;
-      qtyBlock.style.display = "";
-      qtyDown.disabled = true;
-      qtyUp.disabled = selectedStock <= 1;
-      purchaseBtn.disabled = true;
-      purchaseBtn.textContent = "Purchase (Coming Soon)";
+      // Allow switching colours even if sold out (to browse); sizes stay disabled
+      selectColor(btn.dataset.color);
     });
   });
 
   qtyDown?.addEventListener("click", () => {
     if (qty > 1) {
       qty -= 1;
-      qtyValue.textContent = String(qty);
-      qtyDown.disabled = qty <= 1;
-      qtyUp.disabled = qty >= selectedStock;
+      if (qtyValue) qtyValue.textContent = String(qty);
+      if (qtyDown) qtyDown.disabled = qty <= 1;
+      if (qtyUp) qtyUp.disabled = qty >= selectedStock;
     }
   });
 
   qtyUp?.addEventListener("click", () => {
     if (qty < selectedStock) {
       qty += 1;
-      qtyValue.textContent = String(qty);
-      qtyDown.disabled = qty <= 1;
-      qtyUp.disabled = qty >= selectedStock;
+      if (qtyValue) qtyValue.textContent = String(qty);
+      if (qtyDown) qtyDown.disabled = qty <= 1;
+      if (qtyUp) qtyUp.disabled = qty >= selectedStock;
     }
+  });
+
+  purchaseBtn?.addEventListener("click", () => {
+    if (purchaseBtn.disabled || !selectedSize) return;
+    const color = colorInput?.value || product.Color;
+    const variant =
+      product.colorVariants.find((v) => v.color === color) || product.colorVariants[0];
+    addToCart({
+      kind: "merch",
+      id: variant?.id || product.ID,
+      slug: variant?.slug || product.slug,
+      name: product.Name,
+      image: `/merch/images/${variant?.cover_image || product.Cover_image}`,
+      color,
+      size: selectedSize,
+      qty,
+      unitPrice: variant?.price ?? product.Price,
+    });
+    purchaseBtn.textContent = "Added ✓";
+    if (purchaseNote) {
+      purchaseNote.innerHTML = `Added to cart. <a href="/cart">View cart</a>`;
+    }
+    setTimeout(() => {
+      purchaseBtn.textContent = "Add to Cart";
+    }, 1200);
   });
 
   const initialColor =
@@ -340,9 +419,23 @@ const firstImage = activeVariant?.cover_image ?? product.Cover_image;
 
   selectColor(initialColor);
 
+  (async () => {
+    const skus = [];
+    product.colorVariants.forEach((v) => {
+      (v.sizesStock || []).forEach(({ size }) => {
+        skus.push(inventorySku({ kind: "merch", id: v.id || product.ID, size }));
+      });
+    });
+    if (!skus.length) return;
+    liveStock = await fetchInventoryStock(skus);
+    updateColorAvailability();
+    selectColor(colorInput?.value || initialColor);
+  })();
+
   window.addEventListener("pageshow", (event) => {
     if (event.persisted) {
       selectColor(colorInput?.value || initialColor);
     }
   });
+  }
 </script>

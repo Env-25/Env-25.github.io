@@ -7,12 +7,14 @@ export interface SizeStock {
 }
 
 export interface ColorVariant {
+  id: string;
   color: string;
   slug: string;
   cover_image: string;
   additional_images: string[];   // all extra images for this colour
   inStock: boolean;
   sizesStock: { size: string; stock: number }[];
+  price: number;
 }
 
 export interface MerchItem {
@@ -145,12 +147,14 @@ export function getMerch(): MerchItem[] {
   rawItems.forEach((item) => {
     if (!variantsByTypeId.has(item.Type_id)) variantsByTypeId.set(item.Type_id, []);
     variantsByTypeId.get(item.Type_id)!.push({
+      id:                item.ID,
       color:             item.Color,
       slug:              item.slug,
       cover_image:       item.Cover_image,
       additional_images: item.Additional_images,
       inStock:           item.inStock,
       sizesStock:        item.Sizes_Stock,
+      price:             item.Price,
     });
   });
 
@@ -195,12 +199,14 @@ export function getGroupedMerch(): MerchItem[] {
         inStock: anyVariantInStock,
         allSizes: mergedAllSizes,
         colorVariants: groupItems.map((variant) => ({
+          id: variant.ID,
           color: variant.Color,
           slug: variant.slug,
           cover_image: variant.Cover_image,
           additional_images: [...variant.Additional_images],
           inStock: variant.inStock,
           sizesStock: variant.Sizes_Stock.map((s) => ({ ...s })),
+          price: variant.Price,
         })),
       };
     });

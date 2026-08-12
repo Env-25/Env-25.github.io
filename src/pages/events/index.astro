@@ -12,17 +12,37 @@ try {
   loadError = true;
 }
 
-function parseDate(s: string) { return new Date(s); }
+/** Parse YYYY-MM-DD as a local calendar date (avoids UTC offset shifts). */
+function parseDate(s: string) {
+  const [y, m, d] = (s || "").split("-").map(Number);
+  if (!y || !m || !d) return new Date(NaN);
+  return new Date(y, m - 1, d);
+}
+
+function formatDateRange(start: string, end: string) {
+  if (!end || end === start) return start;
+  return `${start} – ${end}`;
+}
+
+function formatTimeRange(start: string, end: string) {
+  if (!end || end === start) return start;
+  return `${start} – ${end}`;
+}
 
 const sorted = [...events].sort(
-  (a, b) => parseDate(a.Date).getTime() - parseDate(b.Date).getTime()
+  (a, b) => parseDate(a.StartDate).getTime() - parseDate(b.StartDate).getTime()
 );
 
 const today = new Date();
 today.setHours(0, 0, 0, 0);
 
-const upcoming = sorted.filter((e) => parseDate(e.Date) >= today);
-const spotlight = upcoming[0] ?? null;
+const upcoming = sorted.filter((e) => {
+  const end = parseDate(e.EndDate || e.StartDate);
+  return !Number.isNaN(end.getTime()) && end >= today;
+});
+
+const spotlight =
+  sorted.find((e) => (e.Featured || "").toLowerCase() === "true") ?? null;
 
 const spotlightIndex = spotlight
   ? sorted.findIndex((e) => e.slug === spotlight.slug)
@@ -34,8 +54,9 @@ function mapsUrl(loc: string) {
 
 const calEventsData = sorted.map((e) => ({
   name: e.Name,
-  date: e.Date,
-  time: e.Time,
+  startDate: e.StartDate,
+  endDate: e.EndDate || e.StartDate,
+  startTime: e.StartTime,
   slug: e.slug,
 }));
 
@@ -91,16 +112,16 @@ const upcomingCalLinks = upcoming
               />
             </div>
             <div class="spotlight-info">
-              <span class="spotlight-eyebrow">Next Up</span>
+              <span class="spotlight-eyebrow">Featured</span>
               <h2 class="spotlight-name">{spotlight.Name}</h2>
               <ul class="spotlight-meta-list">
                 <li class="spotlight-meta">
                   <span class="meta-icon">📅</span>
-                  <span>{spotlight.Date}</span>
+                  <span>{formatDateRange(spotlight.StartDate, spotlight.EndDate)}</span>
                 </li>
                 <li class="spotlight-meta">
                   <span class="meta-icon">🕐</span>
-                  <span>{spotlight.Time}</span>
+                  <span>{formatTimeRange(spotlight.StartTime, spotlight.EndTime)}</span>
                 </li>
                 <li class="spotlight-meta">
                   <span class="meta-icon">📍</span>
@@ -132,7 +153,7 @@ const upcomingCalLinks = upcoming
           </div>
         ) : (
           <div class="spotlight-empty">
-            <p class="spotlight-empty-title">No Upcoming Events</p>
+            <p class="spotlight-empty-title">No Featured Event</p>
             <p class="spotlight-empty-sub">Check back soon — something is always in the works.</p>
           </div>
         )}
@@ -163,8 +184,8 @@ const upcomingCalLinks = upcoming
                 </div>
                 <div class="carousel-info">
                   <p class="carousel-name">{ev.Name}</p>
-                  <p class="carousel-meta">📅 {ev.Date}</p>
-                  <p class="carousel-meta">🕐 {ev.Time}</p>
+                  <p class="carousel-meta">📅 {formatDateRange(ev.StartDate, ev.EndDate)}</p>
+                  <p class="carousel-meta">🕐 {formatTimeRange(ev.StartTime, ev.EndTime)}</p>
                   <p class="carousel-meta">
                     <a
                       href={mapsUrl(ev.Location)}
@@ -304,14 +325,26 @@ const upcomingCalLinks = upcoming
       "July","August","September","October","November","December"
     ];
 
+    function parseLocalDate(s) {
+      const [y, m, d] = String(s || "").split("-").map(Number);
+      if (!y || !m || !d) return null;
+      return new Date(y, m - 1, d);
+    }
+
     const eventsWithDates = calEventsData.map((e) => ({
       ...e,
-      _date: new Date(e.date),
-    }));
+      _start: parseLocalDate(e.startDate),
+      _end: parseLocalDate(e.endDate || e.startDate),
+    })).filter((e) => e._start && e._end);
 
     const now = new Date();
     let viewYear  = now.getFullYear();
     let viewMonth = now.getMonth();
+
+    function occursOnDay(ev, year, month, day) {
+      const cell = new Date(year, month, day);
+      return cell >= ev._start && cell <= ev._end;
+    }
 
     function build() {
       calLabel.textContent = `${MONTHS[viewMonth]} ${viewYear}`;
@@ -344,20 +377,24 @@ const upcomingCalLinks = upcoming
         cell.appendChild(num);
 
         eventsWithDates
-          .filter((e) => {
-            const ed = e._date;
-            return ed.getFullYear() === viewYear &&
-                   ed.getMonth()    === viewMonth &&
-                   ed.getDate()     === d;
-          })
+          .filter((e) => occursOnDay(e, viewYear, viewMonth, d))
           .forEach((ev) => {
             const chip = document.createElement("a");
             chip.href = "/events/" + ev.slug;
             chip.className = "cal-event-chip";
+            const isStart =
+              ev._start.getFullYear() === viewYear &&
+              ev._start.getMonth() === viewMonth &&
+              ev._start.getDate() === d;
+            const isMultiDay = ev._start.getTime() !== ev._end.getTime();
             chip.textContent = window.innerWidth < 560
               ? ev.name
-              : (ev.time ? ev.time + " · " : "") + ev.name;
-            chip.title = ev.name;
+              : (isStart && ev.startTime ? ev.startTime + " · " : "") +
+                ev.name +
+                (isMultiDay && !isStart ? " (cont.)" : "");
+            chip.title = isMultiDay
+              ? `${ev.name} (${ev.startDate} – ${ev.endDate})`
+              : ev.name;
             cell.appendChild(chip);
           });
 
