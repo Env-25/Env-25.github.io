@@ -74,6 +74,10 @@
   padding: 2rem;
   text-align: center;
 }
+/* Breathing room before footer on short empty-cart layouts */
+.cart-empty {
+  margin-bottom: 4rem;
+}
 .cart-empty h2,
 .order-panel h2 {
   font-family: "RocaTwo-Bl", sans-serif;
