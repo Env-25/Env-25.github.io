@@ -1,6 +1,6 @@
 ID,Name,type_id,Type,Color,Desc,Price,Sizes_Stock,Cover_image,Additional_images
 1,CHBE Hoodie,hoodie,Hoodie,Black,,37,Test1:1|Test2:2,black_hoodie.jpg,
-2,CHBE Crewneck,crewneck,Crewneck,Charcoal,,28,Test1:0|Test2:0,charcoal_crewneck.jpg,
-3,CHBE Crewneck,crewneck,Crewneck,Navy,,28,Test1:10|Test2:2,navy_crewneck.jpg,
+2,CHBE Crewneck,crewneck,Crewneck,Charcoal,,28,Test1:20|Test2:5,charcoal_crewneck.jpg,
+3,CHBE Crewneck,crewneck,Crewneck,Navy,,28,Test1:2|Test2:2,navy_crewneck.jpg,
 4,CHBE North Face Jacket,north_face,Jacket,Black,,110,Test1:1|Test2:2,north_face.jpg,
 5,CHBE Long Sleeve T-Shirt,long_sleeve,T-Shirt,Red,,20,,product.jpg,
