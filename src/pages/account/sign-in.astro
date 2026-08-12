@@ -142,7 +142,7 @@ const turnstileSiteKey = AUTH_CONFIG.turnstileSiteKey;
         window.location.replace("/account/complete-profile");
         return;
       }
-      window.location.replace("/account/profile");
+      window.location.replace("/");
     } catch {
       /* stay on sign-in */
     }
@@ -211,7 +211,7 @@ const turnstileSiteKey = AUTH_CONFIG.turnstileSiteKey;
         window.location.href = "/account/complete-profile";
         return;
       }
-      window.location.href = "/account/profile";
+      window.location.href = "/";
     } catch (err) {
       const e = err as { name?: string; message?: string; code?: string; cause?: { name?: string; message?: string } };
       const name = e?.name || e?.code || e?.cause?.name || "";
