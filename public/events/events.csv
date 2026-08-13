@@ -1,8 +1,8 @@
-"ID",Name,StartDate,StartTime,EndDate,EndTime,Location,Image,Email,CalendarLink,Desc,Featured
-1,Event Old,2026-04-05,10:00 AM,2026-04-05,12:00 PM,UBC,default.png,,https://calendar.app.google/zLM4ecx1w1Tcteuy9,Desc,false
-5,Event Old,2026-04-05,10:00 AM,2026-04-05,12:00 PM,UBC,default.png,,,Desc,false
-6,Event Old,2026-04-05,10:00 AM,2026-04-05,12:00 PM,UBC,default.png,,https://calendar.app.google/zLM4ecx1w1Tcteuy9,Desc,false
-2,Event Upcoming,2026-08-20,12:00 PM,2026-08-22,5:00 PM,UBC CHBE Building Room 1100,default.png,,https://calendar.app.google/zLM4ecx1w1Tcteuy9,Info,true
-3,Event Test,2026-08-27,12:00 PM,2026-08-27,2:00 PM,UBC,default.png,,https://calendar.app.google/zLM4ecx1w1Tcteuy9,Info,false
-4,Event Test,2026-08-27,12:00 PM,2026-08-27,2:00 PM,UBC,default.png,,,Info,false
-7,Event Test,2026-08-27,12:00 PM,2026-08-27,2:00 PM,UBC,default.png,,https://calendar.app.google/zLM4ecx1w1Tcteuy9,Info,false
+"ID",Name,StartDate,StartTime,EndDate,EndTime,Location,Image,Email,CalendarLink,Desc
+1,Event Old,2026-04-05,10:00 AM,2026-04-05,12:00 PM,UBC,default.png,,https://calendar.app.google/zLM4ecx1w1Tcteuy9,Desc
+5,Event Old,2026-04-05,10:00 AM,2026-04-05,12:00 PM,UBC,default.png,,,Desc
+6,Event Old,2026-04-05,10:00 AM,2026-04-05,12:00 PM,UBC,default.png,,https://calendar.app.google/zLM4ecx1w1Tcteuy9,Desc
+2,Event Upcoming,2026-08-20,12:00 PM,2026-08-22,5:00 PM,UBC CHBE Building Room 1100,default.png,,https://calendar.app.google/zLM4ecx1w1Tcteuy9,Info
+3,Event Test,2026-08-27,12:00 PM,2026-08-27,2:00 PM,UBC,default.png,,https://calendar.app.google/zLM4ecx1w1Tcteuy9,Info
+4,Event Test,2026-08-27,12:00 PM,2026-08-27,2:00 PM,UBC,default.png,,,Info
+7,Event Test,2026-08-27,12:00 PM,2026-08-27,2:00 PM,UBC,default.png,,https://calendar.app.google/zLM4ecx1w1Tcteuy9,Info

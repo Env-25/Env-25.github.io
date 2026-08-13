@@ -19,6 +19,31 @@ function parseDate(s: string) {
   return new Date(y, m - 1, d);
 }
 
+/** Parse "12:00 PM" / "10:00 AM" → minutes since midnight, or null. */
+function parseTimeToMinutes(s: string): number | null {
+  const m = (s || "").trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if (!m) return null;
+  let h = parseInt(m[1], 10);
+  const min = parseInt(m[2], 10);
+  const ap = m[3].toUpperCase();
+  if (ap === "PM" && h !== 12) h += 12;
+  if (ap === "AM" && h === 12) h = 0;
+  return h * 60 + min;
+}
+
+/** Local start datetime ms for an event (date + time). */
+function parseEventStartMs(e: { StartDate: string; StartTime: string }): number {
+  const d = parseDate(e.StartDate);
+  if (Number.isNaN(d.getTime())) return NaN;
+  const mins = parseTimeToMinutes(e.StartTime);
+  if (mins == null) {
+    d.setHours(0, 0, 0, 0);
+  } else {
+    d.setHours(Math.floor(mins / 60), mins % 60, 0, 0);
+  }
+  return d.getTime();
+}
+
 function formatDateRange(start: string, end: string) {
   if (!end || end === start) return start;
   return `${start} – ${end}`;
@@ -41,11 +66,16 @@ const upcoming = sorted.filter((e) => {
   return !Number.isNaN(end.getTime()) && end >= today;
 });
 
+// Featured = first upcoming by start date/time; CSV order (ID row order) breaks ties
+const nowMs = Date.now();
 const spotlight =
-  sorted.find((e) => (e.Featured || "").toLowerCase() === "true") ?? null;
+  events
+    .map((e, csvIndex) => ({ e, csvIndex, startMs: parseEventStartMs(e) }))
+    .filter(({ startMs }) => !Number.isNaN(startMs) && startMs > nowMs)
+    .sort((a, b) => a.startMs - b.startMs || a.csvIndex - b.csvIndex)[0]?.e ?? null;
 
 const spotlightIndex = spotlight
-  ? sorted.findIndex((e) => e.slug === spotlight.slug)
+  ? sorted.findIndex((e) => e.ID === spotlight.ID)
   : 0;
 
 function mapsUrl(loc: string) {
