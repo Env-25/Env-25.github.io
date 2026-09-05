@@ -1,0 +1,37 @@
+---
+/**
+ * Down-for-maintenance page.
+ *
+ * To take the site offline temporarily:
+ *   1. Rename src/pages/index.astro → src/pages/index.offline.astro
+ *   2. Rename this file → src/pages/index.astro
+ *
+ * To bring the site back:
+ *   1. Rename index.astro → maintenance.astro
+ *   2. Rename index.offline.astro → index.astro
+ */
+import BaseLayout from "../layouts/BaseLayout.astro";
+import "../styles/status.css";
+---
+
+<BaseLayout title="Under Maintenance — UBC CHBE" hideNav hideFooter>
+  <section class="status-page">
+    <img src="/home/index-lower.jpg" alt="" class="status-page-bg" />
+    <div class="status-page-overlay"></div>
+
+    <div class="status-page-content">
+      <img src="/logos/logo-text-1915.png" alt="UBC CHBE Council" class="status-logo" />
+      <p class="status-eyebrow">Please stand by</p>
+      <h1 class="status-title">Down for Maintenance</h1>
+      <p class="status-text">
+        We’re performing scheduled updates to improve the CHBE Council website.
+        Thanks for your patience — we’ll be back shortly.
+      </p>
+      <p class="status-meta">Expected downtime: till 22-28 August</p>
+      <div class="status-actions">
+        <a href="mailto:chbevpinternal@gmail.com" class="status-btn">Contact Us</a>
+        <a href="/" class="status-btn primary">Try Again</a>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
