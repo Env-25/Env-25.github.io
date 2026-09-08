@@ -86,6 +86,8 @@
 .admin-rte-toolbar { display:flex; gap:.25rem; padding:.4rem; border:1px solid rgba(58,75,74,.28); border-bottom:0; background:rgba(114,166,145,.1); }
 .admin-rte-toolbar button { min-width:32px; min-height:28px; border:1px solid rgba(58,75,74,.22); background:#fff; color:var(--clr-dark-teal); cursor:pointer; font:700 .7rem "Telegraf",sans-serif; }
 .admin-rte-toolbar button:hover { background:var(--clr-cream); }
+.admin-rte-actions { display:flex; flex-wrap:wrap; gap:.45rem; margin-top:.65rem; }
+.admin-rte-actions .admin-secondary { min-height:32px; padding:.4rem .7rem; font-size:.62rem; }
 .admin-preview { width:100%; min-height:410px; border:1px solid rgba(58,75,74,.22); background:#fff; }
 .admin-audience { display:flex; flex-wrap:wrap; gap:.9rem; margin:1rem 0; }
 .admin-audience label { display:flex; align-items:center; gap:.4rem; text-transform:none; letter-spacing:0; font-size:.78rem; }
