@@ -5,3 +5,4 @@ node_modules/
 !.env.example
 .DS_Store
 aws/scripts/.orders-build/
+aws/scripts/.admin-build/

@@ -1,0 +1,378 @@
+---
+import "../../styles/admin.css";
+---
+
+<main id="adminRoot" class="admin-page">
+  <div class="admin-access-denied">
+    <p>Checking access…</p>
+  </div>
+</main>
+
+<script>
+  import { getSessionProfile } from "../../utils/auth";
+  import { fileToBase64, getAdmin, postAdmin } from "../../utils/admin";
+  import { isAuthConfigured } from "../../utils/auth-config";
+
+  type Workspace = "lockers" | "merch" | "notifications" | "members" | "events" | "resources" | "admin";
+  type CsvRow = Record<string, string>;
+  type ContentState = { workspace: Workspace; year?: string; headers: string[]; rows: CsvRow[]; caption?: string; originalInventory?: InventoryItem[] };
+  type InventoryItem = { sku: string; kind: "locker" | "merch"; productId: string; label: string; name: string; color?: string; quantity: number };
+
+  const root = document.getElementById("adminRoot")!;
+  const workspaces: { id: Workspace; label: string; group: string }[] = [
+    { id: "lockers", label: "Lockers", group: "lockers" },
+    { id: "merch", label: "Merch", group: "merch" },
+    { id: "notifications", label: "Notifications", group: "notifications" },
+    { id: "members", label: "Members", group: "members" },
+    { id: "events", label: "Events", group: "events" },
+    { id: "resources", label: "Resources", group: "resources" },
+    { id: "admin", label: "Admin", group: "admin" },
+  ];
+  const headers: Record<string, string[]> = {
+    lockers: ["ID", "Name", "Desc", "Location", "Size", "Price", "Availability_Top", "Availability_Mid", "Availability_Bottom", "Rental_Term", "Lock_Included", "Cover_photo", "Add_photos"],
+    merch: ["ID", "Name", "type_id", "Type", "Color", "Desc", "Price", "Sizes_Stock", "Cover_image", "Additional_images"],
+    events: ["ID", "Name", "StartDate", "StartTime", "EndDate", "EndTime", "Location", "Image", "Email", "CalendarLink", "Desc"],
+    members: ["ID", "Name", "Title", "Image", "Bio", "Contact", "LinkedIn"],
+    resources: ["Title", "Description", "Href", "Icon", "Alt"],
+  };
+  const defaults: Record<string, CsvRow> = {
+    lockers: { ID: "", Name: "", Desc: "", Location: "", Size: "", Price: "", Availability_Top: "0", Availability_Mid: "0", Availability_Bottom: "0", Rental_Term: "", Lock_Included: "NA", Cover_photo: "locker.jpg", Add_photos: "" },
+    merch: { ID: "", Name: "", type_id: "", Type: "", Color: "", Desc: "", Price: "", Sizes_Stock: "", Cover_image: "product.jpg", Additional_images: "" },
+    events: { ID: "", Name: "", StartDate: "", StartTime: "", EndDate: "", EndTime: "", Location: "", Image: "default.png", Email: "contact@chbe.ubc.ca", CalendarLink: "", Desc: "" },
+    members: { ID: "", Name: "", Title: "", Image: "", Bio: "", Contact: "", LinkedIn: "" },
+    resources: { Title: "", Description: "", Href: "", Icon: "", Alt: "" },
+  };
+  let profile: Awaited<ReturnType<typeof getSessionProfile>> = null;
+  let state: ContentState | null = null;
+
+  const escape = (value: unknown) => String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[char] || char));
+  const message = (text: string, error = false) => `<div class="admin-message${error ? " admin-message--error" : ""}">${escape(text)}</div>`;
+
+  function parseCsv(content: string) {
+    const lines = content.replace(/^\uFEFF/, "").split(/\r?\n/).filter(Boolean);
+    const cells = (line: string) => {
+      const values: string[] = [];
+      let current = "", quoted = false;
+      for (let i = 0; i < line.length; i += 1) {
+        const char = line[i];
+        if (char === '"' && line[i + 1] === '"') { current += '"'; i += 1; }
+        else if (char === '"') quoted = !quoted;
+        else if (char === "," && !quoted) { values.push(current); current = ""; }
+        else current += char;
+      }
+      values.push(current);
+      return values;
+    };
+    const columns = lines.length ? cells(lines[0]).map((cell) => cell.trim()) : [];
+    return { headers: columns, rows: lines.slice(1).map((line) => Object.fromEntries(columns.map((header, i) => [header, cells(line)[i] ?? ""]))) };
+  }
+
+  function csvValue(value: string) {
+    return /[",\n\r]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+  }
+
+  function serializeCsv(content: ContentState) {
+    return [content.headers.join(","), ...content.rows.map((row) => content.headers.map((header) => csvValue(row[header] ?? "")).join(","))].join("\n") + "\n";
+  }
+
+  function modal(inner: string) {
+    return `<div class="admin-modal" id="adminModal" role="dialog" aria-modal="true"><div class="admin-modal__dialog">${inner}</div></div>`;
+  }
+
+  function closeModal() {
+    document.getElementById("adminModal")?.remove();
+  }
+
+  function renderShell() {
+    root.innerHTML = `
+      <nav class="admin-nav"><a href="/" class="admin-nav__brand">CHBE ADMIN</a><a href="/" class="admin-nav__back">← Back to site</a></nav>
+      <div class="admin-layout">
+        <div class="admin-heading"><h1>Admin Console</h1><p class="admin-email">${escape(profile?.email)}</p></div>
+        <div class="admin-body">
+          <aside class="admin-menu">${workspaces.map((item) => `<button type="button" data-workspace="${item.id}">${item.label}</button>`).join("")}</aside>
+          <section class="admin-panel" id="adminPanel"><p class="admin-status">Choose an area from the menu.</p></section>
+        </div>
+      </div>`;
+    root.querySelectorAll<HTMLButtonElement>("[data-workspace]").forEach((button) => button.addEventListener("click", () => openWorkspace(button.dataset.workspace as Workspace)));
+  }
+
+  function showDenied() {
+    const destination = profile?.isAdmin ? "/admin/" : "/";
+    const label = profile?.isAdmin ? "Back to admin menu" : "Back to home";
+    root.innerHTML = `<div class="admin-access-denied"><div><h1>Access denied</h1><p>Please contact the web team if this is a mistake.</p><a class="admin-button" href="${destination}" style="display:inline-flex;margin-top:1.5rem;">${label}</a></div></div>`;
+  }
+
+  function panel() {
+    return document.getElementById("adminPanel")!;
+  }
+
+  function allowed(workspace: Workspace) {
+    return Boolean(profile?.groups.includes(workspaces.find((item) => item.id === workspace)?.group || ""));
+  }
+
+  async function openWorkspace(workspace: Workspace) {
+    if (!allowed(workspace)) { showDenied(); return; }
+    window.location.hash = workspace;
+    root.querySelectorAll<HTMLButtonElement>("[data-workspace]").forEach((button) => button.setAttribute("aria-current", String(button.dataset.workspace === workspace)));
+    if (workspace === "notifications") return renderNotifications();
+    if (workspace === "admin") return renderUserAdmin();
+    await loadContentWorkspace(workspace);
+  }
+
+  async function loadContentWorkspace(workspace: Exclude<Workspace, "notifications" | "admin">, year = "2026") {
+    panel().innerHTML = `<p class="admin-status">Loading ${escape(workspace)}…</p>`;
+    try {
+      const data = await getAdmin<{ content: string; caption?: string }>({ action: "content", workspace, ...(workspace === "members" ? { year } : {}) });
+      const parsed = parseCsv(data.content);
+      state = { workspace, year: workspace === "members" ? year : undefined, headers: parsed.headers.length ? parsed.headers : headers[workspace], rows: parsed.rows, caption: data.caption };
+      if (workspace === "lockers" || workspace === "merch") {
+        const inventory = await getAdmin<{ items: InventoryItem[] }>({ action: "inventory", kind: workspace === "lockers" ? "locker" : "merch" });
+        state.originalInventory = inventory.items;
+        mergeInventory(state, inventory.items);
+      }
+      renderContentWorkspace();
+    } catch (error) {
+      panel().innerHTML = message(error instanceof Error ? error.message : "Could not load this workspace.", true);
+    }
+  }
+
+  function mergeInventory(content: ContentState, inventory: InventoryItem[]) {
+    const stock = new Map(inventory.map((item) => [item.sku, Number(item.quantity)]));
+    if (content.workspace === "lockers") {
+      for (const row of content.rows) {
+        for (const [label, field] of [["Top", "Availability_Top"], ["Mid", "Availability_Mid"], ["Bottom", "Availability_Bottom"]] as const) {
+          const value = stock.get(`locker#${row.ID}#${label}`);
+          if (value !== undefined) row[field] = String(value);
+        }
+      }
+    }
+    if (content.workspace === "merch") {
+      for (const row of content.rows) {
+        row.Sizes_Stock = String(row.Sizes_Stock || "").split("|").filter(Boolean).map((entry) => {
+          const [size, amount] = entry.split(":");
+          const value = stock.get(`merch#${row.ID}#${size?.trim()}`);
+          return `${size?.trim() || ""}:${value === undefined ? amount || "0" : value}`;
+        }).join("|");
+      }
+    }
+  }
+
+  function tableRow(content: ContentState, row: CsvRow) {
+    return `<tr>${content.headers.map((header) => `<td>${escape(row[header])}</td>`).join("")}<td><div class="admin-row-actions"><button type="button" class="admin-link-button" data-edit="${escape(row.ID || row.Title)}">Update</button><button type="button" class="admin-link-button admin-link-button--danger" data-delete="${escape(row.ID || row.Title)}">Delete</button></div></td></tr>`;
+  }
+
+  function tableRows(content: ContentState) {
+    if (content.workspace !== "merch") return content.rows.map((row) => tableRow(content, row)).join("");
+    const groups = new Map<string, CsvRow[]>();
+    content.rows.forEach((row) => {
+      const key = row.type_id || row.ID;
+      groups.set(key, [...(groups.get(key) || []), row]);
+    });
+    return [...groups.entries()].map(([productId, rows]) =>
+      `<tr><td colspan="${content.headers.length + 1}" style="background:rgba(114,166,145,.08)"><strong>Product ${escape(productId)}</strong> · ${escape(rows[0]?.Name || "")}</td></tr>${rows.map((row) => tableRow(content, row)).join("")}`
+    ).join("");
+  }
+
+  function renderContentWorkspace(note = "") {
+    if (!state) return;
+    const content = state;
+    const title = content.workspace === "members" ? `Members — ${content.year}` : content.workspace[0].toUpperCase() + content.workspace.slice(1);
+    panel().innerHTML = `
+      <h2>${escape(title)}</h2>
+      <p class="admin-panel__intro">Fields remain read-only until Edit is selected. Changes only reach the public site after publishing.</p>
+      ${note ? message(note) : ""}
+      <div class="admin-toolbar">
+        <div>${content.workspace === "members" ? `<select class="admin-search" id="yearSelect" aria-label="Council year"><option value="2026" ${content.year === "2026" ? "selected" : ""}>2026</option><option value="2025" ${content.year === "2025" ? "selected" : ""}>2025</option><option value="new">Create new year…</option></select>` : ""}</div>
+        <div class="admin-row-actions"><button type="button" class="admin-secondary" id="addRecord">Add new</button><button type="button" class="admin-button" id="publishContent">Publish changes</button></div>
+      </div>
+      <div class="admin-table-wrap"><table class="admin-table"><thead><tr>${content.headers.map((header) => `<th>${escape(header)}</th>`).join("")}<th>Actions</th></tr></thead><tbody>
+        ${content.rows.length ? tableRows(content) : `<tr><td colspan="${content.headers.length + 1}">No entries yet.</td></tr>`}
+      </tbody></table></div>
+      ${content.workspace === "members" ? `<div class="admin-field admin-field--full" style="margin-top:1.5rem"><label for="caption">Left to right caption</label><textarea id="caption">${escape(content.caption || "")}</textarea></div>` : ""}`;
+    document.getElementById("addRecord")?.addEventListener("click", () => editRecord(null));
+    document.getElementById("publishContent")?.addEventListener("click", () => publishContent());
+    panel().querySelectorAll<HTMLButtonElement>("[data-edit]").forEach((button) => button.addEventListener("click", () => editRecord(content.rows.find((row) => (row.ID || row.Title) === button.dataset.edit) || null)));
+    panel().querySelectorAll<HTMLButtonElement>("[data-delete]").forEach((button) => button.addEventListener("click", () => deleteRecord(button.dataset.delete || "")));
+    document.getElementById("caption")?.addEventListener("input", (event) => { if (state) state.caption = (event.target as HTMLTextAreaElement).value; });
+    const yearSelect = document.getElementById("yearSelect") as HTMLSelectElement | null;
+    yearSelect?.addEventListener("change", () => {
+      if (yearSelect.value === "new") {
+        const year = window.prompt("Enter the new four-digit council year:");
+        if (year && /^\d{4}$/.test(year)) loadContentWorkspace("members", year);
+        else yearSelect.value = content.year || "2026";
+      } else loadContentWorkspace("members", yearSelect.value);
+    });
+  }
+
+  function imageFieldName(content: ContentState) {
+    return ({ lockers: "Cover_photo", merch: "Cover_image", events: "Image", members: "Image", resources: "Icon" } as Record<string, string>)[content.workspace];
+  }
+
+  function editRecord(row: CsvRow | null) {
+    if (!state) return;
+    const content = state;
+    const isNew = !row;
+    const original = row ? { ...row } : { ...defaults[content.workspace], ...(content.workspace === "lockers" && content.rows[0] ? { Price: content.rows[0].Price } : {}), ...(content.workspace === "members" ? { ID: String(Math.max(0, ...content.rows.map((item) => Number(item.ID) || 0)) + 1) } : {}) };
+    const imageField = imageFieldName(content);
+    document.body.insertAdjacentHTML("beforeend", modal(`
+      <h3>${isNew ? "Add new entry" : "Update entry"}</h3>
+      <div class="admin-fields">${content.headers.map((header) => `<div class="admin-field${header === "Desc" || header === "Bio" || header === "Description" ? " admin-field--full" : ""}"><label for="field-${escape(header)}">${escape(header)}</label>${header === "Desc" || header === "Bio" || header === "Description" ? `<textarea id="field-${escape(header)}" data-field="${escape(header)}" ${isNew ? "" : "disabled"}>${escape(original[header])}</textarea>` : `<input id="field-${escape(header)}" data-field="${escape(header)}" value="${escape(original[header])}" ${isNew ? "" : "disabled"}>`}</div>`).join("")}</div>
+      ${imageField ? `<div class="admin-field" style="margin-top:1rem"><label for="imageUpload">Upload image</label><input id="imageUpload" type="file" accept="image/png,image/jpeg,image/webp,image/gif" ${isNew ? "" : "disabled"}><span class="admin-panel__intro">Images are published to the matching site folder.</span></div>` : ""}
+      <div class="admin-modal__actions">${isNew ? "" : `<button class="admin-secondary" type="button" id="unlockRecord">Edit fields</button>`}<button class="admin-secondary" type="button" id="cancelRecord">Cancel</button><button class="admin-button" type="button" id="saveDraft">${isNew ? "Add draft" : "Save draft"}</button><button class="admin-button" type="button" id="publishRecord">Publish changes</button></div>`));
+    const getValues = async () => {
+      const next = Object.fromEntries(content.headers.map((header) => [header, String((document.querySelector(`[data-field="${CSS.escape(header)}"]`) as HTMLInputElement | HTMLTextAreaElement)?.value ?? "")])) as CsvRow;
+      const file = (document.getElementById("imageUpload") as HTMLInputElement | null)?.files?.[0];
+      if (file && imageField) {
+        const response = await postAdmin<{ path: string }>({ action: "uploadAsset", workspace: content.workspace, year: content.year, filename: file.name, mime: file.type, base64: await fileToBase64(file) });
+        next[imageField] = response.path.split("/").pop() || next[imageField];
+      }
+      return next;
+    };
+    const save = async (publish: boolean) => {
+      try {
+        const next = await getValues();
+        if (isNew) content.rows.push(next);
+        else Object.assign(row!, next);
+        if (content.workspace === "lockers") {
+          content.rows.forEach((locker) => { locker.Price = next.Price; });
+        }
+        closeModal();
+        renderContentWorkspace();
+        if (publish) await publishContent();
+      } catch (error) {
+        const actions = document.querySelector(".admin-modal__actions");
+        actions?.insertAdjacentHTML("beforebegin", message(error instanceof Error ? error.message : "Could not save the entry.", true));
+      }
+    };
+    document.getElementById("unlockRecord")?.addEventListener("click", () => {
+      document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>("[data-field], #imageUpload").forEach((field) => field.disabled = false);
+      document.getElementById("unlockRecord")?.remove();
+    });
+    document.getElementById("cancelRecord")?.addEventListener("click", closeModal);
+    document.getElementById("saveDraft")?.addEventListener("click", () => save(false));
+    document.getElementById("publishRecord")?.addEventListener("click", () => save(true));
+  }
+
+  async function deleteRecord(key: string) {
+    if (!state || !window.confirm("Delete this entry? This cannot be undone after publishing.")) return;
+    state.rows = state.rows.filter((row) => (row.ID || row.Title) !== key);
+    await publishContent();
+  }
+
+  function inventoryForContent(content: ContentState): InventoryItem[] {
+    if (content.workspace === "lockers") {
+      return content.rows.flatMap((row) => [["Top", "Availability_Top"], ["Mid", "Availability_Mid"], ["Bottom", "Availability_Bottom"]].map(([label, field]) => ({
+        sku: `locker#${row.ID}#${label}`, kind: "locker" as const, productId: row.ID, label, name: row.Name, quantity: Math.max(0, Number(row[field]) || 0),
+      })));
+    }
+    if (content.workspace === "merch") {
+      return content.rows.flatMap((row) => String(row.Sizes_Stock || "").split("|").filter(Boolean).map((value) => {
+        const [label, quantity] = value.split(":");
+        return { sku: `merch#${row.ID}#${label?.trim()}`, kind: "merch" as const, productId: row.ID, label: label?.trim() || "", name: row.Name, color: row.Color, quantity: Math.max(0, Number(quantity) || 0) };
+      }));
+    }
+    return [];
+  }
+
+  async function publishContent() {
+    if (!state) return;
+    const content = state;
+    try {
+      const nextInventory = inventoryForContent(content);
+      const original = content.originalInventory || [];
+      const nextKeys = new Set(nextInventory.map((item) => item.sku));
+      const removed = original.filter((item) => !nextKeys.has(item.sku));
+      await postAdmin({ action: "writeContent", workspace: content.workspace, year: content.year, content: serializeCsv(content), caption: content.caption || "" });
+      if (removed.length) await postAdmin({ action: "deleteInventory", kind: content.workspace === "lockers" ? "locker" : "merch", items: removed });
+      if (nextInventory.length) await postAdmin({ action: "saveInventory", kind: content.workspace === "lockers" ? "locker" : "merch", items: nextInventory });
+      if (content.workspace === "lockers" || content.workspace === "merch") content.originalInventory = nextInventory;
+      renderContentWorkspace("Published. GitHub Pages will update shortly.");
+    } catch (error) {
+      renderContentWorkspace(error instanceof Error ? error.message : "Could not publish changes.");
+      const note = panel().querySelector(".admin-message");
+      note?.classList.add("admin-message--error");
+    }
+  }
+
+  function emailPreview(html: string) {
+    return `<!doctype html><html><body style="margin:0;background:#fdf9ef;color:#3a4b4a;font-family:Arial,Helvetica,sans-serif"><table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:20px"><table width="100%" style="max-width:600px;background:#fff;border:1px solid #dce3df"><tr><td style="padding:24px;background:#3a4b4a;color:#fff;text-align:center"><img src="${window.location.origin}/logos/logo-text-white.png" alt="CHBE" width="150" style="display:block;margin:auto"><p style="margin:12px 0 0;color:#fff;font-weight:bold;letter-spacing:2px;font-size:11px">UBC CHBE COUNCIL</p></td></tr><tr><td style="padding:28px;font-size:16px;line-height:1.65">${html}</td></tr><tr><td style="padding:0 28px 28px;text-align:center"><span style="display:inline-block;padding:12px 18px;background:#3a4b4a;color:#fff;font-size:13px;font-weight:bold">Want to unsubscribe? Manage subscriptions</span><p style="font-size:12px">Contact us</p></td></tr></table></td></tr></table></body></html>`;
+  }
+
+  function renderNotifications(note = "") {
+    panel().innerHTML = `
+      <h2>Notifications</h2><p class="admin-panel__intro">Compose one branded email. Recipients who match more than one selected audience receive it once.</p>${note ? message(note) : ""}
+      <div class="admin-email-grid"><div><div class="admin-field"><label for="mailSubject">Subject</label><input id="mailSubject" maxlength="160" placeholder="Email subject"></div><div class="admin-field" style="margin-top:1rem"><label for="mailBody">Message</label><div class="admin-rte-toolbar" aria-label="Message formatting"><button type="button" data-format="bold"><strong>B</strong></button><button type="button" data-format="italic"><em>I</em></button><button type="button" data-format="insertUnorderedList">List</button><button type="button" data-format="link">Link</button><button type="button" data-format="image">Image</button></div><div id="mailBody" class="admin-rte" contenteditable="true" role="textbox" aria-multiline="true"><p>Write your announcement here.</p></div></div><div class="admin-audience"><label><input type="checkbox" value="general"> General</label><label><input type="checkbox" value="events"> Events</label><label><input type="checkbox" value="important"> Important</label></div><div class="admin-row-actions"><button class="admin-secondary" id="sendTest">Send test to me</button><button class="admin-button" id="sendNotification">Send notification</button></div></div><div><label class="admin-field"><span>Live preview</span><iframe title="Email preview" class="admin-preview" id="mailPreview" sandbox=""></iframe></label></div></div>`;
+    const body = document.getElementById("mailBody")!;
+    const preview = document.getElementById("mailPreview") as HTMLIFrameElement;
+    const renderPreview = () => { preview.srcdoc = emailPreview(body.innerHTML.replace(/<script[\s\S]*?<\/script>/gi, "")); };
+    body.addEventListener("input", renderPreview);
+    panel().querySelectorAll<HTMLButtonElement>("[data-format]").forEach((button) => button.addEventListener("click", () => {
+      body.focus();
+      const format = button.dataset.format;
+      if (format === "link" || format === "image") {
+        const url = window.prompt(format === "link" ? "Enter the link URL:" : "Enter the image URL:");
+        if (!url) return;
+        document.execCommand(format === "link" ? "createLink" : "insertImage", false, url);
+      } else if (format) {
+        document.execCommand(format, false);
+      }
+      renderPreview();
+    }));
+    renderPreview();
+    const send = async (test: boolean) => {
+      const subject = (document.getElementById("mailSubject") as HTMLInputElement).value;
+      const audiences = Array.from(panel().querySelectorAll<HTMLInputElement>(".admin-audience input:checked")).map((input) => input.value);
+      try {
+        const response = await postAdmin<{ message?: string; sent?: number; failed?: number }>({ action: "sendNotification", subject, html: body.innerHTML, audiences, test });
+        renderNotifications(test ? response.message || "Test sent." : `Sent ${response.sent || 0} email(s)${response.failed ? `; ${response.failed} failed.` : "."}`);
+      } catch (error) {
+        renderNotifications(error instanceof Error ? error.message : "Could not send notification.");
+        panel().querySelector(".admin-message")?.classList.add("admin-message--error");
+      }
+    };
+    document.getElementById("sendTest")?.addEventListener("click", () => send(true));
+    document.getElementById("sendNotification")?.addEventListener("click", () => send(false));
+  }
+
+  async function renderUserAdmin(note = "") {
+    panel().innerHTML = `<h2>User administration</h2><p class="admin-panel__intro">Manage groups for existing Cognito users. Users must sign out and back in for updated access claims.</p>${note ? message(note) : ""}<div class="admin-toolbar"><input class="admin-search" id="userSearch" placeholder="Search by email"><button class="admin-button" id="findUsers">Search</button></div><div id="userResults"></div>`;
+    const load = async () => {
+      const results = document.getElementById("userResults")!;
+      results.innerHTML = `<p class="admin-status">Loading users…</p>`;
+      try {
+        const query = (document.getElementById("userSearch") as HTMLInputElement).value;
+        const response = await getAdmin<{ users: { username: string; email: string; name: string; groups: string[] }[]; availableGroups: string[] }>({ action: "users", query });
+        results.innerHTML = response.users.map((user) => `<div class="admin-user"><div><strong>${escape(user.name || user.email)}</strong><br>${escape(user.email)}</div><div>${escape(user.username)}</div><div class="admin-group-toggle">${response.availableGroups.map((group) => `<button class="admin-chip${user.groups.includes(group) ? " active" : ""}" data-user="${escape(user.username)}" data-group="${group}" data-active="${String(user.groups.includes(group))}">${group}</button>`).join("")}</div></div>`).join("") || `<p class="admin-status">No users found.</p>`;
+        results.querySelectorAll<HTMLButtonElement>(".admin-chip").forEach((button) => button.addEventListener("click", async () => {
+          try {
+            await postAdmin({ action: "groupUpdate", username: button.dataset.user || "", group: button.dataset.group || "", add: button.dataset.active !== "true" });
+            await load();
+          } catch (error) {
+            renderUserAdmin(error instanceof Error ? error.message : "Could not update this group.");
+          }
+        }));
+      } catch (error) {
+        results.innerHTML = message(error instanceof Error ? error.message : "Could not load users.", true);
+      }
+    };
+    document.getElementById("findUsers")?.addEventListener("click", load);
+    document.getElementById("userSearch")?.addEventListener("keydown", (event) => { if (event.key === "Enter") load(); });
+    await load();
+  }
+
+  (async () => {
+    if (!isAuthConfigured()) {
+      root.innerHTML = `<div class="admin-access-denied"><div><h1>Sign in required</h1><p>This console is not configured yet.</p></div></div>`;
+      return;
+    }
+    profile = await getSessionProfile({ forceRefresh: true });
+    if (!profile) {
+      window.location.replace("/account/sign-in?next=/admin/");
+      return;
+    }
+    if (!profile.isAdmin) { showDenied(); return; }
+    renderShell();
+    const requested = window.location.hash.slice(1) as Workspace;
+    if (workspaces.some((item) => item.id === requested)) openWorkspace(requested);
+  })();
+</script>

@@ -55,6 +55,7 @@ export type UserProfile = {
   subEvents: boolean;
   emailChangedAt: string;
   isAdmin: boolean;
+  groups: string[];
 };
 
 function attr(attrs: Record<string, string>, key: string, fallback = ""): string {
@@ -114,6 +115,7 @@ export async function getSessionProfile(options?: {
       subEvents: asBool(attr(record, "sub_events"), true),
       emailChangedAt: attr(record, "email_changed_at"),
       isAdmin: groups.includes(AUTH_CONFIG.adminGroup),
+      groups,
     };
   } catch {
     return null;
