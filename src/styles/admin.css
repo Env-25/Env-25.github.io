@@ -83,8 +83,8 @@
 .admin-audience label { display:flex; align-items:center; gap:.4rem; text-transform:none; letter-spacing:0; font-size:.78rem; }
 .admin-user { display:grid; grid-template-columns:minmax(180px,1fr) minmax(130px,1fr) 2fr; gap:1rem; align-items:center; padding:1rem 0; border-top:1px solid rgba(58,75,74,.12); font-size:.8rem; }
 .admin-group-toggle { display:flex; flex-wrap:wrap; gap:.4rem; }
-.admin-chip { border:1px solid rgba(58,75,74,.25); background:#fff; padding:.35rem .5rem; color:var(--clr-dark-teal); font:700 .65rem "Telegraf",sans-serif; cursor:pointer; }
-.admin-chip.active { background:var(--clr-dark-teal); color:#fff; }
+.admin-chip { border:1px solid #b64040; background:#fff0f0; padding:.35rem .5rem; color:#8d2525; font:700 .65rem "Telegraf",sans-serif; cursor:pointer; }
+.admin-chip.active { border-color:#26704d; background:#26704d; color:#fff; }
 .admin-access-denied { min-height:100vh; display:grid; place-items:center; padding:2rem; background:var(--clr-cream); text-align:center; }
 .admin-access-denied h1 { font:2rem "RocaTwo-Bl",sans-serif; margin:0 0 .75rem; }
 .admin-access-denied p { margin:0; color:rgba(58,75,74,.7); }
