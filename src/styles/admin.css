@@ -42,7 +42,7 @@
 .admin-link-button { border:0; background:none; color:var(--clr-teal); padding:0; cursor:pointer; font:700 .72rem "Telegraf",sans-serif; text-decoration:underline; text-underline-offset:2px; }
 .admin-link-button--danger { color:#9e3838; }
 .admin-modal { position:fixed; inset:0; z-index:1500; display:grid; place-items:center; padding:1rem; background:rgba(20,30,30,.55); }
-.admin-modal__dialog { width:min(780px,100%); max-height:90vh; overflow:auto; background:var(--clr-cream); padding:1.5rem; box-shadow:0 16px 40px rgba(0,0,0,.3); }
+.admin-modal__dialog { width:min(780px,100%); max-height:90vh; overflow:auto; background:#fff; padding:1.5rem; box-shadow:0 16px 40px rgba(0,0,0,.3); }
 .admin-modal__dialog h3 { margin:0 0 1rem; font:1.35rem "RocaTwo-Bl",sans-serif; }
 .admin-fields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1rem; }
 .admin-field { display:flex; flex-direction:column; gap:.35rem; }
@@ -51,6 +51,16 @@
 .admin-field textarea { min-height:100px; resize:vertical; }
 .admin-field--full { grid-column:1 / -1; }
 .admin-modal__actions { display:flex; justify-content:flex-end; flex-wrap:wrap; gap:.7rem; margin-top:1.5rem; }
+.admin-image-manager { display:grid; gap:1rem; margin-top:1.25rem; padding:1.1rem; background:#fff; border:1px solid rgba(58,75,74,.18); }
+.admin-image-manager h4 { margin:0; font:1rem "RocaTwo-Bl",sans-serif; }
+.admin-image-manager .admin-panel__intro { margin:.35rem 0 0; }
+.admin-image-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(142px,1fr)); gap:.75rem; }
+.admin-image-option { display:grid; grid-template-rows:110px auto 1fr; gap:.5rem; min-width:0; padding:.55rem; background:#fff; border:1px solid rgba(58,75,74,.2); }
+.admin-image-option__preview { width:100%; height:110px; object-fit:cover; background:#f2f2f2; }
+.admin-image-option p { margin:0; overflow:hidden; color:rgba(58,75,74,.74); font-size:.7rem; text-overflow:ellipsis; white-space:nowrap; }
+.admin-image-option__controls { display:grid; gap:.32rem; }
+.admin-image-option__controls label { display:flex; align-items:center; gap:.4rem; color:var(--clr-dark-teal); font-size:.72rem; }
+.admin-image-option__controls input { accent-color:var(--clr-dark-teal); }
 .admin-message { padding:.85rem 1rem; margin-bottom:1rem; background:rgba(114,166,145,.15); font-size:.83rem; line-height:1.45; }
 .admin-message--error { background:rgba(168,50,50,.1); color:#912c2c; }
 .admin-email-grid { display:grid; grid-template-columns:minmax(0,1fr) minmax(280px,1fr); gap:1.25rem; }
@@ -82,4 +92,5 @@
   .admin-fields { grid-template-columns:1fr; }
   .admin-field--full { grid-column:auto; }
   .admin-user { grid-template-columns:1fr; gap:.5rem; }
+  .admin-image-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
 }

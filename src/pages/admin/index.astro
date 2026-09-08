@@ -208,19 +208,106 @@ import "../../styles/admin.css";
     return ({ lockers: "Cover_photo", merch: "Cover_image", events: "Image", members: "Image", resources: "Icon" } as Record<string, string>)[content.workspace];
   }
 
+  function productImageFields(content: ContentState) {
+    if (content.workspace === "lockers") return { cover: "Cover_photo", additional: "Add_photos", directory: "lockers" };
+    if (content.workspace === "merch") return { cover: "Cover_image", additional: "Additional_images", directory: "merch" };
+    return null;
+  }
+
+  function imageUrl(directory: string, name: string) {
+    return `/${directory}/images/${encodeURIComponent(name)}`;
+  }
+
+  function imageOption(directory: string, name: string, candidate: string, cover: string, additional: Set<string>, disabled: boolean, localUrl?: string) {
+    return `<article class="admin-image-option" data-image-candidate="${escape(candidate)}">
+      <img src="${escape(localUrl || imageUrl(directory, name))}" alt="${escape(name)}" class="admin-image-option__preview">
+      <p title="${escape(name)}">${escape(name)}</p>
+      <div class="admin-image-option__controls">
+        <label><input class="admin-image-control" type="radio" name="productCover" value="${escape(candidate)}" ${cover === candidate ? "checked" : ""} ${disabled ? "disabled" : ""}> Cover</label>
+        <label><input class="admin-image-control" type="checkbox" name="productAdditional" value="${escape(candidate)}" ${additional.has(candidate) ? "checked" : ""} ${disabled ? "disabled" : ""}> Additional</label>
+      </div>
+    </article>`;
+  }
+
+  function productImageManager(content: ContentState, original: CsvRow, disabled: boolean) {
+    const fields = productImageFields(content)!;
+    const cover = `existing:${original[fields.cover] || ""}`;
+    const additional = String(original[fields.additional] || "").split("|").filter(Boolean).map((name) => `existing:${name.trim()}`);
+    return `<section class="admin-image-manager" aria-label="Product image manager">
+      <div><h4>Product images</h4><p class="admin-panel__intro">Choose one cover image and any number of additional images. New files are only uploaded when selected below.</p></div>
+      <div class="admin-image-grid" id="imageOptions"><p class="admin-panel__intro">Loading available images…</p></div>
+      <div class="admin-field admin-field--full">
+        <label for="imageUploads">Add new images</label>
+        <input class="admin-image-control" id="imageUploads" type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple ${disabled ? "disabled" : ""}>
+        <span class="admin-panel__intro">Select files to preview them, then mark each as cover or additional before saving.</span>
+      </div>
+    </section>`;
+  }
+
   function editRecord(row: CsvRow | null) {
     if (!state) return;
     const content = state;
     const isNew = !row;
     const original = row ? { ...row } : { ...defaults[content.workspace], ...(content.workspace === "lockers" && content.rows[0] ? { Price: content.rows[0].Price } : {}), ...(content.workspace === "members" ? { ID: String(Math.max(0, ...content.rows.map((item) => Number(item.ID) || 0)) + 1) } : {}) };
+    const productImages = productImageFields(content);
     const imageField = imageFieldName(content);
+    const editableFields = content.headers.filter((header) => !productImages || (header !== productImages.cover && header !== productImages.additional));
     document.body.insertAdjacentHTML("beforeend", modal(`
       <h3>${isNew ? "Add new entry" : "Update entry"}</h3>
-      <div class="admin-fields">${content.headers.map((header) => `<div class="admin-field${header === "Desc" || header === "Bio" || header === "Description" ? " admin-field--full" : ""}"><label for="field-${escape(header)}">${escape(header)}</label>${header === "Desc" || header === "Bio" || header === "Description" ? `<textarea id="field-${escape(header)}" data-field="${escape(header)}" ${isNew ? "" : "disabled"}>${escape(original[header])}</textarea>` : `<input id="field-${escape(header)}" data-field="${escape(header)}" value="${escape(original[header])}" ${isNew ? "" : "disabled"}>`}</div>`).join("")}</div>
-      ${imageField ? `<div class="admin-field" style="margin-top:1rem"><label for="imageUpload">Upload image</label><input id="imageUpload" type="file" accept="image/png,image/jpeg,image/webp,image/gif" ${isNew ? "" : "disabled"}><span class="admin-panel__intro">Images are published to the matching site folder.</span></div>` : ""}
+      <div class="admin-fields">${editableFields.map((header) => `<div class="admin-field${header === "Desc" || header === "Bio" || header === "Description" ? " admin-field--full" : ""}"><label for="field-${escape(header)}">${escape(header)}</label>${header === "Desc" || header === "Bio" || header === "Description" ? `<textarea id="field-${escape(header)}" data-field="${escape(header)}" ${isNew ? "" : "disabled"}>${escape(original[header])}</textarea>` : `<input id="field-${escape(header)}" data-field="${escape(header)}" value="${escape(original[header])}" ${isNew ? "" : "disabled"}>`}</div>`).join("")}</div>
+      ${productImages ? productImageManager(content, original, !isNew) : imageField ? `<div class="admin-field" style="margin-top:1rem"><label for="imageUpload">Upload image</label><input id="imageUpload" type="file" accept="image/png,image/jpeg,image/webp,image/gif" ${isNew ? "" : "disabled"}><span class="admin-panel__intro">Images are published to the matching site folder.</span></div>` : ""}
       <div class="admin-modal__actions">${isNew ? "" : `<button class="admin-secondary" type="button" id="unlockRecord">Edit fields</button>`}<button class="admin-secondary" type="button" id="cancelRecord">Cancel</button><button class="admin-button" type="button" id="saveDraft">${isNew ? "Add draft" : "Save draft"}</button><button class="admin-button" type="button" id="publishRecord">Publish changes</button></div>`));
+    const uploads = new Map<string, File>();
+    const objectUrls: string[] = [];
+    const renderLibrary = (assets: string[]) => {
+      if (!productImages) return;
+      const initialCover = `existing:${original[productImages.cover] || ""}`;
+      const initialAdditional = new Set(String(original[productImages.additional] || "").split("|").filter(Boolean).map((name) => `existing:${name.trim()}`));
+      const names = [...new Set([...assets, original[productImages.cover], ...String(original[productImages.additional] || "").split("|").filter(Boolean).map((name) => name.trim())].filter(Boolean))];
+      const library = document.getElementById("imageOptions");
+      if (library) library.innerHTML = names.length
+        ? names.map((name) => imageOption(productImages.directory, name, `existing:${name}`, initialCover, initialAdditional, !isNew)).join("")
+        : `<p class="admin-panel__intro">No existing images were found. Add a new image below.</p>`;
+    };
+    if (productImages) {
+      getAdmin<{ assets: string[] }>({ action: "assets", workspace: content.workspace, year: content.year })
+        .then(({ assets }) => renderLibrary(assets))
+        .catch((error) => {
+          const library = document.getElementById("imageOptions");
+          if (library) library.innerHTML = message(error instanceof Error ? error.message : "Could not load the image library.", true);
+        });
+      document.getElementById("imageUploads")?.addEventListener("change", (event) => {
+        const library = document.getElementById("imageOptions");
+        const files = Array.from((event.target as HTMLInputElement).files || []);
+        if (!library || !files.length) return;
+        files.forEach((file) => {
+          const id = `upload-${crypto.randomUUID()}`;
+          uploads.set(id, file);
+          const url = URL.createObjectURL(file);
+          objectUrls.push(url);
+          library.insertAdjacentHTML("beforeend", imageOption(productImages.directory, file.name, id, "", new Set(), false, url));
+        });
+        (event.target as HTMLInputElement).value = "";
+      });
+    }
     const getValues = async () => {
-      const next = Object.fromEntries(content.headers.map((header) => [header, String((document.querySelector(`[data-field="${CSS.escape(header)}"]`) as HTMLInputElement | HTMLTextAreaElement)?.value ?? "")])) as CsvRow;
+      const next = { ...original, ...Object.fromEntries(editableFields.map((header) => [header, String((document.querySelector(`[data-field="${CSS.escape(header)}"]`) as HTMLInputElement | HTMLTextAreaElement)?.value ?? "")])) } as CsvRow;
+      if (productImages) {
+        const coverCandidate = (document.querySelector('input[name="productCover"]:checked') as HTMLInputElement | null)?.value;
+        const additionalCandidates = Array.from(document.querySelectorAll<HTMLInputElement>('input[name="productAdditional"]:checked')).map((input) => input.value);
+        if (!coverCandidate) throw new Error("Choose a cover image before saving.");
+        const chosenUploads = new Set([coverCandidate, ...additionalCandidates].filter((candidate) => uploads.has(candidate)));
+        const uploaded = new Map<string, string>();
+        for (const candidate of chosenUploads) {
+          const file = uploads.get(candidate)!;
+          const response = await postAdmin<{ path: string }>({ action: "uploadAsset", workspace: content.workspace, year: content.year, filename: file.name, mime: file.type, base64: await fileToBase64(file) });
+          uploaded.set(candidate, response.path.split("/").pop() || file.name);
+        }
+        const resolveCandidate = (candidate: string) => uploaded.get(candidate) || candidate.replace(/^existing:/, "");
+        const cover = resolveCandidate(coverCandidate);
+        next[productImages.cover] = cover;
+        next[productImages.additional] = [...new Set(additionalCandidates.map(resolveCandidate).filter((name) => name && name !== cover))].join("|");
+      }
       const file = (document.getElementById("imageUpload") as HTMLInputElement | null)?.files?.[0];
       if (file && imageField) {
         const response = await postAdmin<{ path: string }>({ action: "uploadAsset", workspace: content.workspace, year: content.year, filename: file.name, mime: file.type, base64: await fileToBase64(file) });
@@ -236,6 +323,7 @@ import "../../styles/admin.css";
         if (content.workspace === "lockers") {
           content.rows.forEach((locker) => { locker.Price = next.Price; });
         }
+        objectUrls.forEach(URL.revokeObjectURL);
         closeModal();
         renderContentWorkspace();
         if (publish) await publishContent();
@@ -245,10 +333,13 @@ import "../../styles/admin.css";
       }
     };
     document.getElementById("unlockRecord")?.addEventListener("click", () => {
-      document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>("[data-field], #imageUpload").forEach((field) => field.disabled = false);
+      document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>("[data-field], #imageUpload, .admin-image-control").forEach((field) => field.disabled = false);
       document.getElementById("unlockRecord")?.remove();
     });
-    document.getElementById("cancelRecord")?.addEventListener("click", closeModal);
+    document.getElementById("cancelRecord")?.addEventListener("click", () => {
+      objectUrls.forEach(URL.revokeObjectURL);
+      closeModal();
+    });
     document.getElementById("saveDraft")?.addEventListener("click", () => save(false));
     document.getElementById("publishRecord")?.addEventListener("click", () => save(true));
   }

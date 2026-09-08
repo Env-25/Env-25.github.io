@@ -363,17 +363,36 @@ async function handleDeleteInventory(body, user) {
   return json(200, { ok: true });
 }
 
-function assetPath(workspace, filename, year) {
-  const clean = String(filename || "").toLowerCase().replace(/[^a-z0-9._-]/g, "-").replace(/-+/g, "-");
-  if (!clean || !/\.(png|jpe?g|webp|gif)$/i.test(clean)) throw bad("Only PNG, JPEG, WebP, and GIF images are allowed.");
-  const prefix = {
+function assetDirectory(workspace, year) {
+  const directory = {
     lockers: "public/lockers/images",
     merch: "public/merch/images",
     events: "public/events/images",
     resources: "public/resources",
   }[workspace] || (workspace === "members" && /^\d{4}$/.test(String(year || "")) ? `public/council/${year}` : "");
-  if (!prefix) throw bad("Invalid image destination.");
-  return `${prefix}/${clean}`;
+  if (!directory) throw bad("Invalid image destination.");
+  return directory;
+}
+
+function assetPath(workspace, filename, year) {
+  const clean = String(filename || "").toLowerCase().replace(/[^a-z0-9._-]/g, "-").replace(/-+/g, "-");
+  if (!clean || !/\.(png|jpe?g|webp|gif)$/i.test(clean)) throw bad("Only PNG, JPEG, WebP, and GIF images are allowed.");
+  return `${assetDirectory(workspace, year)}/${clean}`;
+}
+
+async function handleListAssets(event, user) {
+  const qs = event.queryStringParameters || {};
+  const workspaceName = String(qs.workspace || "");
+  const workspace = workspaceFor(workspaceName, qs.year);
+  requireGroup(user, workspace.group);
+  if (!["lockers", "merch"].includes(workspaceName)) throw bad("Image browsing is available for lockers and merch only.");
+  const directory = assetDirectory(workspaceName, qs.year);
+  const files = await githubRequest(`/repos/${encodeURIComponent(GITHUB_OWNER)}/${encodeURIComponent(GITHUB_REPO)}/contents/${directory.split("/").map(encodeURIComponent).join("/")}?ref=${encodeURIComponent(GITHUB_BRANCH)}`);
+  const assets = Array.isArray(files)
+    ? files.filter((file) => file?.type === "file" && /\.(png|jpe?g|webp|gif)$/i.test(String(file.name || "")))
+      .map((file) => String(file.name)).sort((a, b) => a.localeCompare(b))
+    : [];
+  return json(200, { assets });
 }
 
 async function handleUploadAsset(body, user) {
@@ -494,6 +513,7 @@ export async function handler(event) {
     const queryAction = String(event.queryStringParameters?.action || "");
     if (method === "GET" && queryAction === "content") return await handleContent(event, user);
     if (method === "GET" && queryAction === "inventory") return await handleInventory(event, user);
+    if (method === "GET" && queryAction === "assets") return await handleListAssets(event, user);
     if (method === "GET" && queryAction === "users") return await handleListUsers(event, user);
     if (method !== "POST") return json(405, { error: "Method not allowed." });
     const body = parseBody(event);
