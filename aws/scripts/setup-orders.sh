@@ -19,12 +19,15 @@ ORDERS_TABLE="${ORDERS_TABLE:-orders}"
 INVENTORY_TABLE="${INVENTORY_TABLE:-inventory}"
 SES_FROM="${SES_FROM:-CHBE Orders <orders@ubcchbecouncil.com>}"
 STAFF_ORDER_EMAILS="${STAFF_ORDER_EMAILS:-akshaj243@gmail.com,sachdevaakshaj1@gmail.com}"
+EMAIL_QUEUE_NAME="${EMAIL_QUEUE_NAME:-chbe-ses-send}"
 COGNITO_USER_POOL_ID="${COGNITO_USER_POOL_ID:-us-east-2_HeZCWYUt3}"
 COGNITO_CLIENT_ID="${COGNITO_CLIENT_ID:-285b5dv7j67uos6r1rcv572bo5}"
 SITE_URL="${SITE_URL:-https://ubcchbecouncil.com}"
 export ALLOWED_ORIGINS="${ALLOWED_ORIGINS:-https://ubcchbecouncil.com,https://www.ubcchbecouncil.com,https://chbe-site.akshajs.org,http://localhost:3001,http://localhost:4321}"
 
 ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text)"
+EMAIL_QUEUE_URL="$(aws sqs get-queue-url --region "$REGION" --queue-name "$EMAIL_QUEUE_NAME" --query QueueUrl --output text)"
+EMAIL_QUEUE_ARN="$(aws sqs get-queue-attributes --region "$REGION" --queue-url "$EMAIL_QUEUE_URL" --attribute-names QueueArn --query "Attributes.QueueArn" --output text)"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 LAMBDA_DIR="$(cd "$SCRIPT_DIR/../lambdas/orders" && pwd)"
 # Keep artifacts under the repo so Windows aws.exe can read paths from Git Bash
@@ -46,6 +49,7 @@ winpath() {
 echo "==> Account $ACCOUNT_ID  Region $REGION  Function $LAMBDA_NAME"
 echo "    Tables: $ORDERS_TABLE / $INVENTORY_TABLE"
 echo "    SES from: $SES_FROM"
+echo "    Email queue: $EMAIL_QUEUE_NAME"
 
 # --- IAM role ---
 echo "==> Ensuring IAM role $ROLE_NAME"
@@ -90,10 +94,10 @@ cat > "$POLICY_JSON" <<EOF
       ]
     },
     {
-      "Sid": "SesSend",
+      "Sid": "QueueEmail",
       "Effect": "Allow",
-      "Action": ["ses:SendEmail", "ses:SendRawEmail"],
-      "Resource": "*"
+      "Action": ["sqs:SendMessage"],
+      "Resource": "${EMAIL_QUEUE_ARN}"
     }
   ]
 }
@@ -131,7 +135,7 @@ PY
 )
 
 # Environment
-export ORDERS_TABLE INVENTORY_TABLE SES_FROM STAFF_ORDER_EMAILS
+export ORDERS_TABLE INVENTORY_TABLE SES_FROM STAFF_ORDER_EMAILS EMAIL_QUEUE_URL
 export COGNITO_USER_POOL_ID COGNITO_CLIENT_ID SITE_URL
 python - "$ENV_JSON" <<'PY'
 import json, os, sys
@@ -147,6 +151,7 @@ vars = {
         "STAFF_ORDER_EMAILS",
         "akshaj243@gmail.com,sachdevaakshaj1@gmail.com",
     ),
+    "EMAIL_QUEUE_URL": os.environ.get("EMAIL_QUEUE_URL", ""),
     "COGNITO_USER_POOL_ID": os.environ.get("COGNITO_USER_POOL_ID", ""),
     "COGNITO_CLIENT_ID": os.environ.get("COGNITO_CLIENT_ID", ""),
     "SITE_URL": os.environ.get("SITE_URL", "https://ubcchbecouncil.com"),

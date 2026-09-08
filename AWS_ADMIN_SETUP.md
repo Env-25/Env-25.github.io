@@ -53,9 +53,13 @@ export GITHUB_PRIVATE_KEY_SECRET_ID=...
 ```
 
 The script creates `locker-changes` and `admin-audit` on-demand DynamoDB tables,
-deploys the Lambda Function URL, and prints `PUBLIC_ADMIN_API_URL`. Set that value
-locally and as the GitHub repository secret `PUBLIC_ADMIN_API_URL`; the Pages
-workflows already pass it to the Astro build.
+the `chbe-ses-send` email queue and dead-letter queue, deploys the Lambda Function
+URL, and prints `PUBLIC_ADMIN_API_URL`. Notification emails are delivered in batches
+of six per second. Set that value locally and as the GitHub repository secret
+`PUBLIC_ADMIN_API_URL`; the Pages workflows already pass it to the Astro build.
+
+After deploying the admin service, re-run `./aws/scripts/setup-orders.sh` so order
+emails also use the same queue and rate limit.
 
 Stock updates are written to DynamoDB first and dispatch the existing
 `sync-inventory.yml` workflow to reconcile `merch.csv` and `lockers.csv`, commit the

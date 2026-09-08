@@ -14,7 +14,9 @@ param(
   [string]$InventoryTable = "inventory",
   [string]$LockerChangesTable = "locker-changes",
   [string]$AdminAuditTable = "admin-audit",
-  [string]$SesFrom = "notifications@ubcchbecouncil.com",
+  [string]$SesFrom = "UBC CHBE Council Notifications <notifications@ubcchbecouncil.com>",
+  [string]$EmailQueueName = "chbe-ses-send",
+  [string]$EmailDlqName = "chbe-ses-send-dlq",
   [string]$SiteUrl = "https://ubcchbecouncil.com",
   [string]$GithubBranch = "main",
   [string]$AllowedOrigins = "https://ubcchbecouncil.com,https://www.ubcchbecouncil.com,http://localhost:4321,http://localhost:3001"
@@ -53,10 +55,29 @@ $environmentPath = Join-Path $buildDir "$LambdaName-env.json"
 $policyPath = Join-Path $buildDir "$LambdaName-policy.json"
 $corsPath = Join-Path $buildDir "$LambdaName-cors.json"
 $trustPath = Join-Path $buildDir "$LambdaName-trust.json"
+$queueAttributesPath = Join-Path $buildDir "$LambdaName-queue-attributes.json"
 New-Item -ItemType Directory -Path $buildDir -Force | Out-Null
 
 Ensure-Table $LockerChangesTable "changeId"
 Ensure-Table $AdminAuditTable "auditId"
+
+$emailDlqUrl = (& aws sqs get-queue-url --region $Region --queue-name $EmailDlqName --query QueueUrl --output text 2>$null).Trim()
+if ($LASTEXITCODE -ne 0 -or -not $emailDlqUrl) {
+  $emailDlqUrl = (& aws sqs create-queue --region $Region --queue-name $EmailDlqName --attributes VisibilityTimeout=360,ReceiveMessageWaitTimeSeconds=20,MessageRetentionPeriod=1209600,SqsManagedSseEnabled=true --query QueueUrl --output text).Trim()
+}
+$emailDlqArn = (& aws sqs get-queue-attributes --region $Region --queue-url $emailDlqUrl --attribute-names QueueArn --query "Attributes.QueueArn" --output text).Trim()
+$queueAttributes = @{
+  VisibilityTimeout = "360"; ReceiveMessageWaitTimeSeconds = "20"; MessageRetentionPeriod = "1209600"; SqsManagedSseEnabled = "true"
+  RedrivePolicy = (@{ deadLetterTargetArn = $emailDlqArn; maxReceiveCount = "3" } | ConvertTo-Json -Compress)
+}
+$queueAttributes | ConvertTo-Json -Compress | Set-Content -Path $queueAttributesPath -NoNewline
+$emailQueueUrl = (& aws sqs get-queue-url --region $Region --queue-name $EmailQueueName --query QueueUrl --output text 2>$null).Trim()
+if ($LASTEXITCODE -ne 0 -or -not $emailQueueUrl) {
+  $emailQueueUrl = (& aws sqs create-queue --region $Region --queue-name $EmailQueueName --attributes "file://$queueAttributesPath" --query QueueUrl --output text).Trim()
+} else {
+  & aws sqs set-queue-attributes --region $Region --queue-url $emailQueueUrl --attributes "file://$queueAttributesPath" | Out-Null
+}
+$emailQueueArn = (& aws sqs get-queue-attributes --region $Region --queue-url $emailQueueUrl --attribute-names QueueArn --query "Attributes.QueueArn" --output text).Trim()
 
 if (-not (Test-AwsResource @("iam", "get-role", "--role-name", $RoleName))) {
   $trust = '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"lambda.amazonaws.com"},"Action":"sts:AssumeRole"}]}'
@@ -88,6 +109,11 @@ $policy = @{
       Resource = "arn:aws:dynamodb:$Region`:$accountId`:table/$InventoryTable"
     },
     @{
+      Sid = "EmailQueue"; Effect = "Allow"
+      Action = @("sqs:SendMessage", "sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:GetQueueAttributes")
+      Resource = $emailQueueArn
+    },
+    @{
       Sid = "CognitoGroups"; Effect = "Allow"
       Action = @("cognito-idp:ListUsers", "cognito-idp:ListGroups", "cognito-idp:ListUsersInGroup", "cognito-idp:AdminListGroupsForUser", "cognito-idp:AdminAddUserToGroup", "cognito-idp:AdminRemoveUserFromGroup")
       Resource = "arn:aws:cognito-idp:$Region`:$accountId`:userpool/$UserPoolId"
@@ -115,7 +141,7 @@ $lambdaEnvironment = @{
   Variables = @{
     COGNITO_USER_POOL_ID = $UserPoolId; COGNITO_CLIENT_ID = $ClientId
     INVENTORY_TABLE = $InventoryTable; LOCKER_CHANGES_TABLE = $LockerChangesTable; ADMIN_AUDIT_TABLE = $AdminAuditTable
-    SES_FROM = $SesFrom; SITE_URL = $SiteUrl
+    SES_FROM = $SesFrom; EMAIL_QUEUE_URL = $emailQueueUrl; SITE_URL = $SiteUrl
     GITHUB_APP_ID = $env:GITHUB_APP_ID; GITHUB_INSTALLATION_ID = $env:GITHUB_INSTALLATION_ID
     GITHUB_OWNER = $env:GITHUB_OWNER; GITHUB_REPO = $env:GITHUB_REPO; GITHUB_BRANCH = $GithubBranch
     GITHUB_PRIVATE_KEY_SECRET_ID = $env:GITHUB_PRIVATE_KEY_SECRET_ID
@@ -131,6 +157,12 @@ if (Test-AwsResource @("lambda", "get-function", "--function-name", $LambdaName,
     --role $roleArn --timeout 60 --memory-size 512 --environment "file://$environmentPath" --zip-file "fileb://$zipPath" | Out-Null
 }
 & aws lambda wait function-active --function-name $LambdaName --region $Region
+$eventSourceMappingId = (& aws lambda list-event-source-mappings --function-name $LambdaName --event-source-arn $emailQueueArn --query "EventSourceMappings[0].UUID" --output text).Trim()
+if ($LASTEXITCODE -eq 0 -and $eventSourceMappingId -and $eventSourceMappingId -ne "None") {
+  & aws lambda update-event-source-mapping --uuid $eventSourceMappingId --batch-size 6 --maximum-batching-window-in-seconds 1 --scaling-config MaximumConcurrency=1 --function-response-types ReportBatchItemFailures | Out-Null
+} else {
+  & aws lambda create-event-source-mapping --function-name $LambdaName --event-source-arn $emailQueueArn --batch-size 6 --maximum-batching-window-in-seconds 1 --scaling-config MaximumConcurrency=1 --function-response-types ReportBatchItemFailures | Out-Null
+}
 
 $cors = @{ AllowOrigins = @($AllowedOrigins.Split(",").Trim() | Where-Object { $_ }); AllowMethods = @("GET", "POST"); AllowHeaders = @("content-type", "authorization"); MaxAge = 86400 }
 $cors | ConvertTo-Json -Depth 4 | Set-Content -Path $corsPath -NoNewline

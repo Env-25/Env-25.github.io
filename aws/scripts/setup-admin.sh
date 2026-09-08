@@ -14,7 +14,9 @@ CLIENT_ID="${COGNITO_CLIENT_ID:-285b5dv7j67uos6r1rcv572bo5}"
 INVENTORY_TABLE="${INVENTORY_TABLE:-inventory}"
 LOCKER_CHANGES_TABLE="${LOCKER_CHANGES_TABLE:-locker-changes}"
 ADMIN_AUDIT_TABLE="${ADMIN_AUDIT_TABLE:-admin-audit}"
-SES_FROM="${SES_FROM:-notifications@ubcchbecouncil.com}"
+SES_FROM="${SES_FROM:-UBC CHBE Council Notifications <notifications@ubcchbecouncil.com>}"
+EMAIL_QUEUE_NAME="${EMAIL_QUEUE_NAME:-chbe-ses-send}"
+EMAIL_DLQ_NAME="${EMAIL_DLQ_NAME:-chbe-ses-send-dlq}"
 SITE_URL="${SITE_URL:-https://ubcchbecouncil.com}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-main}"
 ALLOWED_ORIGINS="${ALLOWED_ORIGINS:-https://ubcchbecouncil.com,https://www.ubcchbecouncil.com,http://localhost:4321,http://localhost:3001}"
@@ -34,6 +36,7 @@ ZIP_PATH="$BUILD_DIR/$LAMBDA_NAME.zip"
 ENV_PATH="$BUILD_DIR/$LAMBDA_NAME-env.json"
 POLICY_PATH="$BUILD_DIR/$LAMBDA_NAME-policy.json"
 CORS_PATH="$BUILD_DIR/$LAMBDA_NAME-cors.json"
+QUEUE_ATTRIBUTES_PATH="$BUILD_DIR/$LAMBDA_NAME-queue-attributes.json"
 mkdir -p "$BUILD_DIR"
 
 winpath() {
@@ -53,6 +56,31 @@ ensure_table() {
 
 ensure_table "$LOCKER_CHANGES_TABLE" changeId
 ensure_table "$ADMIN_AUDIT_TABLE" auditId
+
+EMAIL_DLQ_URL="$(aws sqs get-queue-url --region "$REGION" --queue-name "$EMAIL_DLQ_NAME" --query QueueUrl --output text 2>/dev/null || true)"
+if [ -z "$EMAIL_DLQ_URL" ]; then
+  EMAIL_DLQ_URL="$(aws sqs create-queue --region "$REGION" --queue-name "$EMAIL_DLQ_NAME" \
+    --attributes VisibilityTimeout=360,ReceiveMessageWaitTimeSeconds=20,MessageRetentionPeriod=1209600,SqsManagedSseEnabled=true \
+    --query QueueUrl --output text)"
+fi
+EMAIL_DLQ_ARN="$(aws sqs get-queue-attributes --region "$REGION" --queue-url "$EMAIL_DLQ_URL" --attribute-names QueueArn --query "Attributes.QueueArn" --output text)"
+python - "$QUEUE_ATTRIBUTES_PATH" "$EMAIL_DLQ_ARN" <<'PY'
+import json, sys
+json.dump({
+  "VisibilityTimeout": "360",
+  "ReceiveMessageWaitTimeSeconds": "20",
+  "MessageRetentionPeriod": "1209600",
+  "SqsManagedSseEnabled": "true",
+  "RedrivePolicy": json.dumps({"deadLetterTargetArn": sys.argv[2], "maxReceiveCount": "3"}),
+}, open(sys.argv[1], "w"))
+PY
+EMAIL_QUEUE_URL="$(aws sqs get-queue-url --region "$REGION" --queue-name "$EMAIL_QUEUE_NAME" --query QueueUrl --output text 2>/dev/null || true)"
+if [ -z "$EMAIL_QUEUE_URL" ]; then
+  EMAIL_QUEUE_URL="$(aws sqs create-queue --region "$REGION" --queue-name "$EMAIL_QUEUE_NAME" --attributes "file://$(winpath "$QUEUE_ATTRIBUTES_PATH")" --query QueueUrl --output text)"
+else
+  aws sqs set-queue-attributes --region "$REGION" --queue-url "$EMAIL_QUEUE_URL" --attributes "file://$(winpath "$QUEUE_ATTRIBUTES_PATH")"
+fi
+EMAIL_QUEUE_ARN="$(aws sqs get-queue-attributes --region "$REGION" --queue-url "$EMAIL_QUEUE_URL" --attribute-names QueueArn --query "Attributes.QueueArn" --output text)"
 
 if ! aws iam get-role --role-name "$ROLE_NAME" >/dev/null 2>&1; then
   aws iam create-role --role-name "$ROLE_NAME" --assume-role-policy-document '{
@@ -75,6 +103,7 @@ cat > "$POLICY_PATH" <<EOF
       "arn:aws:dynamodb:$REGION:$ACCOUNT_ID:table/$ADMIN_AUDIT_TABLE"
     ]},
     {"Sid":"InventoryDelete","Effect":"Allow","Action":"dynamodb:DeleteItem","Resource":"arn:aws:dynamodb:$REGION:$ACCOUNT_ID:table/$INVENTORY_TABLE"},
+    {"Sid":"EmailQueue","Effect":"Allow","Action":["sqs:SendMessage","sqs:ReceiveMessage","sqs:DeleteMessage","sqs:GetQueueAttributes"],"Resource":"$EMAIL_QUEUE_ARN"},
     {"Sid":"CognitoGroups","Effect":"Allow","Action":["cognito-idp:ListUsers","cognito-idp:ListGroups","cognito-idp:ListUsersInGroup","cognito-idp:AdminListGroupsForUser","cognito-idp:AdminAddUserToGroup","cognito-idp:AdminRemoveUserFromGroup"],"Resource":"arn:aws:cognito-idp:$REGION:$ACCOUNT_ID:userpool/$USER_POOL_ID"},
     {"Sid":"ReadGitHubKey","Effect":"Allow","Action":"secretsmanager:GetSecretValue","Resource":"$SECRET_ARN"},
     {"Sid":"Notifications","Effect":"Allow","Action":["ses:SendEmail","ses:SendRawEmail"],"Resource":"*"}
@@ -111,6 +140,7 @@ variables = {
   "LOCKER_CHANGES_TABLE": "$LOCKER_CHANGES_TABLE",
   "ADMIN_AUDIT_TABLE": "$ADMIN_AUDIT_TABLE",
   "SES_FROM": "$SES_FROM",
+  "EMAIL_QUEUE_URL": "$EMAIL_QUEUE_URL",
   "SITE_URL": "$SITE_URL",
   "GITHUB_APP_ID": "$GITHUB_APP_ID",
   "GITHUB_INSTALLATION_ID": "$GITHUB_INSTALLATION_ID",
@@ -134,6 +164,16 @@ else
     --environment "file://$(winpath "$ENV_PATH")" --zip-file "fileb://$(winpath "$ZIP_PATH")" >/dev/null
 fi
 aws lambda wait function-active --function-name "$LAMBDA_NAME" --region "$REGION"
+EVENT_SOURCE_MAPPING_ID="$(aws lambda list-event-source-mappings --function-name "$LAMBDA_NAME" --event-source-arn "$EMAIL_QUEUE_ARN" --query "EventSourceMappings[0].UUID" --output text)"
+if [ "$EVENT_SOURCE_MAPPING_ID" = "None" ] || [ -z "$EVENT_SOURCE_MAPPING_ID" ]; then
+  aws lambda create-event-source-mapping --function-name "$LAMBDA_NAME" --event-source-arn "$EMAIL_QUEUE_ARN" \
+    --batch-size 6 --maximum-batching-window-in-seconds 1 --scaling-config MaximumConcurrency=1 \
+    --function-response-types ReportBatchItemFailures >/dev/null
+else
+  aws lambda update-event-source-mapping --uuid "$EVENT_SOURCE_MAPPING_ID" --batch-size 6 \
+    --maximum-batching-window-in-seconds 1 --scaling-config MaximumConcurrency=1 \
+    --function-response-types ReportBatchItemFailures >/dev/null
+fi
 
 python - "$CORS_PATH" <<PY
 import json, os, sys

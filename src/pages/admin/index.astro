@@ -469,18 +469,73 @@ import "../../styles/admin.css";
   }
 
   function renderNotifications(note = "") {
+    document.querySelector(".admin-rte-image-resize-handle")?.remove();
     panel().innerHTML = `
       <h2>Notifications</h2><p class="admin-panel__intro">Compose one branded email. Recipients who match more than one selected audience receive it once.</p>${note ? message(note) : ""}
-      <div class="admin-email-grid"><div><div class="admin-field"><label for="mailSubject">Subject</label><input id="mailSubject" maxlength="160" placeholder="Email subject"></div><div class="admin-field" style="margin-top:1rem"><label for="mailBody">Message</label><div class="admin-rte-toolbar" aria-label="Message formatting"><button type="button" data-format="bold"><strong>B</strong></button><button type="button" data-format="italic"><em>I</em></button><button type="button" data-format="insertUnorderedList">List</button><button type="button" data-format="link">Link</button><button type="button" data-format="emailImages">Images</button></div><div id="mailBody" class="admin-rte" contenteditable="true" role="textbox" aria-multiline="true"><p>Write your announcement here.</p></div></div><section class="admin-image-manager" id="emailImages"><div><h4>Email images</h4><p class="admin-panel__intro">Choose an existing image to insert, or preview a new file before uploading and inserting it. Uploaded images are saved in the email image library.</p></div><div class="admin-field"><label for="emailImageUploads">Add new images</label><input id="emailImageUploads" type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple></div><div class="admin-image-grid" id="emailImageOptions"><p class="admin-panel__intro">Loading available images…</p></div></section><div class="admin-audience"><label><input type="checkbox" value="general"> General</label><label><input type="checkbox" value="events"> Events</label><label><input type="checkbox" value="important"> Important</label></div><div class="admin-row-actions"><button class="admin-secondary" id="sendTest">Send test to me</button><button class="admin-button" id="sendNotification">Send notification</button></div></div><div><label class="admin-field"><span>Live preview</span><iframe title="Email preview" class="admin-preview" id="mailPreview" sandbox=""></iframe></label></div></div>`;
+      <div class="admin-email-grid"><div><div class="admin-field"><label for="mailSubject">Subject</label><input id="mailSubject" maxlength="160" placeholder="Email subject"></div><div class="admin-field" style="margin-top:1rem"><label for="mailBody">Message</label><div class="admin-rte-toolbar" aria-label="Message formatting"><button type="button" data-format="bold"><strong>B</strong></button><button type="button" data-format="italic"><em>I</em></button><button type="button" data-format="insertUnorderedList">List</button><button type="button" data-format="link">Link</button><button type="button" data-format="emailImages">Images</button></div><div id="mailBody" class="admin-rte" contenteditable="true" role="textbox" aria-multiline="true"><p>Write your announcement here.</p></div><p class="admin-panel__intro">Click an image in the message and drag its bottom-right handle to resize it.</p></div><section class="admin-image-manager" id="emailImages"><div><h4>Email images</h4><p class="admin-panel__intro">Choose an existing image to insert, or preview a new file before uploading and inserting it. Uploaded images are saved in the email image library.</p></div><div class="admin-field"><label for="emailImageUploads">Add new images</label><input id="emailImageUploads" type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple></div><div class="admin-image-grid" id="emailImageOptions"><p class="admin-panel__intro">No email images have been uploaded yet.</p></div></section><div class="admin-audience"><label><input type="checkbox" value="general"> General</label><label><input type="checkbox" value="events"> Events</label><label><input type="checkbox" value="important"> Important</label></div><div class="admin-row-actions"><button class="admin-secondary" id="sendTest">Send test to me</button><button class="admin-button" id="sendNotification">Send notification</button></div></div><div><label class="admin-field"><span>Live preview</span><iframe title="Email preview" class="admin-preview" id="mailPreview" sandbox=""></iframe></label></div></div>`;
     const body = document.getElementById("mailBody")!;
     const preview = document.getElementById("mailPreview") as HTMLIFrameElement;
     const renderPreview = () => { preview.srcdoc = emailPreview(body.innerHTML.replace(/<script[\s\S]*?<\/script>/gi, "")); };
+    const resizeHandle = document.createElement("button");
+    resizeHandle.type = "button";
+    resizeHandle.className = "admin-rte-image-resize-handle";
+    resizeHandle.setAttribute("aria-label", "Drag to resize selected image");
+    resizeHandle.hidden = true;
+    document.body.append(resizeHandle);
+    let selectedImage: HTMLImageElement | null = null;
+    const positionResizeHandle = () => {
+      if (!selectedImage?.isConnected) {
+        resizeHandle.hidden = true;
+        return;
+      }
+      const box = selectedImage.getBoundingClientRect();
+      resizeHandle.style.left = `${box.right - 8}px`;
+      resizeHandle.style.top = `${box.bottom - 8}px`;
+      resizeHandle.hidden = false;
+    };
+    const selectImage = (image: HTMLImageElement | null) => {
+      selectedImage?.classList.remove("admin-rte__selected-image");
+      selectedImage = image;
+      selectedImage?.classList.add("admin-rte__selected-image");
+      positionResizeHandle();
+    };
     const insertImage = (src: string) => {
       body.focus();
       document.execCommand("insertImage", false, src);
+      selectImage(Array.from(body.querySelectorAll<HTMLImageElement>("img")).at(-1) || null);
       renderPreview();
     };
-    body.addEventListener("input", renderPreview);
+    body.addEventListener("click", (event) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      selectImage(target.closest<HTMLImageElement>("img"));
+    });
+    body.addEventListener("input", () => {
+      positionResizeHandle();
+      renderPreview();
+    });
+    body.addEventListener("scroll", positionResizeHandle);
+    resizeHandle.addEventListener("pointerdown", (event) => {
+      if (!selectedImage) return;
+      event.preventDefault();
+      const image = selectedImage;
+      const startX = event.clientX;
+      const startWidth = image.getBoundingClientRect().width;
+      const maxWidth = body.getBoundingClientRect().right - image.getBoundingClientRect().left;
+      const resize = (moveEvent: PointerEvent) => {
+        const width = Math.max(48, Math.min(maxWidth, Math.round(startWidth + moveEvent.clientX - startX)));
+        image.setAttribute("width", String(width));
+        image.removeAttribute("height");
+        positionResizeHandle();
+        renderPreview();
+      };
+      const stopResize = () => {
+        window.removeEventListener("pointermove", resize);
+        window.removeEventListener("pointerup", stopResize);
+      };
+      window.addEventListener("pointermove", resize);
+      window.addEventListener("pointerup", stopResize);
+    });
     panel().querySelectorAll<HTMLButtonElement>("[data-format]").forEach((button) => button.addEventListener("click", () => {
       body.focus();
       const format = button.dataset.format;
@@ -544,8 +599,8 @@ import "../../styles/admin.css";
       const subject = (document.getElementById("mailSubject") as HTMLInputElement).value;
       const audiences = Array.from(panel().querySelectorAll<HTMLInputElement>(".admin-audience input:checked")).map((input) => input.value);
       try {
-        const response = await postAdmin<{ message?: string; sent?: number; failed?: number }>({ action: "sendNotification", subject, html: body.innerHTML, audiences, test });
-        renderNotifications(test ? response.message || "Test sent." : `Sent ${response.sent || 0} email(s)${response.failed ? `; ${response.failed} failed.` : "."}`);
+        const response = await postAdmin<{ message?: string; queued?: number }>({ action: "sendNotification", subject, html: body.innerHTML, audiences, test });
+        renderNotifications(test ? response.message || "Test email queued." : `Queued ${response.queued || 0} email(s) for delivery at up to 6 per second.`);
       } catch (error) {
         renderNotifications(error instanceof Error ? error.message : "Could not send notification.");
         panel().querySelector(".admin-message")?.classList.add("admin-message--error");

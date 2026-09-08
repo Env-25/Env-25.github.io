@@ -11,6 +11,7 @@ import {
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
 import { GetSecretValueCommand, SecretsManagerClient } from "@aws-sdk/client-secrets-manager";
+import { SendMessageBatchCommand, SQSClient } from "@aws-sdk/client-sqs";
 import { DynamoDBDocumentClient, PutCommand, ScanCommand, TransactWriteCommand } from "@aws-sdk/lib-dynamodb";
 import { CognitoJwtVerifier } from "aws-jwt-verify";
 import sanitizeHtml from "sanitize-html";
@@ -21,7 +22,8 @@ const CLIENT_ID = process.env.COGNITO_CLIENT_ID || "";
 const INVENTORY_TABLE = process.env.INVENTORY_TABLE || "inventory";
 const LOCKER_CHANGES_TABLE = process.env.LOCKER_CHANGES_TABLE || "locker-changes";
 const ADMIN_AUDIT_TABLE = process.env.ADMIN_AUDIT_TABLE || "admin-audit";
-const SES_FROM = process.env.SES_FROM || "notifications@ubcchbecouncil.com";
+const SES_FROM = process.env.SES_FROM || "UBC CHBE Council Notifications <notifications@ubcchbecouncil.com>";
+const EMAIL_QUEUE_URL = process.env.EMAIL_QUEUE_URL || "";
 const SITE_URL = (process.env.SITE_URL || "https://ubcchbecouncil.com").replace(/\/$/, "");
 const GITHUB_APP_ID = process.env.GITHUB_APP_ID || "";
 const GITHUB_INSTALLATION_ID = process.env.GITHUB_INSTALLATION_ID || "";
@@ -35,6 +37,7 @@ const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({ region: REGION }), 
 });
 const cognito = new CognitoIdentityProviderClient({ region: REGION });
 const ses = new SESClient({ region: REGION });
+const sqs = new SQSClient({ region: REGION });
 const secrets = new SecretsManagerClient({ region: REGION });
 const verifier = USER_POOL_ID && CLIENT_ID
   ? CognitoJwtVerifier.create({ userPoolId: USER_POOL_ID, tokenUse: "id", clientId: CLIENT_ID })
@@ -424,6 +427,32 @@ function cleanRichHtml(html) {
   });
 }
 
+function emailJob({ to, subject, html, source = SES_FROM }) {
+  const job = {
+    to: String(to || "").trim().toLowerCase(),
+    subject: String(subject || "").trim(),
+    html: String(html || ""),
+    source: String(source || SES_FROM).trim(),
+  };
+  if (!job.to || !job.subject || !job.html || !job.source) throw bad("Invalid email job.");
+  if (Buffer.byteLength(JSON.stringify(job), "utf8") > 250 * 1024) throw bad("This email is too large to queue.");
+  return job;
+}
+
+async function enqueueEmails(jobs) {
+  if (!EMAIL_QUEUE_URL) throw new Error("The email queue is not configured.");
+  for (let index = 0; index < jobs.length; index += 10) {
+    const batch = jobs.slice(index, index + 10);
+    const result = await sqs.send(new SendMessageBatchCommand({
+      QueueUrl: EMAIL_QUEUE_URL,
+      Entries: batch.map((job, batchIndex) => ({ Id: String(batchIndex), MessageBody: JSON.stringify(job) })),
+    }));
+    if (result.Failed?.length) {
+      throw new Error(`Could not queue ${result.Failed.length} email(s).`);
+    }
+  }
+}
+
 function notificationHtml(content) {
   return `<!doctype html><html><body style="margin:0;background:#fdf9ef;color:#3a4b4a;font-family:Arial,Helvetica,sans-serif;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:32px 16px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#fff;border:1px solid #dce3df;"><tr><td style="padding:28px 32px;background:#3a4b4a;color:#fff;text-align:center;"><img src="${SITE_URL}/logos/logo-text-white.png" alt="CHBE" width="160" style="display:block;margin:auto;border:0;"><p style="margin:14px 0 0;font-size:11px;letter-spacing:2px;">UBC CHBE COUNCIL</p></td></tr><tr><td style="padding:34px 32px;font-size:16px;line-height:1.65;">${content}</td></tr><tr><td style="padding:0 32px 32px;text-align:center;"><a href="${SITE_URL}/account/subscriptions" style="display:inline-block;padding:12px 18px;background:#3a4b4a;color:#fff;text-decoration:none;font-weight:bold;font-size:13px;">Want to unsubscribe? Manage subscriptions</a><p style="margin:20px 0 0;font-size:12px;color:#667572;"><a href="${SITE_URL}/contact" style="color:#3a4b4a;">Contact us</a></p></td></tr></table></td></tr></table></body></html>`;
 }
@@ -455,23 +484,14 @@ async function handleSendNotification(body, user) {
   const html = notificationHtml(cleanRichHtml(body.html));
   if (body.test === true) {
     if (!user.email) throw bad("Your account has no email address.");
-    await ses.send(new SendEmailCommand({ Source: SES_FROM, Destination: { ToAddresses: [user.email] }, Message: { Subject: { Data: `[TEST] ${subject}`, Charset: "UTF-8" }, Body: { Html: { Data: html, Charset: "UTF-8" } } } }));
-    return json(200, { ok: true, message: "Test email sent to your signed-in address." });
+    await enqueueEmails([emailJob({ to: user.email, subject: `[TEST] ${subject}`, html })]);
+    return json(200, { ok: true, message: "Test email queued for delivery." });
   }
   if (!audiences.length) throw bad("Select at least one audience.");
   const recipients = await subscribedRecipients(audiences);
-  let sent = 0, failed = 0;
-  for (const email of recipients) {
-    try {
-      await ses.send(new SendEmailCommand({ Source: SES_FROM, Destination: { ToAddresses: [email] }, Message: { Subject: { Data: subject, Charset: "UTF-8" }, Body: { Html: { Data: html, Charset: "UTF-8" } } } }));
-      sent += 1;
-    } catch (error) {
-      console.error("Notification email failed", email, error);
-      failed += 1;
-    }
-  }
-  await recordAudit("notification.send", user, { subject, audiences, sent, failed });
-  return json(200, { ok: true, sent, failed });
+  await enqueueEmails(recipients.map((email) => emailJob({ to: email, subject, html })));
+  await recordAudit("notification.queue", user, { subject, audiences, queued: recipients.length });
+  return json(200, { ok: true, queued: recipients.length });
 }
 
 async function handleListUsers(event, user) {
@@ -511,8 +531,36 @@ async function handleGroupUpdate(body, user) {
   return json(200, { ok: true });
 }
 
+const delay = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
+
+async function handleEmailQueue(event) {
+  const batchStartedAt = Date.now();
+  const results = await Promise.all((event.Records || []).map(async (record) => {
+    try {
+      const job = emailJob(JSON.parse(record.body || "{}"));
+      await ses.send(new SendEmailCommand({
+        Source: job.source,
+        Destination: { ToAddresses: [job.to] },
+        Message: {
+          Subject: { Data: job.subject, Charset: "UTF-8" },
+          Body: { Html: { Data: job.html, Charset: "UTF-8" } },
+        },
+      }));
+      return null;
+    } catch (error) {
+      console.error("Queued email failed", { messageId: record.messageId, error });
+      return { itemIdentifier: record.messageId };
+    }
+  }));
+  await delay(Math.max(0, 1000 - (Date.now() - batchStartedAt)));
+  return { batchItemFailures: results.filter(Boolean) };
+}
+
 export async function handler(event) {
   try {
+    if (Array.isArray(event?.Records) && event.Records.every((record) => record.eventSource === "aws:sqs")) {
+      return await handleEmailQueue(event);
+    }
     const method = String(event?.requestContext?.http?.method || event?.httpMethod || "GET").toUpperCase();
     if (method === "OPTIONS") return json(204, {});
     const user = await requireUser(event);

@@ -15,7 +15,7 @@ import {
   ScanCommand,
   TransactWriteCommand,
 } from "@aws-sdk/lib-dynamodb";
-import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
+import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import { CognitoJwtVerifier } from "aws-jwt-verify";
 
 const REGION = process.env.AWS_REGION || "us-east-2";
@@ -31,12 +31,13 @@ const STAFF_EMAILS = (process.env.STAFF_ORDER_EMAILS ||
   .map((s) => s.trim())
   .filter(Boolean);
 const SITE_URL = (process.env.SITE_URL || "https://ubcchbecouncil.com").replace(/\/$/, "");
+const EMAIL_QUEUE_URL = process.env.EMAIL_QUEUE_URL || "";
 const CARD_SURCHARGE = 1.03;
 
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({ region: REGION }), {
   marshallOptions: { removeUndefinedValues: true },
 });
-const ses = new SESClient({ region: REGION });
+const sqs = new SQSClient({ region: REGION });
 
 const verifier =
   USER_POOL_ID && CLIENT_ID
@@ -301,16 +302,20 @@ function escapeHtml(s) {
 }
 
 async function sendEmail({ to, subject, html }) {
-  await ses.send(
-    new SendEmailCommand({
-      Source: SES_FROM,
-      Destination: { ToAddresses: Array.isArray(to) ? to : [to] },
-      Message: {
-        Subject: { Data: subject, Charset: "UTF-8" },
-        Body: { Html: { Data: html, Charset: "UTF-8" } },
-      },
-    })
-  );
+  if (!EMAIL_QUEUE_URL) throw new Error("The email queue is not configured.");
+  const recipients = Array.isArray(to) ? to : [to];
+  await Promise.all(recipients.map(async (recipient) => {
+    const job = {
+      to: String(recipient || "").trim().toLowerCase(),
+      subject: String(subject || "").trim(),
+      html: String(html || ""),
+      source: SES_FROM,
+    };
+    if (!job.to || !job.subject || !job.html || Buffer.byteLength(JSON.stringify(job), "utf8") > 250 * 1024) {
+      throw new Error("Invalid email job.");
+    }
+    await sqs.send(new SendMessageCommand({ QueueUrl: EMAIL_QUEUE_URL, MessageBody: JSON.stringify(job) }));
+  }));
 }
 
 async function handleInventory(event) {

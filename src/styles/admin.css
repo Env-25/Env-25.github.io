@@ -76,6 +76,9 @@
 .admin-email-grid { display:grid; grid-template-columns:minmax(0,1fr) minmax(280px,1fr); gap:1.25rem; }
 .admin-rte { min-height:275px; padding:.9rem; border:1px solid rgba(58,75,74,.28); background:#fff; line-height:1.6; }
 .admin-rte:focus { outline:2px solid rgba(114,166,145,.45); outline-offset:1px; }
+.admin-rte img { display:block; max-width:100%; height:auto; cursor:pointer; }
+.admin-rte img.admin-rte__selected-image { outline:2px solid var(--clr-teal); outline-offset:3px; }
+.admin-rte-image-resize-handle { position:fixed; z-index:1600; width:16px; height:16px; padding:0; border:2px solid #fff; border-radius:2px; background:var(--clr-teal); box-shadow:0 1px 4px rgba(0,0,0,.35); cursor:nwse-resize; touch-action:none; }
 .admin-rte-toolbar { display:flex; gap:.25rem; padding:.4rem; border:1px solid rgba(58,75,74,.28); border-bottom:0; background:rgba(114,166,145,.1); }
 .admin-rte-toolbar button { min-width:32px; min-height:28px; border:1px solid rgba(58,75,74,.22); background:#fff; color:var(--clr-dark-teal); cursor:pointer; font:700 .7rem "Telegraf",sans-serif; }
 .admin-rte-toolbar button:hover { background:var(--clr-cream); }
