@@ -1,6 +1,37 @@
 ID,Name,type_id,Type,Color,Desc,Price,Sizes_Stock,Cover_image,Additional_images
-1,CHBE Hoodie,hoodie,Hoodie,Black,,37,Test1:1|Test2:2,black_hoodie.jpg,
-2,CHBE Crewneck,crewneck,Crewneck,Charcoal,,28,Test1:13|Test2:5,charcoal_crewneck.jpg,
-3,CHBE Crewneck,crewneck,Crewneck,Navy,,28,Test1:2|Test2:2,navy_crewneck.jpg,
-4,CHBE North Face Jacket,north_face,Jacket,Black,,110,Test1:1|Test2:2,north_face.jpg,
-5,CHBE Long Sleeve T-Shirt,long_sleeve,T-Shirt,Red,,20,,product.jpg,
+1,CHBE Short Sleeve T-Shirt,short_sleeve,T-Shirt,Green,,NA,,product.jpg
+2,CHBE Short Sleeve T-Shirt,short_sleeve,T-Shirt,Maroon,,NA,,product.jpg
+3,CHBE Short Sleeve T-Shirt,short_sleeve,T-Shirt,Navy,,NA,,product.jpg
+4,CHBE Short Sleeve T-Shirt,short_sleeve,T-Shirt,White (Orange/Yellow),,NA,S:3|L:1,product.jpg
+5,CHBE Short Sleeve T-Shirt,short_sleeve,T-Shirt,White (Pink/Green),,NA,S:4|M:2|XL:1,product.jpg
+6,CHBE Short Sleeve T-Shirt,short_sleeve,T-Shirt,White,,NA,S:3|M:1|XL:3,product.jpg
+7,CHBE Short Sleeve T-Shirt,short_sleeve,T-Shirt,Black,,NA,S:11|M:4|L:1|XL:5,product.jpg
+8,CHBE Long Sleeve T-Shirt,long_sleeve,T-Shirt,Green,,NA,,product.jpg
+9,CHBE Long Sleeve T-Shirt,long_sleeve,T-Shirt,Maroon,,NA,S:3|M:2|L:3|XL:3,product.jpg
+10,CHBE Long Sleeve T-Shirt,long_sleeve,T-Shirt,Navy,,NA,S:3|M:3|L:4|XL:3,product.jpg
+11,CHBE Long Sleeve T-Shirt,long_sleeve,T-Shirt,White,,NA,,product.jpg
+12,CHBE Long Sleeve T-Shirt,long_sleeve,T-Shirt,Black,,NA,L:3|XL:2,product.jpg
+13,CHBE Hoodie,hoodie,Hoodie,Green,,NA,S:3|M:8|L:3|XL:3,product.jpg
+14,CHBE Hoodie,hoodie,Hoodie,Maroon,,NA,,product.jpg
+15,CHBE Hoodie,hoodie,Hoodie,Navy,,NA,S:3|XL:1,product.jpg
+16,CHBE Hoodie,hoodie,Hoodie,Gray,,NA,XL:1,product.jpg
+17,CHBE Hoodie,hoodie,Hoodie,White + Back Design,,NA,S:3,product.jpg
+18,CHBE Hoodie,hoodie,Hoodie,Run the Process,,NA,S:3|M:8|L:3|XL:3,product.jpg
+19,CHBE Hoodie,hoodie,Hoodie,White,,NA,S:3|M:3,product.jpg
+20,CHBE Hoodie,hoodie,Hoodie,Black,,NA,S:4|M:6|L:5|XL:2,black_hoodie.jpg
+21,CHBE Crewneck,crewneck,Crewneck,Green,,NA,,product.jpg
+22,CHBE Crewneck,crewneck,Crewneck,Maroon,,NA,S:3|M:5|L:2|XL:2,product.jpg
+23,CHBE Crewneck,crewneck,Crewneck,Navy,,NA,S:5|M:4|L:3,navy_crewneck.jpg
+24,CHBE Crewneck,crewneck,Crewneck,White,,NA,S:5|M:3|L:2|XL:2,product.jpg
+25,CHBE Crewneck,crewneck,Crewneck,Black,,NA,S:1|M:5|L:5|XL:3,charcoal_crewneck.jpg
+26,CHBE Cap,cap,Cap,Navy,,NA,,product.jpg
+27,CHBE Cap,cap,Cap,Black,,NA,One Size:2,product.jpg
+28,CHBE Sticker,sticker,Sticker,White,,NA,One Size:23,product.jpg
+29,CHBE Sticker,sticker,Sticker,Black,,NA,One Size:33,product.jpg
+30,CHBE Sticker,sticker,Sticker,Gray,,NA,One Size:41,product.jpg
+31,CHBE Sticker,sticker,Sticker,Rectangle,,NA,One Size:48,product.jpg
+32,CHBE Patch,patch,Patch,,,NA,One Size:98,product.jpg
+33,CHBE Tote,tote,Tote,Chair configuration,,NA,One Size:20,product.jpg
+34,CHBE Tote,tote,Tote,Run the Process,,NA,One Size:20,product.jpg
+35,CHBE Beanie,beanie,Beanie,,,NA,One Size:3,product.jpg
+36,CHBE Columbia Jacket,columbia_jacket,Jacket,Black,,NA,S:4|M:5|XL:2|2XL:2,product.jpg

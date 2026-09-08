@@ -1,2 +1,3 @@
 ID,Name,Desc,Location,Size,Price,Availability_Top,Availability_Mid,Availability_Bottom,Rental_Term,Lock_Included,Cover_photo,Add_photos
-1,Locker Test,Test description,CHBE 1st Floor,1x1x1,10,2,1,1,2026W1,Yes,locker.jpg,
+1,Locker - 301,CHBE 3rd Floor Hallway across Room 301,CHBE Floor 3 Hallway across 301,1x1x1,10,2,1,1,2026W,NA,locker.jpg,
+2,Locker - 303,CHBE 3rd Floor Hallway across Room 303,CHBE Floor 3 Hallway across 303,1x1x1,10,11,0,10,2026W,NA,locker.jpg,
