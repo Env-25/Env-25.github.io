@@ -368,10 +368,16 @@ function assetDirectory(workspace, year) {
     lockers: "public/lockers/images",
     merch: "public/merch/images",
     events: "public/events/images",
+    notifications: "public/emails/images",
     resources: "public/resources",
   }[workspace] || (workspace === "members" && /^\d{4}$/.test(String(year || "")) ? `public/council/${year}` : "");
   if (!directory) throw bad("Invalid image destination.");
   return directory;
+}
+
+function assetWorkspace(workspaceName, year) {
+  if (workspaceName === "notifications") return { group: "notifications" };
+  return workspaceFor(workspaceName, year);
 }
 
 function assetPath(workspace, filename, year) {
@@ -383,9 +389,9 @@ function assetPath(workspace, filename, year) {
 async function handleListAssets(event, user) {
   const qs = event.queryStringParameters || {};
   const workspaceName = String(qs.workspace || "");
-  const workspace = workspaceFor(workspaceName, qs.year);
+  const workspace = assetWorkspace(workspaceName, qs.year);
   requireGroup(user, workspace.group);
-  if (!["lockers", "merch"].includes(workspaceName)) throw bad("Image browsing is available for lockers and merch only.");
+  if (!["lockers", "merch", "events", "notifications"].includes(workspaceName)) throw bad("Image browsing is not available for this workspace.");
   const directory = assetDirectory(workspaceName, qs.year);
   const files = await githubRequest(`/repos/${encodeURIComponent(GITHUB_OWNER)}/${encodeURIComponent(GITHUB_REPO)}/contents/${directory.split("/").map(encodeURIComponent).join("/")}?ref=${encodeURIComponent(GITHUB_BRANCH)}`);
   const assets = Array.isArray(files)
@@ -397,7 +403,7 @@ async function handleListAssets(event, user) {
 
 async function handleUploadAsset(body, user) {
   const workspaceName = String(body.workspace || "");
-  const workspace = workspaceFor(workspaceName, body.year);
+  const workspace = assetWorkspace(workspaceName, body.year);
   requireGroup(user, workspace.group);
   const path = assetPath(workspaceName, body.filename, body.year);
   const bytes = Buffer.from(String(body.base64 || ""), "base64");

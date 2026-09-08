@@ -216,9 +216,10 @@ import "../../styles/admin.css";
     return ({ lockers: "Cover_photo", merch: "Cover_image", events: "Image", members: "Image", resources: "Icon" } as Record<string, string>)[content.workspace];
   }
 
-  function productImageFields(content: ContentState) {
+  function managedImageFields(content: ContentState): { cover: string; additional?: string; directory: string } | null {
     if (content.workspace === "lockers") return { cover: "Cover_photo", additional: "Add_photos", directory: "lockers" };
     if (content.workspace === "merch") return { cover: "Cover_image", additional: "Additional_images", directory: "merch" };
+    if (content.workspace === "events") return { cover: "Image", directory: "events" };
     return null;
   }
 
@@ -226,30 +227,59 @@ import "../../styles/admin.css";
     return `/${directory}/images/${encodeURIComponent(name)}`;
   }
 
-  function imageOption(directory: string, name: string, candidate: string, cover: string, additional: Set<string>, disabled: boolean, localUrl?: string) {
+  function imageOption(directory: string, name: string, candidate: string, cover: string, additional: Set<string>, allowAdditional: boolean, disabled: boolean, localUrl?: string) {
     return `<article class="admin-image-option" data-image-candidate="${escape(candidate)}">
       <img src="${escape(localUrl || imageUrl(directory, name))}" alt="${escape(name)}" class="admin-image-option__preview">
       <p title="${escape(name)}">${escape(name)}</p>
       <div class="admin-image-option__controls">
         <label><input class="admin-image-control" type="radio" name="productCover" value="${escape(candidate)}" ${cover === candidate ? "checked" : ""} ${disabled ? "disabled" : ""}> Cover</label>
-        <label><input class="admin-image-control" type="checkbox" name="productAdditional" value="${escape(candidate)}" ${additional.has(candidate) ? "checked" : ""} ${disabled ? "disabled" : ""}> Additional</label>
+        ${allowAdditional ? `<label><input class="admin-image-control" type="checkbox" name="productAdditional" value="${escape(candidate)}" ${additional.has(candidate) ? "checked" : ""} ${disabled ? "disabled" : ""}> Additional</label>` : ""}
       </div>
     </article>`;
   }
 
   function productImageManager(content: ContentState, original: CsvRow, disabled: boolean) {
-    const fields = productImageFields(content)!;
-    const cover = `existing:${original[fields.cover] || ""}`;
-    const additional = String(original[fields.additional] || "").split("|").filter(Boolean).map((name) => `existing:${name.trim()}`);
-    return `<section class="admin-image-manager" aria-label="Product image manager">
-      <div><h4>Product images</h4><p class="admin-panel__intro">Choose one cover image and any number of additional images. New files are only uploaded when selected below.</p></div>
+    const fields = managedImageFields(content)!;
+    const hasAdditional = Boolean(fields.additional);
+    return `<section class="admin-image-manager" aria-label="Image manager">
+      <div><h4>${content.workspace === "events" ? "Event image" : "Product images"}</h4><p class="admin-panel__intro">${hasAdditional ? "Choose one cover image and any number of additional images." : "Choose the event cover image."} New files are only uploaded when selected below.</p></div>
       <div class="admin-image-grid" id="imageOptions"><p class="admin-panel__intro">Loading available images…</p></div>
       <div class="admin-field admin-field--full">
         <label for="imageUploads">Add new images</label>
         <input class="admin-image-control" id="imageUploads" type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple ${disabled ? "disabled" : ""}>
-        <span class="admin-panel__intro">Select files to preview them, then mark each as cover or additional before saving.</span>
+        <span class="admin-panel__intro">Select files to preview them, then mark each as ${hasAdditional ? "cover or additional" : "the cover"} before saving.</span>
       </div>
     </section>`;
+  }
+
+  function sizeStockRow(size: string, quantity: string, disabled: boolean) {
+    return `<tr>
+      <td><input class="admin-size-stock-control" data-size-stock-size value="${escape(size)}" aria-label="Size" ${disabled ? "disabled" : ""}></td>
+      <td><input class="admin-size-stock-control" data-size-stock-quantity type="number" min="0" step="1" value="${escape(quantity)}" aria-label="Stock" ${disabled ? "disabled" : ""}></td>
+      <td><button class="admin-link-button admin-link-button--danger admin-size-stock-control" type="button" data-remove-size ${disabled ? "disabled" : ""}>Remove</button></td>
+    </tr>`;
+  }
+
+  function sizeStockEditor(value: string, disabled: boolean) {
+    const rows = String(value || "").split("|").filter(Boolean).map((entry) => {
+      const [size, quantity] = entry.split(":");
+      return sizeStockRow(size?.trim() || "", quantity?.trim() || "0", disabled);
+    }).join("");
+    return `<div class="admin-size-stock">
+      <table><thead><tr><th>Size</th><th>Stock</th><th></th></tr></thead><tbody id="sizeStockRows">${rows}</tbody></table>
+      <button class="admin-secondary admin-size-stock-control" type="button" id="addSizeStock" ${disabled ? "disabled" : ""}>Add size</button>
+    </div>`;
+  }
+
+  function editableField(content: ContentState, header: string, original: CsvRow, disabled: boolean) {
+    const wide = header === "Desc" || header === "Bio" || header === "Description" || (content.workspace === "merch" && header === "Sizes_Stock");
+    if (content.workspace === "merch" && header === "Sizes_Stock") {
+      return `<div class="admin-field admin-field--full"><label>Sizes and stock</label>${sizeStockEditor(original[header], disabled)}</div>`;
+    }
+    const control = header === "Desc" || header === "Bio" || header === "Description"
+      ? `<textarea id="field-${escape(header)}" data-field="${escape(header)}" ${disabled ? "disabled" : ""}>${escape(original[header])}</textarea>`
+      : `<input id="field-${escape(header)}" data-field="${escape(header)}" value="${escape(original[header])}" ${disabled ? "disabled" : ""}>`;
+    return `<div class="admin-field${wide ? " admin-field--full" : ""}"><label for="field-${escape(header)}">${escape(header)}</label>${control}</div>`;
   }
 
   function editRecord(row: CsvRow | null) {
@@ -257,12 +287,12 @@ import "../../styles/admin.css";
     const content = state;
     const isNew = !row;
     const original = row ? { ...row } : { ...defaults[content.workspace], ...(content.workspace === "lockers" && content.rows[0] ? { Price: content.rows[0].Price } : {}), ...(content.workspace === "members" ? { ID: String(Math.max(0, ...content.rows.map((item) => Number(item.ID) || 0)) + 1) } : {}) };
-    const productImages = productImageFields(content);
+    const productImages = managedImageFields(content);
     const imageField = imageFieldName(content);
     const editableFields = content.headers.filter((header) => !productImages || (header !== productImages.cover && header !== productImages.additional));
     document.body.insertAdjacentHTML("beforeend", modal(`
       <h3>${isNew ? "Add new entry" : "Update entry"}</h3>
-      <div class="admin-fields">${editableFields.map((header) => `<div class="admin-field${header === "Desc" || header === "Bio" || header === "Description" ? " admin-field--full" : ""}"><label for="field-${escape(header)}">${escape(header)}</label>${header === "Desc" || header === "Bio" || header === "Description" ? `<textarea id="field-${escape(header)}" data-field="${escape(header)}" ${isNew ? "" : "disabled"}>${escape(original[header])}</textarea>` : `<input id="field-${escape(header)}" data-field="${escape(header)}" value="${escape(original[header])}" ${isNew ? "" : "disabled"}>`}</div>`).join("")}</div>
+      <div class="admin-fields">${editableFields.map((header) => editableField(content, header, original, !isNew)).join("")}</div>
       ${productImages ? productImageManager(content, original, !isNew) : imageField ? `<div class="admin-field" style="margin-top:1rem"><label for="imageUpload">Upload image</label><input id="imageUpload" type="file" accept="image/png,image/jpeg,image/webp,image/gif" ${isNew ? "" : "disabled"}><span class="admin-panel__intro">Images are published to the matching site folder.</span></div>` : ""}
       <div class="admin-modal__actions">${isNew ? "" : `<button class="admin-secondary" type="button" id="unlockRecord">Edit fields</button>`}<button class="admin-secondary" type="button" id="cancelRecord">Cancel</button><button class="admin-button" type="button" id="saveDraft">${isNew ? "Add draft" : "Save draft"}</button><button class="admin-button" type="button" id="publishRecord">Publish changes</button></div>`));
     const uploads = new Map<string, File>();
@@ -270,11 +300,11 @@ import "../../styles/admin.css";
     const renderLibrary = (assets: string[]) => {
       if (!productImages) return;
       const initialCover = `existing:${original[productImages.cover] || ""}`;
-      const initialAdditional = new Set(String(original[productImages.additional] || "").split("|").filter(Boolean).map((name) => `existing:${name.trim()}`));
-      const names = [...new Set([...assets, original[productImages.cover], ...String(original[productImages.additional] || "").split("|").filter(Boolean).map((name) => name.trim())].filter(Boolean))];
+      const initialAdditional = new Set(String(productImages.additional ? original[productImages.additional] || "" : "").split("|").filter(Boolean).map((name) => `existing:${name.trim()}`));
+      const names = [...new Set([...assets, original[productImages.cover], ...String(productImages.additional ? original[productImages.additional] || "" : "").split("|").filter(Boolean).map((name) => name.trim())].filter(Boolean))];
       const library = document.getElementById("imageOptions");
       if (library) library.innerHTML = names.length
-        ? names.map((name) => imageOption(productImages.directory, name, `existing:${name}`, initialCover, initialAdditional, !isNew)).join("")
+        ? names.map((name) => imageOption(productImages.directory, name, `existing:${name}`, initialCover, initialAdditional, Boolean(productImages.additional), !isNew)).join("")
         : `<p class="admin-panel__intro">No existing images were found. Add a new image below.</p>`;
     };
     if (productImages) {
@@ -293,13 +323,39 @@ import "../../styles/admin.css";
           uploads.set(id, file);
           const url = URL.createObjectURL(file);
           objectUrls.push(url);
-          library.insertAdjacentHTML("beforeend", imageOption(productImages.directory, file.name, id, "", new Set(), false, url));
+          library.insertAdjacentHTML("beforeend", imageOption(productImages.directory, file.name, id, "", new Set(), Boolean(productImages.additional), false, url));
         });
         (event.target as HTMLInputElement).value = "";
       });
     }
+    const sizeRows = document.getElementById("sizeStockRows");
+    document.getElementById("addSizeStock")?.addEventListener("click", () => {
+      sizeRows?.insertAdjacentHTML("beforeend", sizeStockRow("", "0", false));
+    });
+    sizeRows?.addEventListener("click", (event) => {
+      const button = (event.target as Element).closest<HTMLButtonElement>("[data-remove-size]");
+      button?.closest("tr")?.remove();
+    });
+    const readSizeStock = () => {
+      const entries: string[] = [];
+      const seen = new Set<string>();
+      document.querySelectorAll<HTMLTableRowElement>("#sizeStockRows tr").forEach((entry) => {
+        const size = entry.querySelector<HTMLInputElement>("[data-size-stock-size]")?.value.trim() || "";
+        const quantityValue = entry.querySelector<HTMLInputElement>("[data-size-stock-quantity]")?.value || "";
+        const quantity = Number(quantityValue);
+        if (!size) {
+          if (Number(quantityValue) > 0) throw new Error("Every stock row with stock needs a size.");
+          return;
+        }
+        if (seen.has(size.toLowerCase())) throw new Error(`Size "${size}" is listed more than once.`);
+        if (!Number.isInteger(quantity) || quantity < 0) throw new Error(`Stock for ${size} must be a whole number of zero or more.`);
+        seen.add(size.toLowerCase());
+        entries.push(`${size}:${quantity}`);
+      });
+      return entries.join("|");
+    };
     const getValues = async () => {
-      const next = { ...original, ...Object.fromEntries(editableFields.map((header) => [header, String((document.querySelector(`[data-field="${CSS.escape(header)}"]`) as HTMLInputElement | HTMLTextAreaElement)?.value ?? "")])) } as CsvRow;
+      const next = { ...original, ...Object.fromEntries(editableFields.map((header) => [header, content.workspace === "merch" && header === "Sizes_Stock" ? readSizeStock() : String((document.querySelector(`[data-field="${CSS.escape(header)}"]`) as HTMLInputElement | HTMLTextAreaElement)?.value ?? "")])) } as CsvRow;
       if (productImages) {
         const coverCandidate = (document.querySelector('input[name="productCover"]:checked') as HTMLInputElement | null)?.value;
         const additionalCandidates = Array.from(document.querySelectorAll<HTMLInputElement>('input[name="productAdditional"]:checked')).map((input) => input.value);
@@ -314,7 +370,7 @@ import "../../styles/admin.css";
         const resolveCandidate = (candidate: string) => uploaded.get(candidate) || candidate.replace(/^existing:/, "");
         const cover = resolveCandidate(coverCandidate);
         next[productImages.cover] = cover;
-        next[productImages.additional] = [...new Set(additionalCandidates.map(resolveCandidate).filter((name) => name && name !== cover))].join("|");
+        if (productImages.additional) next[productImages.additional] = [...new Set(additionalCandidates.map(resolveCandidate).filter((name) => name && name !== cover))].join("|");
       }
       const file = (document.getElementById("imageUpload") as HTMLInputElement | null)?.files?.[0];
       if (file && imageField) {
@@ -341,7 +397,7 @@ import "../../styles/admin.css";
       }
     };
     document.getElementById("unlockRecord")?.addEventListener("click", () => {
-      document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>("[data-field], #imageUpload, .admin-image-control").forEach((field) => field.disabled = false);
+      document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLButtonElement>("[data-field], #imageUpload, .admin-image-control, .admin-size-stock-control").forEach((field) => field.disabled = false);
       document.getElementById("unlockRecord")?.remove();
     });
     document.getElementById("cancelRecord")?.addEventListener("click", () => {
@@ -398,26 +454,85 @@ import "../../styles/admin.css";
     return `<!doctype html><html><body style="margin:0;background:#fdf9ef;color:#3a4b4a;font-family:Arial,Helvetica,sans-serif"><table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:20px"><table width="100%" style="max-width:600px;background:#fff;border:1px solid #dce3df"><tr><td style="padding:24px;background:#3a4b4a;color:#fff;text-align:center"><img src="${window.location.origin}/logos/logo-text-white.png" alt="CHBE" width="150" style="display:block;margin:auto"><p style="margin:12px 0 0;color:#fff;font-weight:bold;letter-spacing:2px;font-size:11px">UBC CHBE COUNCIL</p></td></tr><tr><td style="padding:28px;font-size:16px;line-height:1.65">${html}</td></tr><tr><td style="padding:0 28px 28px;text-align:center"><span style="display:inline-block;padding:12px 18px;background:#3a4b4a;color:#fff;font-size:13px;font-weight:bold">Want to unsubscribe? Manage subscriptions</span><p style="font-size:12px">Contact us</p></td></tr></table></td></tr></table></body></html>`;
   }
 
+  function emailImageOption(name: string, src: string, uploadId?: string) {
+    return `<article class="admin-image-option">
+      <img src="${escape(src)}" alt="${escape(name)}" class="admin-image-option__preview">
+      <p title="${escape(name)}">${escape(name)}</p>
+      <div class="admin-image-option__controls"><button class="admin-secondary" type="button" ${uploadId ? `data-upload-email-image="${escape(uploadId)}"` : `data-insert-email-image="${escape(src)}"`}>${uploadId ? "Upload & insert" : "Insert"}</button></div>
+    </article>`;
+  }
+
   function renderNotifications(note = "") {
     panel().innerHTML = `
       <h2>Notifications</h2><p class="admin-panel__intro">Compose one branded email. Recipients who match more than one selected audience receive it once.</p>${note ? message(note) : ""}
-      <div class="admin-email-grid"><div><div class="admin-field"><label for="mailSubject">Subject</label><input id="mailSubject" maxlength="160" placeholder="Email subject"></div><div class="admin-field" style="margin-top:1rem"><label for="mailBody">Message</label><div class="admin-rte-toolbar" aria-label="Message formatting"><button type="button" data-format="bold"><strong>B</strong></button><button type="button" data-format="italic"><em>I</em></button><button type="button" data-format="insertUnorderedList">List</button><button type="button" data-format="link">Link</button><button type="button" data-format="image">Image</button></div><div id="mailBody" class="admin-rte" contenteditable="true" role="textbox" aria-multiline="true"><p>Write your announcement here.</p></div></div><div class="admin-audience"><label><input type="checkbox" value="general"> General</label><label><input type="checkbox" value="events"> Events</label><label><input type="checkbox" value="important"> Important</label></div><div class="admin-row-actions"><button class="admin-secondary" id="sendTest">Send test to me</button><button class="admin-button" id="sendNotification">Send notification</button></div></div><div><label class="admin-field"><span>Live preview</span><iframe title="Email preview" class="admin-preview" id="mailPreview" sandbox=""></iframe></label></div></div>`;
+      <div class="admin-email-grid"><div><div class="admin-field"><label for="mailSubject">Subject</label><input id="mailSubject" maxlength="160" placeholder="Email subject"></div><div class="admin-field" style="margin-top:1rem"><label for="mailBody">Message</label><div class="admin-rte-toolbar" aria-label="Message formatting"><button type="button" data-format="bold"><strong>B</strong></button><button type="button" data-format="italic"><em>I</em></button><button type="button" data-format="insertUnorderedList">List</button><button type="button" data-format="link">Link</button><button type="button" data-format="emailImages">Images</button></div><div id="mailBody" class="admin-rte" contenteditable="true" role="textbox" aria-multiline="true"><p>Write your announcement here.</p></div></div><section class="admin-image-manager" id="emailImages"><div><h4>Email images</h4><p class="admin-panel__intro">Choose an existing image to insert, or preview a new file before uploading and inserting it. Uploaded images are saved in the email image library.</p></div><div class="admin-field"><label for="emailImageUploads">Add new images</label><input id="emailImageUploads" type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple></div><div class="admin-image-grid" id="emailImageOptions"><p class="admin-panel__intro">Loading available images…</p></div></section><div class="admin-audience"><label><input type="checkbox" value="general"> General</label><label><input type="checkbox" value="events"> Events</label><label><input type="checkbox" value="important"> Important</label></div><div class="admin-row-actions"><button class="admin-secondary" id="sendTest">Send test to me</button><button class="admin-button" id="sendNotification">Send notification</button></div></div><div><label class="admin-field"><span>Live preview</span><iframe title="Email preview" class="admin-preview" id="mailPreview" sandbox=""></iframe></label></div></div>`;
     const body = document.getElementById("mailBody")!;
     const preview = document.getElementById("mailPreview") as HTMLIFrameElement;
     const renderPreview = () => { preview.srcdoc = emailPreview(body.innerHTML.replace(/<script[\s\S]*?<\/script>/gi, "")); };
+    const insertImage = (src: string) => {
+      body.focus();
+      document.execCommand("insertImage", false, src);
+      renderPreview();
+    };
     body.addEventListener("input", renderPreview);
     panel().querySelectorAll<HTMLButtonElement>("[data-format]").forEach((button) => button.addEventListener("click", () => {
       body.focus();
       const format = button.dataset.format;
-      if (format === "link" || format === "image") {
-        const url = window.prompt(format === "link" ? "Enter the link URL:" : "Enter the image URL:");
+      if (format === "link") {
+        const url = window.prompt("Enter the link URL:");
         if (!url) return;
-        document.execCommand(format === "link" ? "createLink" : "insertImage", false, url);
+        document.execCommand("createLink", false, url);
+      } else if (format === "emailImages") {
+        document.getElementById("emailImages")?.scrollIntoView({ behavior: "smooth", block: "center" });
       } else if (format) {
         document.execCommand(format, false);
       }
       renderPreview();
     }));
+    const emailUploads = new Map<string, File>();
+    const emailObjectUrls = new Map<string, string>();
+    const emailOptions = document.getElementById("emailImageOptions")!;
+    getAdmin<{ assets: string[] }>({ action: "assets", workspace: "notifications" })
+      .then(({ assets }) => {
+        emailOptions.innerHTML = assets.length
+          ? assets.map((name) => emailImageOption(name, `${window.location.origin}/emails/images/${encodeURIComponent(name)}`)).join("")
+          : `<p class="admin-panel__intro">No email images have been uploaded yet.</p>`;
+      })
+      .catch((error) => { emailOptions.innerHTML = message(error instanceof Error ? error.message : "Could not load email images.", true); });
+    document.getElementById("emailImageUploads")?.addEventListener("change", (event) => {
+      const files = Array.from((event.target as HTMLInputElement).files || []);
+      files.forEach((file) => {
+        const id = `email-${crypto.randomUUID()}`;
+        emailUploads.set(id, file);
+        const url = URL.createObjectURL(file);
+        emailObjectUrls.set(id, url);
+        emailOptions.insertAdjacentHTML("beforeend", emailImageOption(file.name, url, id));
+      });
+      (event.target as HTMLInputElement).value = "";
+    });
+    emailOptions.addEventListener("click", async (event) => {
+      const target = event.target as Element;
+      const insertButton = target.closest<HTMLButtonElement>("[data-insert-email-image]");
+      if (insertButton) return insertImage(insertButton.dataset.insertEmailImage || "");
+      const uploadButton = target.closest<HTMLButtonElement>("[data-upload-email-image]");
+      if (!uploadButton) return;
+      const id = uploadButton.dataset.uploadEmailImage || "";
+      const file = emailUploads.get(id);
+      if (!file) return;
+      uploadButton.disabled = true;
+      try {
+        const response = await postAdmin<{ path: string }>({ action: "uploadAsset", workspace: "notifications", filename: file.name, mime: file.type, base64: await fileToBase64(file) });
+        const src = `${window.location.origin}${response.path}`;
+        insertImage(src);
+        emailObjectUrls.get(id) && URL.revokeObjectURL(emailObjectUrls.get(id)!);
+        uploadButton.closest(".admin-image-option")?.replaceWith(document.createRange().createContextualFragment(emailImageOption(response.path.split("/").pop() || file.name, src)));
+        emailUploads.delete(id);
+        emailObjectUrls.delete(id);
+      } catch (error) {
+        uploadButton.disabled = false;
+        emailOptions.insertAdjacentHTML("beforebegin", message(error instanceof Error ? error.message : "Could not upload the image.", true));
+      }
+    });
     renderPreview();
     const send = async (test: boolean) => {
       const subject = (document.getElementById("mailSubject") as HTMLInputElement).value;

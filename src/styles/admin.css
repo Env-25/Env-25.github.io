@@ -62,6 +62,14 @@
 .admin-image-option__controls { display:grid; gap:.32rem; }
 .admin-image-option__controls label { display:flex; align-items:center; gap:.4rem; color:var(--clr-dark-teal); font-size:.72rem; }
 .admin-image-option__controls input { accent-color:var(--clr-dark-teal); }
+.admin-image-option__controls .admin-secondary { min-height:30px; padding:.4rem .55rem; font-size:.62rem; }
+.admin-size-stock { display:grid; gap:.65rem; }
+.admin-size-stock table { width:100%; border-collapse:collapse; background:#fff; border:1px solid rgba(58,75,74,.18); }
+.admin-size-stock th,.admin-size-stock td { padding:.45rem; text-align:left; border-bottom:1px solid rgba(58,75,74,.12); }
+.admin-size-stock th { font-size:.64rem; letter-spacing:.08em; text-transform:uppercase; background:rgba(114,166,145,.1); }
+.admin-size-stock td:last-child { width:1%; }
+.admin-size-stock input { min-height:35px; }
+.admin-size-stock .admin-secondary { justify-self:start; }
 .admin-message { padding:.85rem 1rem; margin-bottom:1rem; background:rgba(114,166,145,.15); font-size:.83rem; line-height:1.45; }
 .admin-message--error { background:rgba(168,50,50,.1); color:#912c2c; }
 .admin-email-grid { display:grid; grid-template-columns:minmax(0,1fr) minmax(280px,1fr); gap:1.25rem; }
