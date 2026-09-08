@@ -86,8 +86,8 @@ import "../../styles/admin.css";
 
   function showPublishNotice() {
     document.body.insertAdjacentHTML("beforeend", modal(`
-      <h3>Changes are publishing</h3>
-      <p class="admin-modal__copy">Your updates should be live in approximately 2 minutes, but may take up to 10 minutes. Please do not make the same changes again while publishing.</p>
+      <h3>Changes are publishing. Please read carefully.</h3>
+      <p class="admin-modal__copy">Your updates should be live in approximately 2 minutes. Please do not make ANY CHANGES while site is publishing, estimated time is 2 minutes.</p>
       <div class="admin-modal__actions"><button class="admin-button" type="button" id="closePublishNotice">Okay</button></div>`));
     document.getElementById("closePublishNotice")?.addEventListener("click", closeModal);
   }
