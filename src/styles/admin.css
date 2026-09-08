@@ -53,6 +53,9 @@
 .admin-field textarea { min-height:100px; resize:vertical; }
 .admin-field--full { grid-column:1 / -1; }
 .admin-modal__actions { display:flex; justify-content:flex-end; flex-wrap:wrap; gap:.7rem; margin-top:1.5rem; }
+.admin-upload-eta { margin:1.25rem 0 0; color:var(--clr-dark-teal); font:2rem/1 "RocaTwo-Bl",sans-serif; letter-spacing:.04em; text-align:center; }
+.admin-modal--locked { cursor:wait; }
+.admin-modal--locked .admin-modal__dialog { width:min(420px,100%); text-align:center; }
 .admin-image-manager { display:grid; gap:1rem; margin-top:1.25rem; padding:1.1rem; background:#fff; border:1px solid rgba(58,75,74,.18); }
 .admin-image-manager h4 { margin:0; font:1rem "RocaTwo-Bl",sans-serif; }
 .admin-image-manager .admin-panel__intro { margin:.35rem 0 0; }
