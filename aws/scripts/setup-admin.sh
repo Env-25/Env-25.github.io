@@ -74,6 +74,7 @@ cat > "$POLICY_PATH" <<EOF
       "arn:aws:dynamodb:$REGION:$ACCOUNT_ID:table/$LOCKER_CHANGES_TABLE",
       "arn:aws:dynamodb:$REGION:$ACCOUNT_ID:table/$ADMIN_AUDIT_TABLE"
     ]},
+    {"Sid":"InventoryDelete","Effect":"Allow","Action":"dynamodb:DeleteItem","Resource":"arn:aws:dynamodb:$REGION:$ACCOUNT_ID:table/$INVENTORY_TABLE"},
     {"Sid":"CognitoGroups","Effect":"Allow","Action":["cognito-idp:ListUsers","cognito-idp:ListGroups","cognito-idp:ListUsersInGroup","cognito-idp:AdminListGroupsForUser","cognito-idp:AdminAddUserToGroup","cognito-idp:AdminRemoveUserFromGroup"],"Resource":"arn:aws:cognito-idp:$REGION:$ACCOUNT_ID:userpool/$USER_POOL_ID"},
     {"Sid":"ReadGitHubKey","Effect":"Allow","Action":"secretsmanager:GetSecretValue","Resource":"$SECRET_ARN"},
     {"Sid":"Notifications","Effect":"Allow","Action":["ses:SendEmail","ses:SendRawEmail"],"Resource":"*"}

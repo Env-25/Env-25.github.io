@@ -83,6 +83,11 @@ $policy = @{
       )
     },
     @{
+      Sid = "InventoryDelete"; Effect = "Allow"
+      Action = "dynamodb:DeleteItem"
+      Resource = "arn:aws:dynamodb:$Region`:$accountId`:table/$InventoryTable"
+    },
+    @{
       Sid = "CognitoGroups"; Effect = "Allow"
       Action = @("cognito-idp:ListUsers", "cognito-idp:ListGroups", "cognito-idp:ListUsersInGroup", "cognito-idp:AdminListGroupsForUser", "cognito-idp:AdminAddUserToGroup", "cognito-idp:AdminRemoveUserFromGroup")
       Resource = "arn:aws:cognito-idp:$Region`:$accountId`:userpool/$UserPoolId"

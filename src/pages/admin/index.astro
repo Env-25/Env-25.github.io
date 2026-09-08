@@ -166,7 +166,7 @@ import "../../styles/admin.css";
   }
 
   function tableRow(content: ContentState, row: CsvRow) {
-    return `<tr>${content.headers.map((header) => `<td>${escape(row[header])}</td>`).join("")}<td><div class="admin-row-actions"><button type="button" class="admin-link-button" data-edit="${escape(row.ID || row.Title)}">Update</button><button type="button" class="admin-link-button admin-link-button--danger" data-delete="${escape(row.ID || row.Title)}">Delete</button></div></td></tr>`;
+    return `<tr>${content.headers.map((header) => `<td${header === "ID" ? ' class="admin-table__identifier"' : ""}>${escape(row[header])}</td>`).join("")}<td><div class="admin-row-actions"><button type="button" class="admin-link-button" data-edit="${escape(row.ID || row.Title)}">Update</button><button type="button" class="admin-link-button admin-link-button--danger" data-delete="${escape(row.ID || row.Title)}">Delete</button></div></td></tr>`;
   }
 
   function tableRows(content: ContentState) {
@@ -193,7 +193,7 @@ import "../../styles/admin.css";
         <div>${content.workspace === "members" ? `<select class="admin-search" id="yearSelect" aria-label="Council year"><option value="2026" ${content.year === "2026" ? "selected" : ""}>2026</option><option value="2025" ${content.year === "2025" ? "selected" : ""}>2025</option><option value="new">Create new year…</option></select>` : ""}</div>
         <div class="admin-row-actions"><button type="button" class="admin-secondary" id="addRecord">Add new</button><button type="button" class="admin-button" id="publishContent">Publish changes</button></div>
       </div>
-      <div class="admin-table-wrap"><table class="admin-table"><thead><tr>${content.headers.map((header) => `<th>${escape(header)}</th>`).join("")}<th>Actions</th></tr></thead><tbody>
+      <div class="admin-table-wrap"><table class="admin-table"><thead><tr>${content.headers.map((header) => `<th${header === "ID" ? ' class="admin-table__identifier"' : ""}>${escape(header)}</th>`).join("")}<th>Actions</th></tr></thead><tbody>
         ${content.rows.length ? tableRows(content) : `<tr><td colspan="${content.headers.length + 1}">No entries yet.</td></tr>`}
       </tbody></table></div>
       ${content.workspace === "members" ? `<div class="admin-field admin-field--full" style="margin-top:1.5rem"><label for="caption">Left to right caption</label><textarea id="caption">${escape(content.caption || "")}</textarea></div>` : ""}`;
@@ -386,6 +386,12 @@ import "../../styles/admin.css";
         else Object.assign(row!, next);
         if (content.workspace === "lockers") {
           content.rows.forEach((locker) => { locker.Price = next.Price; });
+        }
+        if (content.workspace === "merch") {
+          const productType = next.type_id || next.ID;
+          content.rows
+            .filter((merch) => (merch.type_id || merch.ID) === productType)
+            .forEach((merch) => { merch.Price = next.Price; });
         }
         objectUrls.forEach(URL.revokeObjectURL);
         closeModal();

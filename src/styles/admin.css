@@ -37,6 +37,7 @@
 .admin-table { width:100%; border-collapse:collapse; font-size:.78rem; }
 .admin-table th { background:rgba(114,166,145,.14); text-align:left; padding:.7rem; font-size:.67rem; letter-spacing:.08em; text-transform:uppercase; white-space:nowrap; }
 .admin-table td { border-top:1px solid rgba(58,75,74,.1); padding:.7rem; vertical-align:top; max-width:210px; overflow-wrap:anywhere; }
+.admin-table__identifier { min-width:5.5rem; white-space:nowrap; }
 .admin-table td:last-child { white-space:nowrap; }
 .admin-row-actions { display:flex; gap:.45rem; }
 .admin-link-button { border:0; background:none; color:var(--clr-teal); padding:0; cursor:pointer; font:700 .72rem "Telegraf",sans-serif; text-decoration:underline; text-underline-offset:2px; }
