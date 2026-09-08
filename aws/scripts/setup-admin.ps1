@@ -15,8 +15,8 @@ param(
   [string]$LockerChangesTable = "locker-changes",
   [string]$AdminAuditTable = "admin-audit",
   [string]$SesFrom = "UBC CHBE Council Notifications <notifications@ubcchbecouncil.com>",
-  [string]$EmailQueueName = "chbe-ses-send",
-  [string]$EmailDlqName = "chbe-ses-send-dlq",
+  [string]$EmailQueueName = "chbe-ses-send.fifo",
+  [string]$EmailDlqName = "chbe-ses-send-dlq.fifo",
   [string]$SiteUrl = "https://ubcchbecouncil.com",
   [string]$GithubBranch = "main",
   [string]$AllowedOrigins = "https://ubcchbecouncil.com,https://www.ubcchbecouncil.com,http://localhost:4321,http://localhost:3001"
@@ -61,22 +61,29 @@ New-Item -ItemType Directory -Path $buildDir -Force | Out-Null
 Ensure-Table $LockerChangesTable "changeId"
 Ensure-Table $AdminAuditTable "auditId"
 
-$emailDlqUrl = (& aws sqs get-queue-url --region $Region --queue-name $EmailDlqName --query QueueUrl --output text 2>$null).Trim()
+$emailDlqUrl = & aws sqs get-queue-url --region $Region --queue-name $EmailDlqName --query QueueUrl --output text 2>$null
 if ($LASTEXITCODE -ne 0 -or -not $emailDlqUrl) {
-  $emailDlqUrl = (& aws sqs create-queue --region $Region --queue-name $EmailDlqName --attributes VisibilityTimeout=360,ReceiveMessageWaitTimeSeconds=20,MessageRetentionPeriod=1209600,SqsManagedSseEnabled=true --query QueueUrl --output text).Trim()
+  $emailDlqUrl = & aws sqs create-queue --region $Region --queue-name $EmailDlqName --attributes VisibilityTimeout=360,ReceiveMessageWaitTimeSeconds=20,MessageRetentionPeriod=1209600,SqsManagedSseEnabled=true,FifoQueue=true --query QueueUrl --output text
+  if ($LASTEXITCODE -ne 0 -or -not $emailDlqUrl) { throw "Could not create SQS dead-letter queue $EmailDlqName." }
 }
+$emailDlqUrl = $emailDlqUrl.Trim()
 $emailDlqArn = (& aws sqs get-queue-attributes --region $Region --queue-url $emailDlqUrl --attribute-names QueueArn --query "Attributes.QueueArn" --output text).Trim()
 $queueAttributes = @{
   VisibilityTimeout = "360"; ReceiveMessageWaitTimeSeconds = "20"; MessageRetentionPeriod = "1209600"; SqsManagedSseEnabled = "true"
   RedrivePolicy = (@{ deadLetterTargetArn = $emailDlqArn; maxReceiveCount = "3" } | ConvertTo-Json -Compress)
+  FifoQueue = "true"
 }
 $queueAttributes | ConvertTo-Json -Compress | Set-Content -Path $queueAttributesPath -NoNewline
-$emailQueueUrl = (& aws sqs get-queue-url --region $Region --queue-name $EmailQueueName --query QueueUrl --output text 2>$null).Trim()
+$emailQueueUrl = & aws sqs get-queue-url --region $Region --queue-name $EmailQueueName --query QueueUrl --output text 2>$null
 if ($LASTEXITCODE -ne 0 -or -not $emailQueueUrl) {
-  $emailQueueUrl = (& aws sqs create-queue --region $Region --queue-name $EmailQueueName --attributes "file://$queueAttributesPath" --query QueueUrl --output text).Trim()
+  $emailQueueUrl = & aws sqs create-queue --region $Region --queue-name $EmailQueueName --attributes "file://$queueAttributesPath" --query QueueUrl --output text
+  if ($LASTEXITCODE -ne 0 -or -not $emailQueueUrl) { throw "Could not create SQS email queue $EmailQueueName." }
 } else {
+  $null = $queueAttributes.Remove("FifoQueue")
+  $queueAttributes | ConvertTo-Json -Compress | Set-Content -Path $queueAttributesPath -NoNewline
   & aws sqs set-queue-attributes --region $Region --queue-url $emailQueueUrl --attributes "file://$queueAttributesPath" | Out-Null
 }
+$emailQueueUrl = $emailQueueUrl.Trim()
 $emailQueueArn = (& aws sqs get-queue-attributes --region $Region --queue-url $emailQueueUrl --attribute-names QueueArn --query "Attributes.QueueArn" --output text).Trim()
 
 if (-not (Test-AwsResource @("iam", "get-role", "--role-name", $RoleName))) {
@@ -159,9 +166,9 @@ if (Test-AwsResource @("lambda", "get-function", "--function-name", $LambdaName,
 & aws lambda wait function-active --function-name $LambdaName --region $Region
 $eventSourceMappingId = (& aws lambda list-event-source-mappings --function-name $LambdaName --event-source-arn $emailQueueArn --query "EventSourceMappings[0].UUID" --output text).Trim()
 if ($LASTEXITCODE -eq 0 -and $eventSourceMappingId -and $eventSourceMappingId -ne "None") {
-  & aws lambda update-event-source-mapping --uuid $eventSourceMappingId --batch-size 6 --maximum-batching-window-in-seconds 1 --scaling-config MaximumConcurrency=1 --function-response-types ReportBatchItemFailures | Out-Null
+  & aws lambda update-event-source-mapping --uuid $eventSourceMappingId --batch-size 6 --scaling-config MaximumConcurrency=2 --function-response-types ReportBatchItemFailures | Out-Null
 } else {
-  & aws lambda create-event-source-mapping --function-name $LambdaName --event-source-arn $emailQueueArn --batch-size 6 --maximum-batching-window-in-seconds 1 --scaling-config MaximumConcurrency=1 --function-response-types ReportBatchItemFailures | Out-Null
+  & aws lambda create-event-source-mapping --function-name $LambdaName --event-source-arn $emailQueueArn --batch-size 6 --scaling-config MaximumConcurrency=2 --function-response-types ReportBatchItemFailures | Out-Null
 }
 
 $cors = @{ AllowOrigins = @($AllowedOrigins.Split(",").Trim() | Where-Object { $_ }); AllowMethods = @("GET", "POST"); AllowHeaders = @("content-type", "authorization"); MaxAge = 86400 }

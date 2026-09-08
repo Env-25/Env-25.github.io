@@ -15,8 +15,8 @@ INVENTORY_TABLE="${INVENTORY_TABLE:-inventory}"
 LOCKER_CHANGES_TABLE="${LOCKER_CHANGES_TABLE:-locker-changes}"
 ADMIN_AUDIT_TABLE="${ADMIN_AUDIT_TABLE:-admin-audit}"
 SES_FROM="${SES_FROM:-UBC CHBE Council Notifications <notifications@ubcchbecouncil.com>}"
-EMAIL_QUEUE_NAME="${EMAIL_QUEUE_NAME:-chbe-ses-send}"
-EMAIL_DLQ_NAME="${EMAIL_DLQ_NAME:-chbe-ses-send-dlq}"
+EMAIL_QUEUE_NAME="${EMAIL_QUEUE_NAME:-chbe-ses-send.fifo}"
+EMAIL_DLQ_NAME="${EMAIL_DLQ_NAME:-chbe-ses-send-dlq.fifo}"
 SITE_URL="${SITE_URL:-https://ubcchbecouncil.com}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-main}"
 ALLOWED_ORIGINS="${ALLOWED_ORIGINS:-https://ubcchbecouncil.com,https://www.ubcchbecouncil.com,http://localhost:4321,http://localhost:3001}"
@@ -60,7 +60,7 @@ ensure_table "$ADMIN_AUDIT_TABLE" auditId
 EMAIL_DLQ_URL="$(aws sqs get-queue-url --region "$REGION" --queue-name "$EMAIL_DLQ_NAME" --query QueueUrl --output text 2>/dev/null || true)"
 if [ -z "$EMAIL_DLQ_URL" ]; then
   EMAIL_DLQ_URL="$(aws sqs create-queue --region "$REGION" --queue-name "$EMAIL_DLQ_NAME" \
-    --attributes VisibilityTimeout=360,ReceiveMessageWaitTimeSeconds=20,MessageRetentionPeriod=1209600,SqsManagedSseEnabled=true \
+    --attributes VisibilityTimeout=360,ReceiveMessageWaitTimeSeconds=20,MessageRetentionPeriod=1209600,SqsManagedSseEnabled=true,FifoQueue=true \
     --query QueueUrl --output text)"
 fi
 EMAIL_DLQ_ARN="$(aws sqs get-queue-attributes --region "$REGION" --queue-url "$EMAIL_DLQ_URL" --attribute-names QueueArn --query "Attributes.QueueArn" --output text)"
@@ -76,6 +76,12 @@ json.dump({
 PY
 EMAIL_QUEUE_URL="$(aws sqs get-queue-url --region "$REGION" --queue-name "$EMAIL_QUEUE_NAME" --query QueueUrl --output text 2>/dev/null || true)"
 if [ -z "$EMAIL_QUEUE_URL" ]; then
+  python - "$QUEUE_ATTRIBUTES_PATH" <<'PY'
+import json, sys
+attributes = json.load(open(sys.argv[1]))
+attributes["FifoQueue"] = "true"
+json.dump(attributes, open(sys.argv[1], "w"))
+PY
   EMAIL_QUEUE_URL="$(aws sqs create-queue --region "$REGION" --queue-name "$EMAIL_QUEUE_NAME" --attributes "file://$(winpath "$QUEUE_ATTRIBUTES_PATH")" --query QueueUrl --output text)"
 else
   aws sqs set-queue-attributes --region "$REGION" --queue-url "$EMAIL_QUEUE_URL" --attributes "file://$(winpath "$QUEUE_ATTRIBUTES_PATH")"
@@ -167,11 +173,11 @@ aws lambda wait function-active --function-name "$LAMBDA_NAME" --region "$REGION
 EVENT_SOURCE_MAPPING_ID="$(aws lambda list-event-source-mappings --function-name "$LAMBDA_NAME" --event-source-arn "$EMAIL_QUEUE_ARN" --query "EventSourceMappings[0].UUID" --output text)"
 if [ "$EVENT_SOURCE_MAPPING_ID" = "None" ] || [ -z "$EVENT_SOURCE_MAPPING_ID" ]; then
   aws lambda create-event-source-mapping --function-name "$LAMBDA_NAME" --event-source-arn "$EMAIL_QUEUE_ARN" \
-    --batch-size 6 --maximum-batching-window-in-seconds 1 --scaling-config MaximumConcurrency=1 \
+    --batch-size 6 --scaling-config MaximumConcurrency=2 \
     --function-response-types ReportBatchItemFailures >/dev/null
 else
   aws lambda update-event-source-mapping --uuid "$EVENT_SOURCE_MAPPING_ID" --batch-size 6 \
-    --maximum-batching-window-in-seconds 1 --scaling-config MaximumConcurrency=1 \
+    --scaling-config MaximumConcurrency=2 \
     --function-response-types ReportBatchItemFailures >/dev/null
 fi
 

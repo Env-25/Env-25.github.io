@@ -53,7 +53,7 @@ export GITHUB_PRIVATE_KEY_SECRET_ID=...
 ```
 
 The script creates `locker-changes` and `admin-audit` on-demand DynamoDB tables,
-the `chbe-ses-send` email queue and dead-letter queue, deploys the Lambda Function
+the `chbe-ses-send.fifo` email queue and dead-letter queue, deploys the Lambda Function
 URL, and prints `PUBLIC_ADMIN_API_URL`. Notification emails are delivered in batches
 of six per second. Set that value locally and as the GitHub repository secret
 `PUBLIC_ADMIN_API_URL`; the Pages workflows already pass it to the Astro build.

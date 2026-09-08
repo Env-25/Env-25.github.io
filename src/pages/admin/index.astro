@@ -510,6 +510,16 @@ import "../../styles/admin.css";
       if (!(target instanceof Element)) return;
       selectImage(target.closest<HTMLImageElement>("img"));
     });
+    body.addEventListener("error", (event) => {
+      const image = event.target;
+      if (!(image instanceof HTMLImageElement) || !body.contains(image)) return;
+      image.classList.add("admin-rte__broken-image");
+      positionResizeHandle();
+    }, true);
+    body.addEventListener("load", (event) => {
+      const image = event.target;
+      if (image instanceof HTMLImageElement) image.classList.remove("admin-rte__broken-image");
+    }, true);
     body.addEventListener("input", () => {
       positionResizeHandle();
       renderPreview();

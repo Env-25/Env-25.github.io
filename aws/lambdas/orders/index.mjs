@@ -314,7 +314,12 @@ async function sendEmail({ to, subject, html }) {
     if (!job.to || !job.subject || !job.html || Buffer.byteLength(JSON.stringify(job), "utf8") > 250 * 1024) {
       throw new Error("Invalid email job.");
     }
-    await sqs.send(new SendMessageCommand({ QueueUrl: EMAIL_QUEUE_URL, MessageBody: JSON.stringify(job) }));
+    await sqs.send(new SendMessageCommand({
+      QueueUrl: EMAIL_QUEUE_URL,
+      MessageBody: JSON.stringify(job),
+      MessageGroupId: "ses",
+      MessageDeduplicationId: randomUUID(),
+    }));
   }));
 }
 

@@ -445,7 +445,12 @@ async function enqueueEmails(jobs) {
     const batch = jobs.slice(index, index + 10);
     const result = await sqs.send(new SendMessageBatchCommand({
       QueueUrl: EMAIL_QUEUE_URL,
-      Entries: batch.map((job, batchIndex) => ({ Id: String(batchIndex), MessageBody: JSON.stringify(job) })),
+      Entries: batch.map((job, batchIndex) => ({
+        Id: String(batchIndex),
+        MessageBody: JSON.stringify(job),
+        MessageGroupId: "ses",
+        MessageDeduplicationId: randomUUID(),
+      })),
     }));
     if (result.Failed?.length) {
       throw new Error(`Could not queue ${result.Failed.length} email(s).`);
