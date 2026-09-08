@@ -83,6 +83,14 @@ import "../../styles/admin.css";
     document.getElementById("adminModal")?.remove();
   }
 
+  function showPublishNotice() {
+    document.body.insertAdjacentHTML("beforeend", modal(`
+      <h3>Changes are publishing</h3>
+      <p class="admin-modal__copy">Your updates should be live in approximately 2 minutes, but may take up to 10 minutes. Please do not make the same changes again while publishing.</p>
+      <div class="admin-modal__actions"><button class="admin-button" type="button" id="closePublishNotice">Okay</button></div>`));
+    document.getElementById("closePublishNotice")?.addEventListener("click", closeModal);
+  }
+
   function renderShell() {
     root.innerHTML = `
       <nav class="admin-nav"><a href="/" class="admin-nav__brand">CHBE ADMIN</a><a href="/" class="admin-nav__back">← Back to site</a></nav>
@@ -377,7 +385,8 @@ import "../../styles/admin.css";
       if (removed.length) await postAdmin({ action: "deleteInventory", kind: content.workspace === "lockers" ? "locker" : "merch", items: removed });
       if (nextInventory.length) await postAdmin({ action: "saveInventory", kind: content.workspace === "lockers" ? "locker" : "merch", items: nextInventory });
       if (content.workspace === "lockers" || content.workspace === "merch") content.originalInventory = nextInventory;
-      renderContentWorkspace("Published. GitHub Pages will update shortly.");
+      renderContentWorkspace();
+      showPublishNotice();
     } catch (error) {
       renderContentWorkspace(error instanceof Error ? error.message : "Could not publish changes.");
       const note = panel().querySelector(".admin-message");

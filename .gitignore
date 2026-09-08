@@ -6,3 +6,4 @@ node_modules/
 .DS_Store
 aws/scripts/.orders-build/
 aws/scripts/.admin-build/
+aws/scripts/.email-validate-build/
