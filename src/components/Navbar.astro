@@ -39,7 +39,7 @@ import "../styles/navbar.css";
           <a href="/account/profile" role="menuitem">Profile</a>
           <a href="/account/orders" role="menuitem">Orders</a>
           <a href="/account/subscriptions" role="menuitem">Subscriptions</a>
-          <a href="/account/admin" role="menuitem" id="navAdminLink">Admin</a>
+          <a href="/admin/" role="menuitem" id="navAdminLink" target="_blank" rel="noopener" hidden>Open admin console</a>
           <button type="button" role="menuitem" id="navLogoutBtn">Log out</button>
         </div>
       </div>
@@ -80,7 +80,7 @@ import "../styles/navbar.css";
         <a href="/account/profile" class="mobile-link">Profile</a>
         <a href="/account/orders" class="mobile-link">Orders</a>
         <a href="/account/subscriptions" class="mobile-link">Subscriptions</a>
-        <a href="/account/admin" class="mobile-link" id="mobileAdminLink">Admin</a>
+        <a href="/admin/" class="mobile-link" id="mobileAdminLink" target="_blank" rel="noopener" hidden>Open admin console</a>
         <button type="button" class="mobile-link mobile-logout" id="mobileLogoutBtn">Log out</button>
       </div>
     </div>
@@ -158,6 +158,8 @@ import "../styles/navbar.css";
   const mobileAccountLinks = document.getElementById("mobileAccountLinks");
   const mobileAccountArea = document.getElementById("mobileAccountArea");
   const mobileLogoutBtn = document.getElementById("mobileLogoutBtn") as HTMLButtonElement | null;
+  const navAdminLink = document.getElementById("navAdminLink") as HTMLAnchorElement | null;
+  const mobileAdminLink = document.getElementById("mobileAdminLink") as HTMLAnchorElement | null;
 
   const hasAccountUi = Boolean(
     accountWrap &&
@@ -191,9 +193,11 @@ import "../styles/navbar.css";
     mobileAccountLinks!.hidden = true;
     mobileAccountLinks!.classList.add("auth-hidden");
     mobileAccountArea!.classList.remove("is-authed");
+    if (navAdminLink) navAdminLink.hidden = true;
+    if (mobileAdminLink) mobileAdminLink.hidden = true;
   }
 
-  function setSignedIn(name: string) {
+  function setSignedIn(name: string, isAdmin: boolean) {
     if (!hasAccountUi) return;
     const label = firstName(name);
     accountLabel!.textContent = label;
@@ -208,6 +212,8 @@ import "../styles/navbar.css";
     mobileAccountLinks!.hidden = false;
     mobileAccountLinks!.classList.remove("auth-hidden");
     mobileAccountArea!.classList.add("is-authed");
+    if (navAdminLink) navAdminLink.hidden = !isAdmin;
+    if (mobileAdminLink) mobileAdminLink.hidden = !isAdmin;
   }
 
   function closeAccountMenu() {
@@ -279,7 +285,7 @@ import "../styles/navbar.css";
       const profile = await getSessionProfile();
       if (profile) {
         bindCartUser(profile.sub);
-        setSignedIn(profile.name || profile.email);
+        setSignedIn(profile.name || profile.email, profile.isAdmin);
         refreshCartBadge();
       } else {
         bindCartUser(null);

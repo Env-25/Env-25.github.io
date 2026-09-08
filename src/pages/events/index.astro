@@ -90,9 +90,6 @@ const calEventsData = sorted.map((e) => ({
   slug: e.slug,
 }));
 
-const upcomingCalLinks = upcoming
-  .map((e) => (e.CalendarLink || "").trim())
-  .filter(Boolean);
 ---
 <BaseLayout title="Events — UBC CHBE">
 
@@ -108,8 +105,8 @@ const upcomingCalLinks = upcoming
           type="button"
           class="events-action-btn"
           id="addAllCalBtn"
-          disabled={upcomingCalLinks.length === 0}
-          title={upcomingCalLinks.length === 0 ? "No upcoming calendar links" : "Add upcoming events to your calendar"}
+          disabled={upcoming.length === 0}
+          title={upcoming.length === 0 ? "No upcoming events" : "Download upcoming events for your calendar"}
         >
           + Add all to Calendar
         </button>
@@ -274,7 +271,7 @@ const upcomingCalLinks = upcoming
 
 </BaseLayout>
 
-<script define:vars={{ calEventsData, spotlightIndex, upcomingCalLinks }}>
+<script define:vars={{ calEventsData, spotlightIndex }}>
   // ── Carousel ────────────────────────────────────────────────────────────
   const viewport = document.getElementById("carouselViewport");
   const track    = document.getElementById("carouselTrack");
@@ -332,15 +329,44 @@ const upcomingCalLinks = upcoming
     render();
   }
 
-  // ── Add all upcoming calendar links ─────────────────────────────────────
+  // ── Add all upcoming events to calendar ─────────────────────────────────
   const addAllCalBtn = document.getElementById("addAllCalBtn");
   addAllCalBtn?.addEventListener("click", () => {
-    const links = Array.isArray(upcomingCalLinks) ? upcomingCalLinks : [];
-    if (!links.length) return;
-    // Open each upcoming invite link (same-tick opens avoid most popup blockers)
-    links.forEach((url) => {
-      window.open(url, "_blank", "noopener,noreferrer");
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const upcomingEvents = calEventsData.filter((event) => {
+      const end = parseLocalDate(event.endDate || event.startDate);
+      return end && end >= today;
     });
+    if (!upcomingEvents.length) return;
+
+    const escapeIcs = (value) =>
+      String(value || "").replace(/\\/g, "\\\\").replace(/\n/g, "\\n").replace(/,/g, "\\,").replace(/;/g, "\\;");
+    const dateTime = (date, time) => {
+      const compactDate = String(date || "").replace(/-/g, "");
+      const match = String(time || "").trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+      if (!match) return compactDate;
+      let hour = Number(match[1]);
+      if (match[3].toUpperCase() === "PM" && hour !== 12) hour += 12;
+      if (match[3].toUpperCase() === "AM" && hour === 12) hour = 0;
+      return `${compactDate}T${String(hour).padStart(2, "0")}${match[2]}00`;
+    };
+    const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
+    const events = upcomingEvents.map((event) => [
+      "BEGIN:VEVENT",
+      `UID:chbe-${escapeIcs(event.slug)}-${escapeIcs(event.startDate)}@ubcchbecouncil.com`,
+      `DTSTAMP:${stamp}`,
+      `DTSTART:${dateTime(event.startDate, event.startTime)}`,
+      `DTEND:${dateTime(event.endDate || event.startDate, event.endTime || event.startTime)}`,
+      `SUMMARY:${escapeIcs(event.name)}`,
+      "END:VEVENT",
+    ].join("\r\n")).join("\r\n");
+    const ics = `BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//UBC CHBE Council//Events//EN\r\nCALSCALE:GREGORIAN\r\n${events}\r\nEND:VCALENDAR\r\n`;
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(new Blob([ics], { type: "text/calendar;charset=utf-8" }));
+    link.download = "chbe-upcoming-events.ics";
+    link.click();
+    URL.revokeObjectURL(link.href);
   });
 
   // ── Calendar ────────────────────────────────────────────────────────────

@@ -10,6 +10,8 @@
     "astro": "astro",
     "aws:setup-auth": "bash aws/scripts/setup-auth.sh",
     "aws:setup-orders": "bash aws/scripts/setup-orders.sh",
+    "aws:setup-admin": "bash aws/scripts/setup-admin.sh",
+    "aws:create-admin-groups": "bash aws/scripts/create-admin-groups.sh",
     "aws:seed-inventory": "node aws/scripts/seed-inventory.mjs"
   },
   "dependencies": {

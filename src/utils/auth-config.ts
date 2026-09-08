@@ -11,6 +11,8 @@ export const AUTH_CONFIG = {
     "1x00000000000000000000AA",
   /** Optional: API URL that wraps SES GetEmailAddressInsights (keeps AWS creds off the browser) */
   emailValidateUrl: import.meta.env.PUBLIC_EMAIL_VALIDATE_URL as string | undefined,
+  /** Protected API used by the council admin console. */
+  adminApiUrl: import.meta.env.PUBLIC_ADMIN_API_URL as string | undefined,
   resendCooldownSec: 60,
   emailChangeCooldownDays: 7,
 };
