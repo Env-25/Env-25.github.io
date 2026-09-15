@@ -19,8 +19,8 @@ import "../../styles/council.css";
       <p class="council-hero-tagline">Meet the Team</p>
       <div class="year-row">
         <select class="year-select" id="yearSelect" autocomplete="off">
-          <option value="2026" selected>2026</option>
-          <option value="2025">2025</option>
+          <option value="2026" selected>2026/27</option>
+          <option value="2025">2025/26</option>
         </select>
       </div>
     </div>
@@ -30,7 +30,7 @@ import "../../styles/council.css";
   <section class="group-photo-section">
     <img
       src={`/council/${year}/group.jpg`}
-      alt={`CHBE Council ${year} group photo`}
+      alt={`CHBE Council 2026/27 group photo`}
       class="group-photo"
       id="groupPhoto"
       loading="eager"
@@ -100,7 +100,7 @@ import "../../styles/council.css";
 
       // Update group photo
       groupPhoto.src = `/council/${year}/group.jpg`;
-      groupPhoto.alt = `CHBE Council ${year} group photo`;
+      groupPhoto.alt = `CHBE Council ${year}/${String(Number(year) + 1).slice(-2)} group photo`;
 
       // Update caption
       const leftToRightRes = await fetch(`/council/${year}/leftToRight.txt`);

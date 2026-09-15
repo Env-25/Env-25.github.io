@@ -310,13 +310,18 @@ import "../../styles/admin.css";
   function renderContentWorkspace(note = "") {
     if (!state) return;
     const content = state;
-    const title = content.workspace === "members" ? `Members — ${content.year}` : content.workspace[0].toUpperCase() + content.workspace.slice(1);
+    const academicYear = (year?: string) => {
+      const start = String(year || "").trim();
+      if (!/^\d{4}$/.test(start)) return start || "";
+      return `${start}/${String(Number(start) + 1).slice(-2)}`;
+    };
+    const title = content.workspace === "members" ? `Members — ${academicYear(content.year)}` : content.workspace[0].toUpperCase() + content.workspace.slice(1);
     panel().innerHTML = `
       <h2>${escape(title)}</h2>
       <p class="admin-panel__intro">Fields remain read-only until Edit is selected. Changes only reach the public site after publishing.</p>
       ${note ? message(note) : ""}
       <div class="admin-toolbar">
-        <div>${content.workspace === "members" ? `<select class="admin-search" id="yearSelect" aria-label="Council year"><option value="2026" ${content.year === "2026" ? "selected" : ""}>2026</option><option value="2025" ${content.year === "2025" ? "selected" : ""}>2025</option><option value="new">Create new year…</option></select>` : ""}</div>
+        <div>${content.workspace === "members" ? `<select class="admin-search" id="yearSelect" aria-label="Council year"><option value="2026" ${content.year === "2026" ? "selected" : ""}>2026/27</option><option value="2025" ${content.year === "2025" ? "selected" : ""}>2025/26</option><option value="new">Create new year…</option></select>` : ""}</div>
         <div class="admin-row-actions"><button type="button" class="admin-secondary" id="addRecord">Add new</button><button type="button" class="admin-button" id="publishContent">Publish changes</button></div>
       </div>
       <div class="admin-table-wrap"><table class="admin-table"><thead><tr>${content.headers.map((header) => `<th${header === "ID" ? ' class="admin-table__identifier"' : ""}>${escape(header)}</th>`).join("")}<th>Actions</th></tr></thead><tbody>

@@ -64,13 +64,15 @@
 }
 
 .year-select {
-  min-width: 80px;
+  min-width: 140px;
   flex-shrink: 0;
   font-family: "Telegraf", sans-serif;
   font-size: 0.85rem;
   font-weight: 700;
   letter-spacing: 0.15em;
   text-transform: uppercase;
+  text-align: center;
+  text-align-last: center;
   color: var(--clr-cream);
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.3);
