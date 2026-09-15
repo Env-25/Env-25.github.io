@@ -12,6 +12,7 @@ import "../../styles/admin.css";
   import { getSessionProfile } from "../../utils/auth";
   import { fileToBase64, getAdmin, postAdmin } from "../../utils/admin";
   import { isAuthConfigured } from "../../utils/auth-config";
+  import { cropImageFile, cropImageFiles } from "../../utils/image-crop";
 
   type Workspace = "lockers" | "merch" | "notifications" | "members" | "events" | "resources" | "admin";
   type CsvRow = Record<string, string>;
@@ -353,11 +354,19 @@ import "../../styles/admin.css";
     return `<div class="admin-field${wide ? " admin-field--full" : ""}"><label for="field-${escape(header)}">${escape(header)}</label>${control}</div>`;
   }
 
+  function nextNumericId(rows: CsvRow[]) {
+    return String(Math.max(0, ...rows.map((item) => Number(item.ID) || 0)) + 1);
+  }
+
   function editRecord(row: CsvRow | null) {
     if (!state) return;
     const content = state;
     const isNew = !row;
-    const original = row ? { ...row } : { ...defaults[content.workspace], ...(content.workspace === "lockers" && content.rows[0] ? { Price: content.rows[0].Price } : {}), ...(content.workspace === "members" ? { ID: String(Math.max(0, ...content.rows.map((item) => Number(item.ID) || 0)) + 1) } : {}) };
+    const original = row ? { ...row } : {
+      ...defaults[content.workspace],
+      ...(content.workspace === "lockers" && content.rows[0] ? { Price: content.rows[0].Price } : {}),
+      ...(content.headers.includes("ID") ? { ID: nextNumericId(content.rows) } : {}),
+    };
     const productImages = managedImageFields(content);
     const imageField = imageFieldName(content);
     const editableFields = content.headers.filter((header) => !productImages || (header !== productImages.cover && header !== productImages.additional));
@@ -385,20 +394,31 @@ import "../../styles/admin.css";
           const library = document.getElementById("imageOptions");
           if (library) library.innerHTML = message(error instanceof Error ? error.message : "Could not load the image library.", true);
         });
-      document.getElementById("imageUploads")?.addEventListener("change", (event) => {
+      document.getElementById("imageUploads")?.addEventListener("change", async (event) => {
         const library = document.getElementById("imageOptions");
-        const files = Array.from((event.target as HTMLInputElement).files || []);
+        const input = event.target as HTMLInputElement;
+        const files = Array.from(input.files || []);
+        input.value = "";
         if (!library || !files.length) return;
-        files.forEach((file) => {
+        const cropped = await cropImageFiles(files);
+        cropped.forEach((file) => {
           const id = `upload-${crypto.randomUUID()}`;
           uploads.set(id, file);
           const url = URL.createObjectURL(file);
           objectUrls.push(url);
           library.insertAdjacentHTML("beforeend", imageOption(productImages.directory, file.name, id, "", new Set(), Boolean(productImages.additional), false, url));
         });
-        (event.target as HTMLInputElement).value = "";
       });
     }
+    let pendingSingleUpload: File | null = null;
+    document.getElementById("imageUpload")?.addEventListener("change", async (event) => {
+      const input = event.target as HTMLInputElement;
+      const file = input.files?.[0];
+      input.value = "";
+      pendingSingleUpload = null;
+      if (!file) return;
+      pendingSingleUpload = await cropImageFile(file);
+    });
     const sizeRows = document.getElementById("sizeStockRows");
     document.getElementById("addSizeStock")?.addEventListener("click", () => {
       sizeRows?.insertAdjacentHTML("beforeend", sizeStockRow("", "0", false));
@@ -443,7 +463,7 @@ import "../../styles/admin.css";
         next[productImages.cover] = cover;
         if (productImages.additional) next[productImages.additional] = [...new Set(additionalCandidates.map(resolveCandidate).filter((name) => name && name !== cover))].join("|");
       }
-      const file = (document.getElementById("imageUpload") as HTMLInputElement | null)?.files?.[0];
+      const file = pendingSingleUpload;
       if (file && imageField) {
         const response = await postAdmin<{ path: string }>({ action: "uploadAsset", workspace: content.workspace, year: content.year, filename: file.name, mime: file.type, base64: await fileToBase64(file) });
         next[imageField] = response.path.split("/").pop() || next[imageField];
@@ -765,16 +785,19 @@ import "../../styles/admin.css";
           : `<p class="admin-panel__intro">No email images have been uploaded yet.</p>`;
       })
       .catch((error) => { emailOptions.innerHTML = message(error instanceof Error ? error.message : "Could not load email images.", true); });
-    document.getElementById("emailImageUploads")?.addEventListener("change", (event) => {
-      const files = Array.from((event.target as HTMLInputElement).files || []);
-      files.forEach((file) => {
+    document.getElementById("emailImageUploads")?.addEventListener("change", async (event) => {
+      const input = event.target as HTMLInputElement;
+      const files = Array.from(input.files || []);
+      input.value = "";
+      if (!files.length) return;
+      const cropped = await cropImageFiles(files);
+      cropped.forEach((file) => {
         const id = `email-${crypto.randomUUID()}`;
         emailUploads.set(id, file);
         const url = URL.createObjectURL(file);
         emailObjectUrls.set(id, url);
         emailOptions.insertAdjacentHTML("beforeend", emailImageOption(file.name, url, id));
       });
-      (event.target as HTMLInputElement).value = "";
     });
     emailOptions.addEventListener("click", async (event) => {
       const target = event.target as Element;

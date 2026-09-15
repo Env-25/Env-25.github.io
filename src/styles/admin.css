@@ -66,6 +66,40 @@
 .admin-upload-eta { margin:1.25rem 0 0; color:var(--clr-dark-teal); font:2rem/1 "RocaTwo-Bl",sans-serif; letter-spacing:.04em; text-align:center; }
 .admin-modal--locked { cursor:wait; }
 .admin-modal--locked .admin-modal__dialog { width:min(420px,100%); text-align:center; }
+.admin-crop-modal {
+  position:fixed; inset:0; z-index:1700; display:grid; place-items:center;
+  padding:1rem; background:rgba(20,30,30,.72);
+}
+.admin-crop-modal__dialog {
+  width:min(820px,100%); max-height:94vh; overflow:auto; background:#fff;
+  padding:1.35rem; box-shadow:0 16px 40px rgba(0,0,0,.35);
+}
+.admin-crop-modal__dialog h3 { margin:0 0 .5rem; font:1.25rem "RocaTwo-Bl",sans-serif; }
+.admin-crop-modal__copy { margin:0 0 1rem; color:rgba(58,75,74,.75); font-size:.88rem; line-height:1.5; }
+.admin-crop-stage {
+  position:relative; margin:0 auto; max-width:100%; touch-action:none; user-select:none;
+  background:#111; overflow:hidden;
+}
+.admin-crop-stage img { display:block; width:100%; height:100%; max-width:none; pointer-events:none; }
+.admin-crop-shade { position:absolute; background:rgba(0,0,0,.45); pointer-events:none; }
+.admin-crop-shade--top,.admin-crop-shade--bottom { left:0; right:0; }
+.admin-crop-shade--top { top:0; }
+.admin-crop-shade--bottom { bottom:0; }
+.admin-crop-shade--left { left:0; }
+.admin-crop-shade--right { right:0; }
+.admin-crop-box {
+  position:absolute; top:0; left:0; box-sizing:border-box;
+  border:2px solid #fff; cursor:move; box-shadow:0 0 0 1px rgba(0,0,0,.35);
+}
+.admin-crop-box span {
+  position:absolute; width:14px; height:14px; background:var(--clr-teal);
+  border:2px solid #fff; box-sizing:border-box;
+}
+.admin-crop-box [data-handle="nw"] { top:-7px; left:-7px; cursor:nwse-resize; }
+.admin-crop-box [data-handle="ne"] { top:-7px; right:-7px; cursor:nesw-resize; }
+.admin-crop-box [data-handle="sw"] { bottom:-7px; left:-7px; cursor:nesw-resize; }
+.admin-crop-box [data-handle="se"] { bottom:-7px; right:-7px; cursor:nwse-resize; }
+.admin-crop-modal__actions { display:flex; justify-content:flex-end; flex-wrap:wrap; gap:.7rem; margin-top:1.25rem; }
 .admin-image-manager { display:grid; gap:1rem; margin-top:1.25rem; padding:1.1rem; background:#fff; border:1px solid rgba(58,75,74,.18); }
 .admin-image-manager h4 { margin:0; font:1rem "RocaTwo-Bl",sans-serif; }
 .admin-image-manager .admin-panel__intro { margin:.35rem 0 0; }
