@@ -52,9 +52,10 @@ export GITHUB_PRIVATE_KEY_SECRET_ID=...
 ./aws/scripts/setup-admin.sh
 ```
 
-The script creates `locker-changes` and `admin-audit` on-demand DynamoDB tables,
+The script creates `locker-changes`, `admin-audit`, and `admin-publish-queue` on-demand DynamoDB tables,
 the `chbe-ses-send.fifo` email queue and dead-letter queue, deploys the Lambda Function
-URL, and prints `PUBLIC_ADMIN_API_URL`. Notification emails are delivered in batches
+URL, and prints `PUBLIC_ADMIN_API_URL`. Overlapping admin publishes are serialized through
+`admin-publish-queue` so later changes wait instead of racing. Notification emails are delivered in batches
 of six per second. Set that value locally and as the GitHub repository secret
 `PUBLIC_ADMIN_API_URL`; the Pages workflows already pass it to the Astro build.
 

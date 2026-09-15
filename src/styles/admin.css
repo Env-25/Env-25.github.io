@@ -20,6 +20,16 @@
 .admin-heading { display:flex; justify-content:space-between; gap:1rem; align-items:end; padding-bottom:1.5rem; border-bottom:1px solid rgba(58,75,74,.17); }
 .admin-heading h1 { font: 2rem "RocaTwo-Bl", sans-serif; margin:0; }
 .admin-email { margin:0; color:rgba(58,75,74,.72); font-size:.85rem; overflow-wrap:anywhere; }
+.admin-update-banner {
+  margin:1.25rem 0 0;
+  padding:1rem 1.1rem;
+  border:1px solid rgba(58,75,74,.22);
+  background:rgba(114,166,145,.16);
+  color:var(--clr-dark-teal);
+  font-size:.9rem;
+  line-height:1.55;
+}
+.admin-update-banner strong { display:block; margin-bottom:.35rem; font:700 .78rem "Telegraf",sans-serif; letter-spacing:.08em; text-transform:uppercase; }
 .admin-body { display:grid; grid-template-columns:220px minmax(0,1fr); gap:2rem; margin-top:2rem; }
 .admin-menu { display:flex; flex-direction:column; align-self:start; gap:.35rem; }
 .admin-menu button { border:0; background:transparent; color:var(--clr-dark-teal); text-align:left; padding:.75rem .8rem; cursor:pointer; font:700 .75rem "Telegraf",sans-serif; letter-spacing:.08em; text-transform:uppercase; }

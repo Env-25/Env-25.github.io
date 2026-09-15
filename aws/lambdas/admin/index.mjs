@@ -9,10 +9,20 @@ import {
   ListUsersInGroupCommand,
 } from "@aws-sdk/client-cognito-identity-provider";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { InvokeCommand, LambdaClient } from "@aws-sdk/client-lambda";
 import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
 import { GetSecretValueCommand, SecretsManagerClient } from "@aws-sdk/client-secrets-manager";
 import { SendMessageBatchCommand, SQSClient } from "@aws-sdk/client-sqs";
-import { DynamoDBDocumentClient, PutCommand, ScanCommand, TransactWriteCommand } from "@aws-sdk/lib-dynamodb";
+import {
+  DeleteCommand,
+  DynamoDBDocumentClient,
+  GetCommand,
+  PutCommand,
+  QueryCommand,
+  ScanCommand,
+  TransactWriteCommand,
+  UpdateCommand,
+} from "@aws-sdk/lib-dynamodb";
 import { CognitoJwtVerifier } from "aws-jwt-verify";
 import sanitizeHtml from "sanitize-html";
 
@@ -22,6 +32,7 @@ const CLIENT_ID = process.env.COGNITO_CLIENT_ID || "";
 const INVENTORY_TABLE = process.env.INVENTORY_TABLE || "inventory";
 const LOCKER_CHANGES_TABLE = process.env.LOCKER_CHANGES_TABLE || "locker-changes";
 const ADMIN_AUDIT_TABLE = process.env.ADMIN_AUDIT_TABLE || "admin-audit";
+const ADMIN_PUBLISH_QUEUE_TABLE = process.env.ADMIN_PUBLISH_QUEUE_TABLE || "admin-publish-queue";
 const SES_FROM = process.env.SES_FROM || "UBC CHBE Council Notifications <notifications@ubcchbecouncil.com>";
 const EMAIL_QUEUE_URL = process.env.EMAIL_QUEUE_URL || "";
 const SITE_URL = (process.env.SITE_URL || "https://ubcchbecouncil.com").replace(/\/$/, "");
@@ -31,6 +42,12 @@ const GITHUB_OWNER = process.env.GITHUB_OWNER || "";
 const GITHUB_REPO = process.env.GITHUB_REPO || "";
 const GITHUB_BRANCH = process.env.GITHUB_BRANCH || "main";
 const GITHUB_PRIVATE_KEY_SECRET_ID = process.env.GITHUB_PRIVATE_KEY_SECRET_ID || "";
+const LOCK_PK = "LOCK";
+const LOCK_SK = "publish";
+const QUEUE_PK = "QUEUE";
+const LOCK_TTL_MS = 5 * 60 * 1000;
+const DRAIN_BATCH_SIZE = 5;
+const QUEUED_MESSAGE = "Your changes are queued and will publish after the current update finishes. Nothing was discarded.";
 
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({ region: REGION }), {
   marshallOptions: { removeUndefinedValues: true },
@@ -39,6 +56,7 @@ const cognito = new CognitoIdentityProviderClient({ region: REGION });
 const ses = new SESClient({ region: REGION });
 const sqs = new SQSClient({ region: REGION });
 const secrets = new SecretsManagerClient({ region: REGION });
+const lambda = new LambdaClient({ region: REGION });
 const verifier = USER_POOL_ID && CLIENT_ID
   ? CognitoJwtVerifier.create({ userPoolId: USER_POOL_ID, tokenUse: "id", clientId: CLIENT_ID })
   : null;
@@ -274,6 +292,216 @@ async function recordAudit(action, user, details) {
   }));
 }
 
+async function tryAcquireLock(holder) {
+  const now = Date.now();
+  try {
+    await ddb.send(new PutCommand({
+      TableName: ADMIN_PUBLISH_QUEUE_TABLE,
+      Item: { pk: LOCK_PK, sk: LOCK_SK, holder, expiresAt: now + LOCK_TTL_MS, acquiredAt: now },
+      ConditionExpression: "attribute_not_exists(pk) OR expiresAt < :now",
+      ExpressionAttributeValues: { ":now": now },
+    }));
+    return true;
+  } catch (error) {
+    if (error?.name === "ConditionalCheckFailedException") return false;
+    throw error;
+  }
+}
+
+async function releaseLock(holder) {
+  try {
+    await ddb.send(new DeleteCommand({
+      TableName: ADMIN_PUBLISH_QUEUE_TABLE,
+      Key: { pk: LOCK_PK, sk: LOCK_SK },
+      ConditionExpression: "holder = :holder OR expiresAt < :now",
+      ExpressionAttributeValues: { ":holder": holder, ":now": Date.now() },
+    }));
+  } catch (error) {
+    if (error?.name !== "ConditionalCheckFailedException") throw error;
+  }
+}
+
+async function enqueuePublish(action, payload, user) {
+  const id = randomUUID();
+  const sk = `${String(Date.now()).padStart(15, "0")}#${id}`;
+  await ddb.send(new PutCommand({
+    TableName: ADMIN_PUBLISH_QUEUE_TABLE,
+    Item: {
+      pk: QUEUE_PK,
+      sk,
+      jobId: id,
+      status: "pending",
+      action,
+      payload,
+      actorEmail: user.email,
+      actorSub: user.sub,
+      actorGroups: user.groups,
+      createdAt: new Date().toISOString(),
+    },
+  }));
+  return id;
+}
+
+async function claimNextJob() {
+  const result = await ddb.send(new QueryCommand({
+    TableName: ADMIN_PUBLISH_QUEUE_TABLE,
+    KeyConditionExpression: "pk = :pk",
+    ExpressionAttributeValues: { ":pk": QUEUE_PK },
+    ScanIndexForward: true,
+    Limit: 40,
+  }));
+  for (const item of result.Items || []) {
+    if (item.status !== "pending") continue;
+    try {
+      await ddb.send(new UpdateCommand({
+        TableName: ADMIN_PUBLISH_QUEUE_TABLE,
+        Key: { pk: item.pk, sk: item.sk },
+        UpdateExpression: "SET #status = :running, startedAt = :at",
+        ConditionExpression: "#status = :pending",
+        ExpressionAttributeNames: { "#status": "status" },
+        ExpressionAttributeValues: {
+          ":running": "running",
+          ":pending": "pending",
+          ":at": new Date().toISOString(),
+        },
+      }));
+      return item;
+    } catch (error) {
+      if (error?.name === "ConditionalCheckFailedException") continue;
+      throw error;
+    }
+  }
+  return null;
+}
+
+async function finishJob(job, status, errorMessage) {
+  if (status === "done" || status === "failed") {
+    if (status === "failed") {
+      console.error("Removing failed publish job", {
+        jobId: job.jobId,
+        action: job.action,
+        error: errorMessage,
+      });
+    }
+    await ddb.send(new DeleteCommand({
+      TableName: ADMIN_PUBLISH_QUEUE_TABLE,
+      Key: { pk: job.pk, sk: job.sk },
+    }));
+    return;
+  }
+  await ddb.send(new UpdateCommand({
+    TableName: ADMIN_PUBLISH_QUEUE_TABLE,
+    Key: { pk: job.pk, sk: job.sk },
+    UpdateExpression: "SET #status = :status, finishedAt = :at",
+    ExpressionAttributeNames: { "#status": "status" },
+    ExpressionAttributeValues: {
+      ":status": status,
+      ":at": new Date().toISOString(),
+    },
+  }));
+}
+
+async function hasPendingJobs() {
+  const status = await getPublishStatus();
+  return status.pending > 0;
+}
+
+async function getPublishStatus() {
+  const now = Date.now();
+  const [lockResult, queueResult] = await Promise.all([
+    ddb.send(new GetCommand({
+      TableName: ADMIN_PUBLISH_QUEUE_TABLE,
+      Key: { pk: LOCK_PK, sk: LOCK_SK },
+    })),
+    ddb.send(new QueryCommand({
+      TableName: ADMIN_PUBLISH_QUEUE_TABLE,
+      KeyConditionExpression: "pk = :pk",
+      ExpressionAttributeValues: { ":pk": QUEUE_PK },
+      ScanIndexForward: true,
+      Limit: 40,
+    })),
+  ]);
+  const lockHeld = Boolean(lockResult.Item && Number(lockResult.Item.expiresAt || 0) > now);
+  const active = (queueResult.Items || []).filter((item) => item.status === "pending" || item.status === "running");
+  const pending = active.filter((item) => item.status === "pending").length;
+  const running = active.filter((item) => item.status === "running").length;
+  return {
+    busy: lockHeld || active.length > 0,
+    pending,
+    running,
+  };
+}
+
+async function handlePublishStatus(_event, _user) {
+  return json(200, await getPublishStatus());
+}
+
+async function scheduleDrain() {
+  const functionName = process.env.AWS_LAMBDA_FUNCTION_NAME;
+  if (!functionName) {
+    await drainPublishQueue();
+    return;
+  }
+  await lambda.send(new InvokeCommand({
+    FunctionName: functionName,
+    InvocationType: "Event",
+    Payload: Buffer.from(JSON.stringify({ drainPublishQueue: true })),
+  }));
+}
+
+async function executeQueuedJob(job, user) {
+  const payload = job.payload || {};
+  if (job.action === "publishWorkspace") return executePublishWorkspace(payload, user);
+  if (job.action === "writeContent") return executeWriteContent(payload, user);
+  if (job.action === "saveInventory") return executeSaveInventory(payload, user);
+  if (job.action === "deleteInventory") return executeDeleteInventory(payload, user);
+  if (job.action === "uploadAsset") return executeUploadAsset(payload, user);
+  throw new Error(`Unknown queued action: ${job.action}`);
+}
+
+async function drainPublishQueue() {
+  const holder = `drain-${randomUUID()}`;
+  if (!(await tryAcquireLock(holder))) return;
+  try {
+    for (let i = 0; i < DRAIN_BATCH_SIZE; i += 1) {
+      const job = await claimNextJob();
+      if (!job) break;
+      const user = {
+        sub: String(job.actorSub || ""),
+        email: String(job.actorEmail || ""),
+        name: "",
+        groups: Array.isArray(job.actorGroups) ? job.actorGroups.map(String) : [],
+      };
+      try {
+        await executeQueuedJob(job, user);
+        await finishJob(job, "done");
+      } catch (error) {
+        console.error("Queued publish failed", { jobId: job.jobId, action: job.action, error });
+        await finishJob(job, "failed", error?.message || "failed");
+      }
+    }
+  } finally {
+    await releaseLock(holder);
+  }
+  if (await hasPendingJobs()) await scheduleDrain();
+}
+
+async function runOrQueue(action, payload, user, execute) {
+  const holder = randomUUID();
+  if (!(await tryAcquireLock(holder))) {
+    await enqueuePublish(action, payload, user);
+    await scheduleDrain();
+    return json(200, { ok: true, queued: true, message: QUEUED_MESSAGE });
+  }
+  try {
+    const result = await execute();
+    return json(200, { ok: true, queued: false, ...(result || {}) });
+  } finally {
+    await releaseLock(holder);
+    await scheduleDrain();
+  }
+}
+
 async function handleContent(event, user) {
   const qs = event.queryStringParameters || {};
   const workspaceName = String(qs.workspace || "");
@@ -308,7 +536,7 @@ async function handleInventory(event, user) {
   return json(200, { items });
 }
 
-async function handleWriteContent(body, user) {
+async function executeWriteContent(body, user) {
   const workspaceName = String(body.workspace || "");
   const workspace = workspaceFor(workspaceName, body.year);
   requireGroup(user, workspace.group);
@@ -324,7 +552,21 @@ async function handleWriteContent(body, user) {
     await Promise.all(changes.map((item) => ddb.send(new PutCommand({ TableName: LOCKER_CHANGES_TABLE, Item: item }))));
   }
   await recordAudit("content.publish", user, { workspace: workspaceName, path: workspace.path });
-  return json(200, { ok: true, message: "Published. GitHub Pages will update shortly." });
+  return { message: "Published. GitHub Pages will update shortly." };
+}
+
+async function handleWriteContent(body, user) {
+  const workspaceName = String(body.workspace || "");
+  const workspace = workspaceFor(workspaceName, body.year);
+  requireGroup(user, workspace.group);
+  assertSafeContent(body.content, workspaceName);
+  const payload = {
+    workspace: workspaceName,
+    year: body.year,
+    content: body.content,
+    caption: typeof body.caption === "string" ? body.caption : undefined,
+  };
+  return runOrQueue("writeContent", payload, user, () => executeWriteContent(payload, user));
 }
 
 function validateInventoryItem(item, kind) {
@@ -339,7 +581,7 @@ function validateInventoryItem(item, kind) {
   return { sku, kind, productId, label, name: String(item.name || "").slice(0, 200), color: String(item.color || "").slice(0, 100), quantity, updatedAt: new Date().toISOString() };
 }
 
-async function handleSaveInventory(body, user) {
+async function executeSaveInventory(body, user) {
   const kind = body.kind === "locker" ? "locker" : body.kind === "merch" ? "merch" : "";
   if (!kind) throw bad("Inventory kind is required.");
   requireGroup(user, kind === "locker" ? "lockers" : "merch");
@@ -350,7 +592,32 @@ async function handleSaveInventory(body, user) {
   }));
   await dispatchInventorySync();
   await recordAudit("inventory.save", user, { kind, count: items.length });
-  return json(200, { ok: true, message: "Inventory saved. The public CSV sync has been requested." });
+  return { message: "Inventory saved. The public CSV sync has been requested." };
+}
+
+async function handleSaveInventory(body, user) {
+  const kind = body.kind === "locker" ? "locker" : body.kind === "merch" ? "merch" : "";
+  if (!kind) throw bad("Inventory kind is required.");
+  requireGroup(user, kind === "locker" ? "lockers" : "merch");
+  const items = (Array.isArray(body.items) ? body.items : []).map((item) => validateInventoryItem(item, kind));
+  if (!items.length || items.length > 90) throw bad("Provide between 1 and 90 inventory items.");
+  const payload = { kind, items };
+  return runOrQueue("saveInventory", payload, user, () => executeSaveInventory(payload, user));
+}
+
+async function executeDeleteInventory(body, user) {
+  const kind = body.kind === "locker" ? "locker" : body.kind === "merch" ? "merch" : "";
+  if (!kind) throw bad("Inventory kind is required.");
+  requireGroup(user, kind === "locker" ? "lockers" : "merch");
+  const items = (Array.isArray(body.items) ? body.items : []).map((item) => validateInventoryItem(item, kind));
+  if (items.length) {
+    await ddb.send(new TransactWriteCommand({
+      TransactItems: items.map((item) => ({ Delete: { TableName: INVENTORY_TABLE, Key: { sku: item.sku } } })),
+    }));
+    await dispatchInventorySync();
+  }
+  await recordAudit("inventory.delete", user, { kind, count: items.length });
+  return { message: "Inventory items removed." };
 }
 
 async function handleDeleteInventory(body, user) {
@@ -358,12 +625,56 @@ async function handleDeleteInventory(body, user) {
   if (!kind) throw bad("Inventory kind is required.");
   requireGroup(user, kind === "locker" ? "lockers" : "merch");
   const items = (Array.isArray(body.items) ? body.items : []).map((item) => validateInventoryItem(item, kind));
-  await ddb.send(new TransactWriteCommand({
-    TransactItems: items.map((item) => ({ Delete: { TableName: INVENTORY_TABLE, Key: { sku: item.sku } } })),
-  }));
-  await dispatchInventorySync();
-  await recordAudit("inventory.delete", user, { kind, count: items.length });
-  return json(200, { ok: true });
+  const payload = { kind, items };
+  return runOrQueue("deleteInventory", payload, user, () => executeDeleteInventory(payload, user));
+}
+
+async function executePublishWorkspace(body, user) {
+  const contentResult = await executeWriteContent(body, user);
+  const workspaceName = String(body.workspace || "");
+  const kind = workspaceName === "lockers" ? "locker" : workspaceName === "merch" ? "merch" : "";
+  let inventoryChanged = false;
+  if (kind) {
+    const removed = (Array.isArray(body.removedInventory) ? body.removedInventory : []).map((item) => validateInventoryItem(item, kind));
+    const inventory = (Array.isArray(body.inventory) ? body.inventory : []).map((item) => validateInventoryItem(item, kind));
+    if (removed.length > 90 || inventory.length > 90) throw bad("Provide at most 90 inventory items per publish.");
+    if (removed.length) {
+      await ddb.send(new TransactWriteCommand({
+        TransactItems: removed.map((item) => ({ Delete: { TableName: INVENTORY_TABLE, Key: { sku: item.sku } } })),
+      }));
+      inventoryChanged = true;
+      await recordAudit("inventory.delete", user, { kind, count: removed.length });
+    }
+    if (inventory.length) {
+      await ddb.send(new TransactWriteCommand({
+        TransactItems: inventory.map((item) => ({ Put: { TableName: INVENTORY_TABLE, Item: item } })),
+      }));
+      inventoryChanged = true;
+      await recordAudit("inventory.save", user, { kind, count: inventory.length });
+    }
+    if (inventoryChanged) await dispatchInventorySync();
+  }
+  return { message: contentResult.message || "Published. GitHub Pages will update shortly." };
+}
+
+async function handlePublishWorkspace(body, user) {
+  const workspaceName = String(body.workspace || "");
+  const workspace = workspaceFor(workspaceName, body.year);
+  requireGroup(user, workspace.group);
+  assertSafeContent(body.content, workspaceName);
+  const kind = workspaceName === "lockers" ? "locker" : workspaceName === "merch" ? "merch" : "";
+  const payload = {
+    workspace: workspaceName,
+    year: body.year,
+    content: body.content,
+    caption: typeof body.caption === "string" ? body.caption : undefined,
+    inventory: kind && Array.isArray(body.inventory) ? body.inventory.map((item) => validateInventoryItem(item, kind)) : [],
+    removedInventory: kind && Array.isArray(body.removedInventory) ? body.removedInventory.map((item) => validateInventoryItem(item, kind)) : [],
+  };
+  if (payload.inventory.length > 90 || payload.removedInventory.length > 90) {
+    throw bad("Provide at most 90 inventory items per publish.");
+  }
+  return runOrQueue("publishWorkspace", payload, user, () => executePublishWorkspace(payload, user));
 }
 
 function assetDirectory(workspace, year) {
@@ -404,7 +715,7 @@ async function handleListAssets(event, user) {
   return json(200, { assets });
 }
 
-async function handleUploadAsset(body, user) {
+async function executeUploadAsset(body, user) {
   const workspaceName = String(body.workspace || "");
   const workspace = assetWorkspace(workspaceName, body.year);
   requireGroup(user, workspace.group);
@@ -414,7 +725,38 @@ async function handleUploadAsset(body, user) {
   if (!["image/png", "image/jpeg", "image/webp", "image/gif"].includes(String(body.mime || ""))) throw bad("Unsupported image type.");
   await writeRepoFile(path, bytes.toString("base64"), `admin(${workspaceName}): upload image`);
   await recordAudit("asset.upload", user, { workspace: workspaceName, path });
-  return json(200, { path: path.replace(/^public/, "") });
+  return { path: path.replace(/^public/, ""), message: "Image uploaded." };
+}
+
+async function handleUploadAsset(body, user) {
+  const workspaceName = String(body.workspace || "");
+  const workspace = assetWorkspace(workspaceName, body.year);
+  requireGroup(user, workspace.group);
+  const path = assetPath(workspaceName, body.filename, body.year);
+  const bytes = Buffer.from(String(body.base64 || ""), "base64");
+  if (!bytes.length || bytes.length > FILE_LIMIT_BYTES) throw bad("Image must be between 1 byte and 5 MB.");
+  if (!["image/png", "image/jpeg", "image/webp", "image/gif"].includes(String(body.mime || ""))) throw bad("Unsupported image type.");
+  const payload = {
+    workspace: workspaceName,
+    year: body.year,
+    filename: body.filename,
+    mime: body.mime,
+    base64: body.base64,
+  };
+  const publicPath = path.replace(/^public/, "");
+  const holder = randomUUID();
+  if (!(await tryAcquireLock(holder))) {
+    await enqueuePublish("uploadAsset", payload, user);
+    await scheduleDrain();
+    return json(200, { ok: true, queued: true, path: publicPath, message: QUEUED_MESSAGE });
+  }
+  try {
+    const result = await executeUploadAsset(payload, user);
+    return json(200, { ok: true, queued: false, ...result });
+  } finally {
+    await releaseLock(holder);
+    await scheduleDrain();
+  }
 }
 
 function cleanRichHtml(html) {
@@ -563,6 +905,10 @@ async function handleEmailQueue(event) {
 
 export async function handler(event) {
   try {
+    if (event?.drainPublishQueue === true) {
+      await drainPublishQueue();
+      return json(200, { ok: true });
+    }
     if (Array.isArray(event?.Records) && event.Records.every((record) => record.eventSource === "aws:sqs")) {
       return await handleEmailQueue(event);
     }
@@ -574,8 +920,10 @@ export async function handler(event) {
     if (method === "GET" && queryAction === "inventory") return await handleInventory(event, user);
     if (method === "GET" && queryAction === "assets") return await handleListAssets(event, user);
     if (method === "GET" && queryAction === "users") return await handleListUsers(event, user);
+    if (method === "GET" && queryAction === "publishStatus") return await handlePublishStatus(event, user);
     if (method !== "POST") return json(405, { error: "Method not allowed." });
     const body = parseBody(event);
+    if (body.action === "publishWorkspace") return await handlePublishWorkspace(body, user);
     if (body.action === "writeContent") return await handleWriteContent(body, user);
     if (body.action === "saveInventory") return await handleSaveInventory(body, user);
     if (body.action === "deleteInventory") return await handleDeleteInventory(body, user);

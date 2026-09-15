@@ -50,7 +50,7 @@ export function getEvents(): ChbeEvent[] {
     headers.forEach((h, i) => {
       obj[h.trim()] = (values[i] || "").replace(/^"|"$/g, "");
     });
-    if (!obj.Email) obj.Email = "contact@chbe.ubc.ca";
+    if (!obj.Email) obj.Email = "chbevpinternal@gmail.com";
     if (!obj.EndDate) obj.EndDate = obj.StartDate || "";
     return { ...obj, slug: nameToSlug(obj.Name) } as ChbeEvent;
   });

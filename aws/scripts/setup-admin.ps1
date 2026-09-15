@@ -14,6 +14,7 @@ param(
   [string]$InventoryTable = "inventory",
   [string]$LockerChangesTable = "locker-changes",
   [string]$AdminAuditTable = "admin-audit",
+  [string]$AdminPublishQueueTable = "admin-publish-queue",
   [string]$SesFrom = "UBC CHBE Council Notifications <notifications@ubcchbecouncil.com>",
   [string]$EmailQueueName = "chbe-ses-send.fifo",
   [string]$EmailDlqName = "chbe-ses-send-dlq.fifo",
@@ -44,6 +45,16 @@ function Ensure-Table([string]$Name, [string]$Key) {
   }
 }
 
+function Ensure-CompositeTable([string]$Name) {
+  if (-not (Test-AwsResource @("dynamodb", "describe-table", "--region", $Region, "--table-name", $Name))) {
+    & aws dynamodb create-table --region $Region --table-name $Name `
+      --attribute-definitions "AttributeName=pk,AttributeType=S" "AttributeName=sk,AttributeType=S" `
+      --key-schema "AttributeName=pk,KeyType=HASH" "AttributeName=sk,KeyType=RANGE" `
+      --billing-mode PAY_PER_REQUEST | Out-Null
+    & aws dynamodb wait table-exists --region $Region --table-name $Name
+  }
+}
+
 $accountId = (& aws sts get-caller-identity --query Account --output text).Trim()
 if ($LASTEXITCODE -ne 0) { throw "Could not determine the AWS account." }
 $scriptRoot = Split-Path -Parent $PSCommandPath
@@ -60,6 +71,7 @@ New-Item -ItemType Directory -Path $buildDir -Force | Out-Null
 
 Ensure-Table $LockerChangesTable "changeId"
 Ensure-Table $AdminAuditTable "auditId"
+Ensure-CompositeTable $AdminPublishQueueTable
 
 $emailDlqUrl = & aws sqs get-queue-url --region $Region --queue-name $EmailDlqName --query QueueUrl --output text 2>$null
 if ($LASTEXITCODE -ne 0 -or -not $emailDlqUrl) {
@@ -111,9 +123,19 @@ $policy = @{
       )
     },
     @{
+      Sid = "PublishQueue"; Effect = "Allow"
+      Action = @("dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:DeleteItem", "dynamodb:Query")
+      Resource = "arn:aws:dynamodb:$Region`:$accountId`:table/$AdminPublishQueueTable"
+    },
+    @{
       Sid = "InventoryDelete"; Effect = "Allow"
       Action = "dynamodb:DeleteItem"
       Resource = "arn:aws:dynamodb:$Region`:$accountId`:table/$InventoryTable"
+    },
+    @{
+      Sid = "SelfInvokeDrain"; Effect = "Allow"
+      Action = "lambda:InvokeFunction"
+      Resource = "arn:aws:lambda:$Region`:$accountId`:function/$LambdaName"
     },
     @{
       Sid = "EmailQueue"; Effect = "Allow"
@@ -148,6 +170,7 @@ $lambdaEnvironment = @{
   Variables = @{
     COGNITO_USER_POOL_ID = $UserPoolId; COGNITO_CLIENT_ID = $ClientId
     INVENTORY_TABLE = $InventoryTable; LOCKER_CHANGES_TABLE = $LockerChangesTable; ADMIN_AUDIT_TABLE = $AdminAuditTable
+    ADMIN_PUBLISH_QUEUE_TABLE = $AdminPublishQueueTable
     SES_FROM = $SesFrom; EMAIL_QUEUE_URL = $emailQueueUrl; SITE_URL = $SiteUrl
     GITHUB_APP_ID = $env:GITHUB_APP_ID; GITHUB_INSTALLATION_ID = $env:GITHUB_INSTALLATION_ID
     GITHUB_OWNER = $env:GITHUB_OWNER; GITHUB_REPO = $env:GITHUB_REPO; GITHUB_BRANCH = $GithubBranch

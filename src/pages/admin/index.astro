@@ -38,7 +38,7 @@ import "../../styles/admin.css";
   const defaults: Record<string, CsvRow> = {
     lockers: { ID: "", Name: "", Desc: "", Location: "", Size: "", Price: "", Availability_Top: "0", Availability_Mid: "0", Availability_Bottom: "0", Rental_Term: "", Lock_Included: "NA", Cover_photo: "locker.jpg", Add_photos: "" },
     merch: { ID: "", Name: "", type_id: "", Type: "", Color: "", Desc: "", Price: "", Sizes_Stock: "", Cover_image: "product.jpg", Additional_images: "" },
-    events: { ID: "", Name: "", StartDate: "", StartTime: "", EndDate: "", EndTime: "", Location: "", Image: "default.png", Email: "contact@chbe.ubc.ca", CalendarLink: "", Desc: "" },
+    events: { ID: "", Name: "", StartDate: "", StartTime: "", EndDate: "", EndTime: "", Location: "", Image: "default.png", Email: "chbevpinternal@gmail.com", CalendarLink: "", Desc: "" },
     members: { ID: "", Name: "", Title: "", Image: "", Bio: "", Contact: "", LinkedIn: "" },
     resources: { Title: "", Description: "", Href: "", Icon: "", Alt: "" },
   };
@@ -80,16 +80,84 @@ import "../../styles/admin.css";
     return `<div class="admin-modal" id="adminModal" role="dialog" aria-modal="true"><div class="admin-modal__dialog">${inner}</div></div>`;
   }
 
+  let publishing = false;
+  let siteUpdating = false;
+  let publishStatusTimer = 0;
+  let lastPublishBusy = false;
+
   function closeModal() {
     document.getElementById("adminModal")?.remove();
   }
 
-  function showPublishNotice() {
+  function showPublishNotice(queued = false) {
     document.body.insertAdjacentHTML("beforeend", modal(`
-      <h3>Changes are publishing. Please read carefully.</h3>
-      <p class="admin-modal__copy">Your updates should be live in approximately 2 minutes. Please do not make ANY CHANGES while site is publishing, estimated time is 2 minutes.</p>
+      <h3>${queued ? "Changes queued" : "Changes are publishing. Please read carefully."}</h3>
+      <p class="admin-modal__copy">${queued
+        ? "Your changes are queued and will publish after the current update finishes. Nothing was discarded."
+        : "Your updates should be live in approximately 2 minutes. Please do not make ANY CHANGES while site is publishing, estimated time is 2 minutes."}</p>
       <div class="admin-modal__actions"><button class="admin-button" type="button" id="closePublishNotice">Okay</button></div>`));
     document.getElementById("closePublishNotice")?.addEventListener("click", closeModal);
+  }
+
+  function setPublishBusy(busy: boolean) {
+    publishing = busy;
+    applyPublishControls();
+  }
+
+  function applyPublishControls() {
+    const blocked = publishing || siteUpdating;
+    document.querySelectorAll<HTMLButtonElement>("#publishContent, #publishRecord, #saveDraft, #addRecord").forEach((button) => {
+      button.disabled = blocked;
+    });
+    document.querySelectorAll<HTMLButtonElement>("[data-edit], [data-delete]").forEach((button) => {
+      button.disabled = siteUpdating;
+    });
+  }
+
+  function renderUpdateBanner(busy: boolean) {
+    let banner = document.getElementById("adminUpdateBanner");
+    if (!busy) {
+      banner?.remove();
+      return;
+    }
+    if (!banner) {
+      document.querySelector(".admin-heading")?.insertAdjacentHTML("afterend", `
+        <div class="admin-update-banner" id="adminUpdateBanner" role="status" aria-live="polite">
+          <strong>This page is being updated.</strong>
+          Wait before making more edits. When this message disappears the console will refresh automatically so you do not repeat the same change.
+        </div>`);
+      banner = document.getElementById("adminUpdateBanner");
+    }
+    return banner;
+  }
+
+  async function refreshAfterPublishClear() {
+    const hash = window.location.hash.replace(/^#/, "") as Workspace;
+    if (hash && workspaces.some((item) => item.id === hash)) {
+      await openWorkspace(hash);
+      return;
+    }
+    panel().innerHTML = `<p class="admin-status">Updates finished. Choose an area from the menu to continue with the latest content.</p>`;
+  }
+
+  async function pollPublishStatus() {
+    try {
+      const status = await getAdmin<{ busy: boolean; pending?: number; running?: number }>({ action: "publishStatus" });
+      const busy = Boolean(status.busy);
+      siteUpdating = busy;
+      renderUpdateBanner(busy);
+      applyPublishControls();
+      if (lastPublishBusy && !busy) await refreshAfterPublishClear();
+      lastPublishBusy = busy;
+    } catch {
+      // Keep the last known banner state if status cannot be read.
+    }
+  }
+
+  function startPublishStatusPolling() {
+    window.clearInterval(publishStatusTimer);
+    void pollPublishStatus();
+    publishStatusTimer = window.setInterval(() => { void pollPublishStatus(); }, 10000);
   }
 
   function renderShell() {
@@ -103,6 +171,7 @@ import "../../styles/admin.css";
         </div>
       </div>`;
     root.querySelectorAll<HTMLButtonElement>("[data-workspace]").forEach((button) => button.addEventListener("click", () => openWorkspace(button.dataset.workspace as Workspace)));
+    startPublishStatusPolling();
   }
 
   function showDenied() {
@@ -211,6 +280,7 @@ import "../../styles/admin.css";
         else yearSelect.value = content.year || "2026";
       } else loadContentWorkspace("members", yearSelect.value);
     });
+    applyPublishControls();
   }
 
   function imageFieldName(content: ContentState) {
@@ -437,23 +507,37 @@ import "../../styles/admin.css";
   }
 
   async function publishContent() {
-    if (!state) return;
+    if (!state || publishing || siteUpdating) return;
     const content = state;
+    setPublishBusy(true);
     try {
       const nextInventory = inventoryForContent(content);
       const original = content.originalInventory || [];
       const nextKeys = new Set(nextInventory.map((item) => item.sku));
       const removed = original.filter((item) => !nextKeys.has(item.sku));
-      await postAdmin({ action: "writeContent", workspace: content.workspace, year: content.year, content: serializeCsv(content), caption: content.caption || "" });
-      if (removed.length) await postAdmin({ action: "deleteInventory", kind: content.workspace === "lockers" ? "locker" : "merch", items: removed });
-      if (nextInventory.length) await postAdmin({ action: "saveInventory", kind: content.workspace === "lockers" ? "locker" : "merch", items: nextInventory });
+      const kind = content.workspace === "lockers" ? "locker" : content.workspace === "merch" ? "merch" : "";
+      const response = await postAdmin<{ message?: string; queued?: boolean }>({
+        action: "publishWorkspace",
+        workspace: content.workspace,
+        year: content.year,
+        content: serializeCsv(content),
+        caption: content.caption || "",
+        inventory: kind ? nextInventory : [],
+        removedInventory: kind ? removed : [],
+      });
       if (content.workspace === "lockers" || content.workspace === "merch") content.originalInventory = nextInventory;
+      lastPublishBusy = true;
+      siteUpdating = true;
+      renderUpdateBanner(true);
       renderContentWorkspace();
-      showPublishNotice();
+      showPublishNotice(Boolean(response.queued));
+      void pollPublishStatus();
     } catch (error) {
       renderContentWorkspace(error instanceof Error ? error.message : "Could not publish changes.");
       const note = panel().querySelector(".admin-message");
       note?.classList.add("admin-message--error");
+    } finally {
+      setPublishBusy(false);
     }
   }
 
