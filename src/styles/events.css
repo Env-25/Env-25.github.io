@@ -341,13 +341,13 @@
 .carousel-img-wrap {
   aspect-ratio: 4 / 3;
   overflow: hidden;
-  background: var(--clr-teal);
+  background: var(--clr-cream);
 }
 
 .carousel-img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   display: block;
   transition: filter 0.25s ease;
 }
