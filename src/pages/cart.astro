@@ -88,6 +88,7 @@ import "../styles/cart.css";
   import { getSessionProfile, grantVerifyAccess, getIdToken } from "../utils/auth";
   import { isAuthConfigured } from "../utils/auth-config";
   import {
+    ORDERS_ENABLED,
     readCart,
     writeCart,
     cartLineKey,
@@ -135,7 +136,7 @@ import "../styles/cart.css";
     placeUnverified.hidden = state !== "unverified";
     placeIncomplete.hidden = state !== "incomplete";
     placeForm.hidden = state !== "ready";
-    canPlace = state === "ready";
+    canPlace = ORDERS_ENABLED && state === "ready";
     placeBtn.disabled = !canPlace;
     placeBtn.textContent = canPlace ? "Place order" : "Coming soon";
   }

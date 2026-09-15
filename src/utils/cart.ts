@@ -1,5 +1,8 @@
 /** Client cart (localStorage, per-user when signed in) + orders API helpers. */
 
+/** Flip to true when checkout should accept new orders again. */
+export const ORDERS_ENABLED = false;
+
 export const CART_KEY_GUEST = "chbe_cart_v1";
 export const CART_USER_PREFIX = "chbe_cart_v1:user:";
 export const CART_ACTIVE_USER_KEY = "chbe_cart_active_user";
@@ -192,6 +195,7 @@ export async function placeOrder(args: {
   idToken: string;
   items: CartItem[];
 }): Promise<{ orderID: string; status: string | number }> {
+  if (!ORDERS_ENABLED) throw new Error("Ordering is temporarily unavailable.");
   const base = ordersApiUrl();
   if (!base) throw new Error("Orders API is not configured.");
   const res = await fetch(`${base}/`, {

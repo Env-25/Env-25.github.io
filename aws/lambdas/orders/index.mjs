@@ -35,6 +35,8 @@ const STAFF_EMAILS = (process.env.STAFF_ORDER_EMAILS ||
 const SITE_URL = (process.env.SITE_URL || "https://ubcchbecouncil.com").replace(/\/$/, "");
 const EMAIL_QUEUE_URL = process.env.EMAIL_QUEUE_URL || "";
 const CARD_SURCHARGE = 1.03;
+/** Flip to true when checkout should accept new orders again. */
+const ORDERS_ENABLED = false;
 
 const ORDER_STATUS = {
   PAYMENT_PENDING: "payment_pending",
@@ -495,6 +497,12 @@ async function handleGetOrder(event, user) {
 }
 
 async function handlePlace(event, user) {
+  if (!ORDERS_ENABLED) {
+    return json(503, {
+      error: "Ordering is temporarily unavailable.",
+      code: "ORDERS_DISABLED",
+    });
+  }
   if (!user.emailVerified) {
     return json(403, { error: "Verify your email before placing an order." });
   }
