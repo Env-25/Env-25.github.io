@@ -43,6 +43,7 @@ jobs:
           PUBLIC_EMAIL_VALIDATE_URL: ${{ secrets.PUBLIC_EMAIL_VALIDATE_URL }}
           PUBLIC_ORDERS_API_URL: ${{ secrets.PUBLIC_ORDERS_API_URL }}
           PUBLIC_ADMIN_API_URL: ${{ secrets.PUBLIC_ADMIN_API_URL }}
+          PUBLIC_CONTACT_API_URL: ${{ secrets.PUBLIC_CONTACT_API_URL }}
         run: npm run build
 
       - name: Upload Pages artifact

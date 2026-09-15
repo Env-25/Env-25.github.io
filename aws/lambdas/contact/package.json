@@ -1,0 +1,11 @@
+{
+  "name": "chbe-contact",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@aws-sdk/client-sqs": "^3.1127.0"
+  }
+}

@@ -8,3 +8,4 @@ admin.env
 aws/scripts/.orders-build/
 aws/scripts/.admin-build/
 aws/scripts/.email-validate-build/
+aws/scripts/.contact-build/

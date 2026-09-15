@@ -4,15 +4,32 @@ import { AUTH_CONFIG } from "../utils/auth-config";
 import "../styles/contact.css";
 
 const turnstileSiteKey = AUTH_CONFIG.turnstileSiteKey;
+const contactApiUrl = (import.meta.env.PUBLIC_CONTACT_API_URL as string | undefined)?.replace(/\/$/, "") || "";
 ---
 
 <BaseLayout title="Contact — UBC CHBE">
 
-  <!-- ① CDN scripts: Turnstile + EmailJS (is:inline prevents Vite bundling) -->
+  <script is:inline>
+    window.__chbeTurnstileToken = null;
+    window.onTurnstileVerified = function (token) {
+      window.__chbeTurnstileToken = token;
+      var err = document.getElementById("captchaError");
+      if (err) err.classList.remove("visible");
+    };
+    window.onTurnstileExpired = function () {
+      window.__chbeTurnstileToken = null;
+    };
+    window.onTurnstileError = function () {
+      window.__chbeTurnstileToken = null;
+      var err = document.getElementById("captchaError");
+      if (err) err.classList.add("visible");
+      if (window.turnstile && typeof window.turnstile.reset === "function") {
+        try { window.turnstile.reset(); } catch (_) {}
+      }
+    };
+  </script>
   <script is:inline src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
-  <script is:inline src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 
-  <!-- ── Hero ── -->
   <section class="contact-hero">
     <img src="/home/index-lower.jpg" alt="" class="contact-hero-bg" />
     <div class="contact-hero-overlay"></div>
@@ -22,20 +39,17 @@ const turnstileSiteKey = AUTH_CONFIG.turnstileSiteKey;
     </div>
   </section>
 
-  <!-- ── Main ── -->
   <section class="contact-section">
     <div class="contact-layout">
 
-      <!-- Left: Form -->
       <div class="contact-form-wrap">
         <h2 class="contact-block-title">Send a Message</h2>
         <p class="contact-block-sub">Fill out the form below and we'll get back to you as soon as possible.</p>
 
         <form class="contact-form" id="contactForm" novalidate>
 
-          <!-- Type of Inquiry -->
           <div class="form-field">
-            <label for"contactInquiry" class="form-label">
+            <label for="contactInquiry" class="form-label">
               Type of Inquiry <span class="required">*</span>
             </label>
             <select id="contactInquiry" name="inquiry_type" class="form-input form-select" required>
@@ -48,14 +62,11 @@ const turnstileSiteKey = AUTH_CONFIG.turnstileSiteKey;
               <option value="4th-year">4th Year Representative</option>
               <option value="sponsorship">Sponsorship</option>
             </select>
-            <!-- Resolved email is injected here; sendForm() picks it up automatically -->
-            <input type="hidden" id="toEmail" name="to_email" value="" />
             <p class="field-error" id="inquiryError">Please select a type of inquiry.</p>
           </div>
 
-          <!-- Name -->
           <div class="form-field">
-            <label for"contactName" class="form-label">
+            <label for="contactName" class="form-label">
               Name <span class="required">*</span>
             </label>
             <input
@@ -66,9 +77,8 @@ const turnstileSiteKey = AUTH_CONFIG.turnstileSiteKey;
             <p class="field-error" id="nameError">Please enter your name.</p>
           </div>
 
-          <!-- Email -->
           <div class="form-field">
-            <label for"contactEmail" class="form-label">
+            <label for="contactEmail" class="form-label">
               Email <span class="required">*</span>
             </label>
             <input
@@ -79,9 +89,8 @@ const turnstileSiteKey = AUTH_CONFIG.turnstileSiteKey;
             <p class="field-error" id="emailError">Please enter a valid email address.</p>
           </div>
 
-          <!-- Subject -->
           <div class="form-field">
-            <label for"contactSubject" class="form-label">
+            <label for="contactSubject" class="form-label">
               Subject <span class="required">*</span>
             </label>
             <input
@@ -92,9 +101,8 @@ const turnstileSiteKey = AUTH_CONFIG.turnstileSiteKey;
             <p class="field-error" id="subjectError">Please enter a subject.</p>
           </div>
 
-          <!-- Message -->
           <div class="form-field">
-            <label for"contactMessage" class="form-label">
+            <label for="contactMessage" class="form-label">
               Message <span class="required">*</span>
             </label>
             <textarea
@@ -106,28 +114,6 @@ const turnstileSiteKey = AUTH_CONFIG.turnstileSiteKey;
             <p class="field-error" id="messageError">Please enter a message.</p>
           </div>
 
-          <!-- File Attachment -->
-          <div class="form-field">
-            <label for"contactFile" class="form-label">
-              Attachment <span class="form-optional">(optional)</span>
-            </label>
-            <label class="file-upload-label" id="fileLabel" for="contactFile">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                <polyline points="17 8 12 3 7 8"/>
-                e x1="12" y1="3" x2="12" y2="15"/>
-              </svg>
-              <span id="fileLabelText">Click to upload a file</span>
-            </label>
-            <input
-              type="file" id="contactFile" name="attachment"
-              class="file-input-hidden"
-              accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
-            />
-            <p class="file-hint">Accepted: PDF, DOC, DOCX, PNG, JPG — max 10 MB</p>
-          </div>
-
-          <!-- Cloudflare Turnstile (PUBLIC_TURNSTILE_SITE_KEY) -->
           <div class="form-field turnstile-wrap">
             <div
               class="cf-turnstile"
@@ -143,7 +129,7 @@ const turnstileSiteKey = AUTH_CONFIG.turnstileSiteKey;
           <button type="submit" class="form-submit" id="submitBtn">
             <span class="btn-label">Send Message</span>
             <svg class="btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              e x1="22" y1="2" x2="11" y2="13"/>
+              <line x1="22" y1="2" x2="11" y2="13"/>
               <polygon points="22 2 15 22 11 13 2 9 22 2"/>
             </svg>
             <span class="btn-spinner" aria-hidden="true"></span>
@@ -159,7 +145,6 @@ const turnstileSiteKey = AUTH_CONFIG.turnstileSiteKey;
         </form>
       </div>
 
-      <!-- Right: Contact directory -->
       <div class="contact-directory">
         <h2 class="contact-block-title">Get in Touch Directly</h2>
         <p class="contact-block-sub">Reach out to the right person for your enquiry.</p>
@@ -231,62 +216,22 @@ const turnstileSiteKey = AUTH_CONFIG.turnstileSiteKey;
 
 </BaseLayout>
 
-<script>
-  // ── ① Config — replace all four values ──────────────────────────────────
-  const EMAILJS_PUBLIC_KEY  = "YOUR_EMAILJS_PUBLIC_KEY";
-  const EMAILJS_SERVICE_ID  = "YOUR_EMAILJS_SERVICE_ID";
-  const EMAILJS_TEMPLATE_ID = "YOUR_EMAILJS_TEMPLATE_ID";
-  // Turnstile site key from PUBLIC_TURNSTILE_SITE_KEY (baked at build time)
-  // ────────────────────────────────────────────────────────────────────────
+<script define:vars={{ contactApiUrl }}>
+  const form = document.getElementById("contactForm") as HTMLFormElement;
+  const inquiryEl = document.getElementById("contactInquiry") as HTMLSelectElement;
+  const nameEl = document.getElementById("contactName") as HTMLInputElement;
+  const emailEl = document.getElementById("contactEmail") as HTMLInputElement;
+  const subjectEl = document.getElementById("contactSubject") as HTMLInputElement;
+  const messageEl = document.getElementById("contactMessage") as HTMLTextAreaElement;
+  const submitBtn = document.getElementById("submitBtn") as HTMLButtonElement;
+  const captchaError = document.getElementById("captchaError")!;
+  const formSuccess = document.getElementById("formSuccess") as HTMLElement;
+  const formError = document.getElementById("formError") as HTMLElement;
 
-  // ── ② Inquiry → recipient email map ─────────────────────────────────────
-  const INQUIRY_EMAIL: Record<string, string> = {
-    "general":     "chbevpinternal@gmail.com",
-    "merch":       "communications@chbecouncil.com",
-    "academic":    "chbeacademics@chbecouncil.com",
-    "2nd-year":    "2ndyearrep@chbecouncil.com",
-    "3rd-year":    "3rdyearrep@chbecouncil.com",
-    "4th-year":    "4thyearrep@chbecouncil.com",
-    "sponsorship": "ubcenvision@gmail.com",
-  };
+  function turnstileToken(): string | null {
+    return (window as any).__chbeTurnstileToken || null;
+  }
 
-  // ── ③ DOM refs ───────────────────────────────────────────────────────────
-  const form          = document.getElementById("contactForm")    as HTMLFormElement;
-  const inquiryEl     = document.getElementById("contactInquiry") as HTMLSelectElement;
-  const toEmailEl     = document.getElementById("toEmail")        as HTMLInputElement;
-  const nameEl        = document.getElementById("contactName")    as HTMLInputElement;
-  const emailEl       = document.getElementById("contactEmail")   as HTMLInputElement;
-  const subjectEl     = document.getElementById("contactSubject") as HTMLInputElement;
-  const messageEl     = document.getElementById("contactMessage") as HTMLTextAreaElement;
-  const fileInput     = document.getElementById("contactFile")    as HTMLInputElement;
-  const fileLabelText = document.getElementById("fileLabelText")!;
-  const submitBtn     = document.getElementById("submitBtn")      as HTMLButtonElement;
-  const captchaError  = document.getElementById("captchaError")!;
-  const formSuccess   = document.getElementById("formSuccess")    as HTMLElement;
-  const formError     = document.getElementById("formError")      as HTMLElement;
-
-  // ── ④ Turnstile callbacks (must be global) ───────────────────────────────
-  let turnstileToken: string | null = null;
-
-  (window as any).onTurnstileVerified = (token: string) => {
-    turnstileToken = token;
-    captchaError.classList.remove("visible");
-    submitBtn.disabled = false;
-  };
-  (window as any).onTurnstileExpired = () => {
-    turnstileToken = null;
-    submitBtn.disabled = true;
-  };
-  (window as any).onTurnstileError = () => {
-    turnstileToken = null;
-    submitBtn.disabled = true;
-    captchaError.classList.add("visible");
-  };
-
-  // ── ⑤ EmailJS init ───────────────────────────────────────────────────────
-  (window as any).emailjs.init(EMAILJS_PUBLIC_KEY);
-
-  // ── ⑥ Helpers ────────────────────────────────────────────────────────────
   function validate(el: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement): boolean {
     let invalid = el.value.trim() === "";
     if (!invalid && (el as HTMLInputElement).type === "email") {
@@ -302,31 +247,16 @@ const turnstileSiteKey = AUTH_CONFIG.turnstileSiteKey;
     el.closest(".form-field")?.querySelector(".field-error")?.classList.remove("visible");
   }
 
-  // ── ⑦ Sync inquiry select → hidden to_email ──────────────────────────────
-  inquiryEl.addEventListener("change", () => {
-    toEmailEl.value = INQUIRY_EMAIL[inquiryEl.value] ?? "";
-    clearError(inquiryEl);
-  });
-
-  // ── ⑧ File label ─────────────────────────────────────────────────────────
-  fileInput.addEventListener("change", () => {
-    const file = fileInput.files?.[0];
-    fileLabelText.textContent = file ? file.name : "Click to upload a file";
-  });
-
-  // ── ⑨ Blur validation ────────────────────────────────────────────────────
-  inquiryEl.addEventListener ("blur", () => validate(inquiryEl));
-  nameEl.addEventListener    ("blur", () => validate(nameEl));
-  emailEl.addEventListener   ("blur", () => validate(emailEl));
-  subjectEl.addEventListener ("blur", () => validate(subjectEl));
-  messageEl.addEventListener ("blur", () => validate(messageEl));
-
-  // ── ⑩ Clear on input ─────────────────────────────────────────────────────
+  inquiryEl.addEventListener("change", () => clearError(inquiryEl));
+  inquiryEl.addEventListener("blur", () => validate(inquiryEl));
+  nameEl.addEventListener("blur", () => validate(nameEl));
+  emailEl.addEventListener("blur", () => validate(emailEl));
+  subjectEl.addEventListener("blur", () => validate(subjectEl));
+  messageEl.addEventListener("blur", () => validate(messageEl));
   [nameEl, emailEl, subjectEl, messageEl].forEach((el) =>
     el.addEventListener("input", () => clearError(el))
   );
 
-  // ── ⑪ Submit ─────────────────────────────────────────────────────────────
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
 
@@ -338,39 +268,54 @@ const turnstileSiteKey = AUTH_CONFIG.turnstileSiteKey;
       validate(messageEl),
     ].every(Boolean);
 
-    if (!turnstileToken) {
-      captchaError.classList.add("visible");
+    const token = turnstileToken();
+    if (!token) captchaError.classList.add("visible");
+    else captchaError.classList.remove("visible");
+
+    if (!fieldsOk || !token) return;
+
+    if (!contactApiUrl) {
+      formError.textContent = "Contact form is not configured yet. Please email us directly.";
+      formError.hidden = false;
+      return;
     }
 
-    if (!fieldsOk || !turnstileToken) return;
-
-    // Loading state
     submitBtn.classList.add("loading");
-    submitBtn.disabled  = true;
-    formSuccess.hidden  = true;
-    formError.hidden    = true;
+    submitBtn.disabled = true;
+    formSuccess.hidden = true;
+    formError.hidden = true;
 
     try {
-      await (window as any).emailjs.sendForm(
-        EMAILJS_SERVICE_ID,
-        EMAILJS_TEMPLATE_ID,
-        form
-      );
+      const res = await fetch(`${contactApiUrl}/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          inquiryType: inquiryEl.value,
+          name: nameEl.value.trim(),
+          email: emailEl.value.trim(),
+          subject: subjectEl.value.trim(),
+          message: messageEl.value.trim(),
+          turnstileToken: token,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || "Could not send your message.");
+      }
 
       formSuccess.hidden = false;
       form.reset();
-      toEmailEl.value          = "";
-      fileLabelText.textContent = "Click to upload a file";
-      turnstileToken           = null;
-      // Reset Turnstile widget
+      (window as any).__chbeTurnstileToken = null;
       (window as any).turnstile?.reset?.();
-
-    } catch (err) {
-      console.error("EmailJS error:", err);
+    } catch (err: any) {
+      console.error("Contact send error:", err);
+      formError.textContent = err?.message || "Something went wrong — please try again or email us directly.";
       formError.hidden = false;
-      submitBtn.disabled = false; // allow retry
+      (window as any).__chbeTurnstileToken = null;
+      (window as any).turnstile?.reset?.();
     } finally {
       submitBtn.classList.remove("loading");
+      submitBtn.disabled = false;
     }
   });
 </script>

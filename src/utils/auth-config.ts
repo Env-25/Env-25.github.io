@@ -13,6 +13,8 @@ export const AUTH_CONFIG = {
   emailValidateUrl: import.meta.env.PUBLIC_EMAIL_VALIDATE_URL as string | undefined,
   /** Protected API used by the council admin console. */
   adminApiUrl: import.meta.env.PUBLIC_ADMIN_API_URL as string | undefined,
+  /** Public contact form API (Turnstile + SES queue). */
+  contactApiUrl: import.meta.env.PUBLIC_CONTACT_API_URL as string | undefined,
   resendCooldownSec: 60,
   emailChangeCooldownDays: 7,
 };

@@ -792,13 +792,15 @@ function cleanRichHtml(html) {
   });
 }
 
-function emailJob({ to, subject, html, source = SES_FROM }) {
+function emailJob({ to, subject, html, source = SES_FROM, replyTo }) {
   const job = {
     to: String(to || "").trim().toLowerCase(),
     subject: String(subject || "").trim(),
     html: String(html || ""),
     source: String(source || SES_FROM).trim(),
   };
+  const reply = String(replyTo || "").trim().toLowerCase();
+  if (reply) job.replyTo = reply;
   if (!job.to || !job.subject || !job.html || !job.source) throw bad("Invalid email job.");
   if (Buffer.byteLength(JSON.stringify(job), "utf8") > 250 * 1024) throw bad("This email is too large to queue.");
   return job;
@@ -1213,14 +1215,16 @@ async function handleEmailQueue(event) {
   const results = await Promise.all((event.Records || []).map(async (record) => {
     try {
       const job = emailJob(JSON.parse(record.body || "{}"));
-      await ses.send(new SendEmailCommand({
+      const params = {
         Source: job.source,
         Destination: { ToAddresses: [job.to] },
         Message: {
           Subject: { Data: job.subject, Charset: "UTF-8" },
           Body: { Html: { Data: job.html, Charset: "UTF-8" } },
         },
-      }));
+      };
+      if (job.replyTo) params.ReplyToAddresses = [job.replyTo];
+      await ses.send(new SendEmailCommand(params));
       return null;
     } catch (error) {
       console.error("Queued email failed", { messageId: record.messageId, error });
