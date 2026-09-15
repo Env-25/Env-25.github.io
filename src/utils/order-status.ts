@@ -15,6 +15,7 @@ export const ADMIN_ORDER_STATUSES: OrderStatus[] = [
   ORDER_STATUS.PAYMENT_RECEIVED,
   ORDER_STATUS.ORDER_READY,
   ORDER_STATUS.ORDER_COMPLETED,
+  ORDER_STATUS.CANCELLED,
 ];
 
 export function normalizeOrderStatus(status: unknown): OrderStatus {
@@ -37,7 +38,7 @@ export function orderStatusLabel(status: unknown): string {
     case ORDER_STATUS.ORDER_COMPLETED:
       return "Order completed";
     case ORDER_STATUS.CANCELLED:
-      return "Cancelled";
+      return "Order cancelled";
     default:
       return "Payment pending";
   }

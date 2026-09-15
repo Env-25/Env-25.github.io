@@ -15,6 +15,7 @@ import "../../styles/admin.css";
   import { cropImageFile, cropImageFiles } from "../../utils/image-crop";
   import {
     ADMIN_ORDER_STATUSES,
+    isActiveOrderStatus,
     normalizeOrderStatus,
     orderStatusLabel,
   } from "../../utils/order-status";
@@ -121,6 +122,25 @@ import "../../styles/admin.css";
 
   function closeModal() {
     document.getElementById("adminModal")?.remove();
+  }
+
+  function confirmStatusChange(fromLabel: string, toLabel: string): Promise<boolean> {
+    return new Promise((resolve) => {
+      closeModal();
+      document.body.insertAdjacentHTML("beforeend", modal(`
+        <h3>Confirm status change</h3>
+        <p class="admin-modal__copy">Confirm change order status from <strong>${escape(fromLabel)}</strong> to <strong>${escape(toLabel)}</strong>?</p>
+        <div class="admin-modal__actions">
+          <button class="admin-secondary" type="button" id="cancelStatusChange">Cancel</button>
+          <button class="admin-button" type="button" id="confirmStatusChange">Confirm</button>
+        </div>`));
+      const finish = (ok: boolean) => {
+        closeModal();
+        resolve(ok);
+      };
+      document.getElementById("cancelStatusChange")?.addEventListener("click", () => finish(false));
+      document.getElementById("confirmStatusChange")?.addEventListener("click", () => finish(true));
+    });
   }
 
   function showPublishNotice(queued = false) {
@@ -753,17 +773,35 @@ import "../../styles/admin.css";
       panel().querySelectorAll<HTMLButtonElement>("[data-save-order-status]").forEach((button) => {
         button.addEventListener("click", async () => {
           const orderID = button.dataset.saveOrderStatus || "";
+          const current = activeOrders.find((order) => order.orderID === orderID)
+            || completeOrders.find((order) => order.orderID === orderID);
           const select = panel().querySelector<HTMLSelectElement>(`[data-order-status="${CSS.escape(orderID)}"]`);
           const status = select?.value || "";
+          if (!orderID || !status || !current) return;
+          const previousStatus = normalizeOrderStatus(current.status);
+          const nextStatus = normalizeOrderStatus(status);
+          if (previousStatus === nextStatus) {
+            note = "Status is already set to that value.";
+            paint();
+            return;
+          }
+          const confirmed = await confirmStatusChange(
+            orderStatusLabel(previousStatus),
+            orderStatusLabel(nextStatus)
+          );
+          if (!confirmed) return;
+
           button.disabled = true;
           try {
-            const response = await postAdmin<{ order?: AdminOrder }>({ action: "updateOrderStatus", orderID, status });
+            const response = await postAdmin<{ order?: AdminOrder }>({ action: "updateOrderStatus", orderID, status: nextStatus });
             const next = response.order;
             activeOrders = activeOrders.filter((order) => order.orderID !== orderID);
             completeOrders = completeOrders.filter((order) => order.orderID !== orderID);
-            if (next && normalizeOrderStatus(next.status) === "order_completed") {
+            if (next && !isActiveOrderStatus(next.status)) {
               if (completeLoaded) completeOrders = [next, ...completeOrders];
-              note = "Order marked completed and moved to the complete list.";
+              note = normalizeOrderStatus(next.status) === "cancelled"
+                ? "Order cancelled and moved to the complete list."
+                : "Order marked completed and moved to the complete list.";
             } else if (next) {
               activeOrders = [next, ...activeOrders];
               note = "Order status updated.";

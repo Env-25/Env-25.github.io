@@ -69,6 +69,7 @@ const ADMIN_ORDER_STATUSES = [
   ORDER_STATUS.PAYMENT_RECEIVED,
   ORDER_STATUS.ORDER_READY,
   ORDER_STATUS.ORDER_COMPLETED,
+  ORDER_STATUS.CANCELLED,
 ];
 
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({ region: REGION }), {
@@ -940,7 +941,7 @@ function orderStatusLabel(status) {
     case ORDER_STATUS.ORDER_COMPLETED:
       return "Order completed";
     case ORDER_STATUS.CANCELLED:
-      return "Cancelled";
+      return "Order cancelled";
     default:
       return "Payment pending";
   }
@@ -964,6 +965,8 @@ function orderStatusBodyCopy(status) {
       return "Your order is ready for pickup.";
     case ORDER_STATUS.ORDER_COMPLETED:
       return "Your order has been marked completed. Thank you for supporting CHBE Council.";
+    case ORDER_STATUS.CANCELLED:
+      return "Your order has been cancelled. If you have questions, please contact us.";
     default:
       return "Your order status has been updated.";
   }
@@ -1172,7 +1175,7 @@ async function handleUpdateOrderStatus(body, user) {
   const now = new Date().toISOString();
   const next = { ...existing, status, updatedAt: now, updatedBy: user.email };
 
-  if (status === ORDER_STATUS.ORDER_COMPLETED) {
+  if (!isActiveOrderStatus(status)) {
     await ddb.send(new PutCommand({ TableName: ORDERS_COMPLETE_TABLE, Item: next }));
     if (active.Item) {
       await ddb.send(new DeleteCommand({ TableName: ORDERS_TABLE, Key: { orderID } }));
