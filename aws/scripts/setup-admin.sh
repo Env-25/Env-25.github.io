@@ -12,6 +12,8 @@ ROLE_NAME="${ADMIN_ROLE_NAME:-chbe-admin-lambda-role}"
 USER_POOL_ID="${COGNITO_USER_POOL_ID:-us-east-2_HeZCWYUt3}"
 CLIENT_ID="${COGNITO_CLIENT_ID:-285b5dv7j67uos6r1rcv572bo5}"
 INVENTORY_TABLE="${INVENTORY_TABLE:-inventory}"
+ORDERS_TABLE="${ORDERS_TABLE:-orders}"
+ORDERS_COMPLETE_TABLE="${ORDERS_COMPLETE_TABLE:-orders-complete}"
 LOCKER_CHANGES_TABLE="${LOCKER_CHANGES_TABLE:-locker-changes}"
 ADMIN_AUDIT_TABLE="${ADMIN_AUDIT_TABLE:-admin-audit}"
 ADMIN_PUBLISH_QUEUE_TABLE="${ADMIN_PUBLISH_QUEUE_TABLE:-admin-publish-queue}"
@@ -69,6 +71,8 @@ ensure_composite_table() {
 ensure_table "$LOCKER_CHANGES_TABLE" changeId
 ensure_table "$ADMIN_AUDIT_TABLE" auditId
 ensure_composite_table "$ADMIN_PUBLISH_QUEUE_TABLE"
+ensure_table "$ORDERS_TABLE" orderID
+ensure_table "$ORDERS_COMPLETE_TABLE" orderID
 
 EMAIL_DLQ_URL="$(aws sqs get-queue-url --region "$REGION" --queue-name "$EMAIL_DLQ_NAME" --query QueueUrl --output text 2>/dev/null || true)"
 if [ -z "$EMAIL_DLQ_URL" ]; then
@@ -121,6 +125,10 @@ cat > "$POLICY_PATH" <<EOF
       "arn:aws:dynamodb:$REGION:$ACCOUNT_ID:table/$LOCKER_CHANGES_TABLE",
       "arn:aws:dynamodb:$REGION:$ACCOUNT_ID:table/$ADMIN_AUDIT_TABLE"
     ]},
+    {"Sid":"OrdersTables","Effect":"Allow","Action":["dynamodb:GetItem","dynamodb:PutItem","dynamodb:UpdateItem","dynamodb:DeleteItem","dynamodb:Scan"],"Resource":[
+      "arn:aws:dynamodb:$REGION:$ACCOUNT_ID:table/$ORDERS_TABLE",
+      "arn:aws:dynamodb:$REGION:$ACCOUNT_ID:table/$ORDERS_COMPLETE_TABLE"
+    ]},
     {"Sid":"PublishQueue","Effect":"Allow","Action":["dynamodb:GetItem","dynamodb:PutItem","dynamodb:UpdateItem","dynamodb:DeleteItem","dynamodb:Query"],"Resource":"arn:aws:dynamodb:$REGION:$ACCOUNT_ID:table/$ADMIN_PUBLISH_QUEUE_TABLE"},
     {"Sid":"InventoryDelete","Effect":"Allow","Action":"dynamodb:DeleteItem","Resource":"arn:aws:dynamodb:$REGION:$ACCOUNT_ID:table/$INVENTORY_TABLE"},
     {"Sid":"SelfInvokeDrain","Effect":"Allow","Action":"lambda:InvokeFunction","Resource":"arn:aws:lambda:$REGION:$ACCOUNT_ID:function:$LAMBDA_NAME"},
@@ -158,10 +166,13 @@ variables = {
   "COGNITO_USER_POOL_ID": "$USER_POOL_ID",
   "COGNITO_CLIENT_ID": "$CLIENT_ID",
   "INVENTORY_TABLE": "$INVENTORY_TABLE",
+  "ORDERS_TABLE": "$ORDERS_TABLE",
+  "ORDERS_COMPLETE_TABLE": "$ORDERS_COMPLETE_TABLE",
   "LOCKER_CHANGES_TABLE": "$LOCKER_CHANGES_TABLE",
   "ADMIN_AUDIT_TABLE": "$ADMIN_AUDIT_TABLE",
   "ADMIN_PUBLISH_QUEUE_TABLE": "$ADMIN_PUBLISH_QUEUE_TABLE",
   "SES_FROM": "$SES_FROM",
+  "ORDERS_SES_FROM": "CHBE Orders <orders@ubcchbecouncil.com>",
   "EMAIL_QUEUE_URL": "$EMAIL_QUEUE_URL",
   "SITE_URL": "$SITE_URL",
   "GITHUB_APP_ID": "$GITHUB_APP_ID",

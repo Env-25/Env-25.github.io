@@ -94,6 +94,7 @@ const { order_id } = Astro.params;
   import { getSessionProfile, grantVerifyAccess, getIdToken } from "../../../utils/auth";
   import { isAuthConfigured } from "../../../utils/auth-config";
   import { fetchOrder } from "../../../utils/cart";
+  import { normalizeOrderStatus, orderStatusLabel, ORDER_STATUS } from "../../../utils/order-status";
 
   function resolveOrderId() {
     const builtParam = window.__CHBE_ORDER_BUILT_PARAM__;
@@ -162,20 +163,21 @@ const { order_id } = Astro.params;
         return;
       }
       const order = await fetchOrder({ idToken, orderId });
-      const status = Number(order.status);
+      const status = normalizeOrderStatus(order.status);
       const title = document.getElementById("orderStatusTitle");
       const body = document.getElementById("orderStatusBody");
-      if (status === 0) {
-        if (title) title.textContent = "Order cancelled";
-        if (body) body.textContent = "This order was cancelled.";
-      } else if (status === 2) {
-        if (title) title.textContent = "Order completed";
-        if (body) body.textContent = "This order has been marked completed.";
-      } else {
-        if (title) title.textContent = "Thank you for your order";
-        if (body) {
-          body.textContent =
-            "A member of our team will contact you shortly for more information.";
+      if (title) title.textContent = orderStatusLabel(status);
+      if (body) {
+        if (status === ORDER_STATUS.CANCELLED) {
+          body.textContent = "This order was cancelled.";
+        } else if (status === ORDER_STATUS.ORDER_COMPLETED) {
+          body.textContent = "This order has been marked completed.";
+        } else if (status === ORDER_STATUS.ORDER_READY) {
+          body.textContent = "Your order is ready for pickup.";
+        } else if (status === ORDER_STATUS.PAYMENT_RECEIVED) {
+          body.textContent = "Payment received. We are preparing your order.";
+        } else {
+          body.textContent = "Payment is pending. A member of our team will contact you shortly for more information.";
         }
       }
       const idLine = document.getElementById("orderIdLine");

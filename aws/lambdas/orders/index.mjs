@@ -20,6 +20,7 @@ import { CognitoJwtVerifier } from "aws-jwt-verify";
 
 const REGION = process.env.AWS_REGION || "us-east-2";
 const ORDERS_TABLE = process.env.ORDERS_TABLE || "orders";
+const ORDERS_COMPLETE_TABLE = process.env.ORDERS_COMPLETE_TABLE || "orders-complete";
 const INVENTORY_TABLE = process.env.INVENTORY_TABLE || "inventory";
 const USER_POOL_ID = process.env.COGNITO_USER_POOL_ID || "";
 const CLIENT_ID = process.env.COGNITO_CLIENT_ID || "";
@@ -33,6 +34,36 @@ const STAFF_EMAILS = (process.env.STAFF_ORDER_EMAILS ||
 const SITE_URL = (process.env.SITE_URL || "https://ubcchbecouncil.com").replace(/\/$/, "");
 const EMAIL_QUEUE_URL = process.env.EMAIL_QUEUE_URL || "";
 const CARD_SURCHARGE = 1.03;
+
+const ORDER_STATUS = {
+  PAYMENT_PENDING: "payment_pending",
+  PAYMENT_RECEIVED: "payment_received",
+  ORDER_READY: "order_ready",
+  ORDER_COMPLETED: "order_completed",
+  CANCELLED: "cancelled",
+};
+
+function normalizeOrderStatus(status) {
+  if (status === 0 || status === "0") return ORDER_STATUS.CANCELLED;
+  if (status === 1 || status === "1") return ORDER_STATUS.PAYMENT_PENDING;
+  if (status === 2 || status === "2") return ORDER_STATUS.ORDER_COMPLETED;
+  const value = String(status || "").trim();
+  if (
+    value === ORDER_STATUS.PAYMENT_PENDING ||
+    value === ORDER_STATUS.PAYMENT_RECEIVED ||
+    value === ORDER_STATUS.ORDER_READY ||
+    value === ORDER_STATUS.ORDER_COMPLETED ||
+    value === ORDER_STATUS.CANCELLED
+  ) {
+    return value;
+  }
+  return ORDER_STATUS.PAYMENT_PENDING;
+}
+
+function publicOrder(order) {
+  if (!order || typeof order !== "object") return order;
+  return { ...order, status: normalizeOrderStatus(order.status) };
+}
 
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({ region: REGION }), {
   marshallOptions: { removeUndefinedValues: true },
@@ -177,15 +208,28 @@ function buildOrderEmailHtml({ orderID, name, items, cashSubtotal, cardSubtotal,
     })
     .join("");
 
+  const normalized = normalizeOrderStatus(status);
   const statusLine =
-    status === 0
+    normalized === ORDER_STATUS.CANCELLED
       ? "This order was cancelled."
-      : status === 2
+      : normalized === ORDER_STATUS.ORDER_COMPLETED
         ? "Your order is marked completed."
-        : "Thank you for your order. A member of our team will contact you shortly for more information.";
+        : normalized === ORDER_STATUS.ORDER_READY
+          ? "Your order is ready for pickup."
+          : normalized === ORDER_STATUS.PAYMENT_RECEIVED
+            ? "Payment received. We are preparing your order."
+            : "Thank you for your order. Payment is pending — a member of our team will contact you shortly.";
 
   const heading =
-    status === 0 ? "Order cancelled" : status === 2 ? "Order completed" : "Order received";
+    normalized === ORDER_STATUS.CANCELLED
+      ? "Order cancelled"
+      : normalized === ORDER_STATUS.ORDER_COMPLETED
+        ? "Order completed"
+        : normalized === ORDER_STATUS.ORDER_READY
+          ? "Order ready"
+          : normalized === ORDER_STATUS.PAYMENT_RECEIVED
+            ? "Payment received"
+            : "Order received";
 
   const orderUrl = `${SITE_URL}/account/orders/view/?id=${encodeURIComponent(orderID)}`;
   const allOrdersUrl = `${SITE_URL}/account/orders`;
@@ -369,19 +413,21 @@ async function handleInventory(event) {
 
 async function handleListOrders(user) {
   const orders = [];
-  let ExclusiveStartKey;
-  do {
-    const page = await ddb.send(
-      new ScanCommand({
-        TableName: ORDERS_TABLE,
-        ExclusiveStartKey,
-        FilterExpression: "userSub = :u",
-        ExpressionAttributeValues: { ":u": user.sub },
-      })
-    );
-    for (const item of page.Items || []) orders.push(item);
-    ExclusiveStartKey = page.LastEvaluatedKey;
-  } while (ExclusiveStartKey);
+  for (const table of [ORDERS_TABLE, ORDERS_COMPLETE_TABLE]) {
+    let ExclusiveStartKey;
+    do {
+      const page = await ddb.send(
+        new ScanCommand({
+          TableName: table,
+          ExclusiveStartKey,
+          FilterExpression: "userSub = :u",
+          ExpressionAttributeValues: { ":u": user.sub },
+        })
+      );
+      for (const item of page.Items || []) orders.push(publicOrder(item));
+      ExclusiveStartKey = page.LastEvaluatedKey;
+    } while (ExclusiveStartKey);
+  }
 
   orders.sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
   return json(200, { orders });
@@ -432,14 +478,19 @@ async function handleGetOrder(event, user) {
   const orderID = String(qs.orderId || qs.orderID || "").trim();
   if (!orderID) return json(400, { error: "orderId is required." });
 
-  const res = await ddb.send(
-    new GetCommand({ TableName: ORDERS_TABLE, Key: { orderID } })
-  );
-  if (!res.Item) return json(404, { error: "Order not found." });
-  if (res.Item.userSub !== user.sub) {
+  let item = (
+    await ddb.send(new GetCommand({ TableName: ORDERS_TABLE, Key: { orderID } }))
+  ).Item;
+  if (!item) {
+    item = (
+      await ddb.send(new GetCommand({ TableName: ORDERS_COMPLETE_TABLE, Key: { orderID } }))
+    ).Item;
+  }
+  if (!item) return json(404, { error: "Order not found." });
+  if (item.userSub !== user.sub) {
     return json(403, { error: "You do not have access to this order." });
   }
-  return json(200, { order: res.Item });
+  return json(200, { order: publicOrder(item) });
 }
 
 async function handlePlace(event, user) {
@@ -498,7 +549,7 @@ async function handlePlace(event, user) {
     email: user.email,
     name: user.name,
     studentNumber,
-    status: 1,
+    status: ORDER_STATUS.PAYMENT_PENDING,
     items: lineItems.map(({ sku, ...rest }) => rest),
     cashSubtotal,
     cardSubtotal,
@@ -550,7 +601,7 @@ async function handlePlace(event, user) {
     items: lineItems,
     cashSubtotal,
     cardSubtotal,
-    status: 1,
+    status: ORDER_STATUS.PAYMENT_PENDING,
   });
   const staffHtml = buildStaffEmailHtml(order);
 
@@ -576,7 +627,7 @@ async function handlePlace(event, user) {
     }
   }
 
-  return json(201, { orderID, status: 1 });
+  return json(201, { orderID, status: ORDER_STATUS.PAYMENT_PENDING });
 }
 
 export async function handler(event) {

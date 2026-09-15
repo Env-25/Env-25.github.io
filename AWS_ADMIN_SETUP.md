@@ -15,6 +15,7 @@ AWS account:
 
 Add every console operator to `superusers` and only the work-area group(s) they need:
 `merch`, `lockers`, `notifications`, `members`, `events`, `resources`, or `admin`.
+`merch` also unlocks the Orders workspace (active + completed order management).
 `admin` grants Cognito group management only. A user must sign out and sign back in
 after their membership changes before their token carries the new claim.
 
@@ -52,15 +53,18 @@ export GITHUB_PRIVATE_KEY_SECRET_ID=...
 ./aws/scripts/setup-admin.sh
 ```
 
-The script creates `locker-changes`, `admin-audit`, and `admin-publish-queue` on-demand DynamoDB tables,
-the `chbe-ses-send.fifo` email queue and dead-letter queue, deploys the Lambda Function
-URL, and prints `PUBLIC_ADMIN_API_URL`. Overlapping admin publishes are serialized through
-`admin-publish-queue` so later changes wait instead of racing. Notification emails are delivered in batches
-of six per second. Set that value locally and as the GitHub repository secret
-`PUBLIC_ADMIN_API_URL`; the Pages workflows already pass it to the Astro build.
+The script creates `locker-changes`, `admin-audit`, `admin-publish-queue`, `orders`, and
+`orders-complete` on-demand DynamoDB tables, the `chbe-ses-send.fifo` email queue and
+dead-letter queue, deploys the Lambda Function URL, and prints `PUBLIC_ADMIN_API_URL`.
+Overlapping admin publishes are serialized through `admin-publish-queue` so later changes
+wait instead of racing. Completed orders live in `orders-complete`; if older rows still
+have numeric `status: 2` in the active `orders` table, open them in Admin → Orders and
+set status to Order completed (or move them once with a scan/script). Notification emails
+are delivered in batches of six per second. Set that value locally and as the GitHub
+repository secret `PUBLIC_ADMIN_API_URL`; the Pages workflows already pass it to the Astro build.
 
-After deploying the admin service, re-run `./aws/scripts/setup-orders.sh` so order
-emails also use the same queue and rate limit.
+After deploying the admin service, re-run `./aws/scripts/setup-orders.sh` so the orders
+API also knows about `orders-complete` and uses the same email queue.
 
 Stock updates are written to DynamoDB first and dispatch the existing
 `sync-inventory.yml` workflow to reconcile `merch.csv` and `lockers.csv`, commit the

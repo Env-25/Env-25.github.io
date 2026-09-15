@@ -30,10 +30,13 @@ const REGION = process.env.AWS_REGION || "us-east-2";
 const USER_POOL_ID = process.env.COGNITO_USER_POOL_ID || "";
 const CLIENT_ID = process.env.COGNITO_CLIENT_ID || "";
 const INVENTORY_TABLE = process.env.INVENTORY_TABLE || "inventory";
+const ORDERS_TABLE = process.env.ORDERS_TABLE || "orders";
+const ORDERS_COMPLETE_TABLE = process.env.ORDERS_COMPLETE_TABLE || "orders-complete";
 const LOCKER_CHANGES_TABLE = process.env.LOCKER_CHANGES_TABLE || "locker-changes";
 const ADMIN_AUDIT_TABLE = process.env.ADMIN_AUDIT_TABLE || "admin-audit";
 const ADMIN_PUBLISH_QUEUE_TABLE = process.env.ADMIN_PUBLISH_QUEUE_TABLE || "admin-publish-queue";
 const SES_FROM = process.env.SES_FROM || "UBC CHBE Council Notifications <notifications@ubcchbecouncil.com>";
+const ORDERS_SES_FROM = process.env.ORDERS_SES_FROM || "CHBE Orders <orders@ubcchbecouncil.com>";
 const EMAIL_QUEUE_URL = process.env.EMAIL_QUEUE_URL || "";
 const SITE_URL = (process.env.SITE_URL || "https://ubcchbecouncil.com").replace(/\/$/, "");
 const GITHUB_APP_ID = process.env.GITHUB_APP_ID || "";
@@ -48,6 +51,24 @@ const QUEUE_PK = "QUEUE";
 const LOCK_TTL_MS = 5 * 60 * 1000;
 const DRAIN_BATCH_SIZE = 5;
 const QUEUED_MESSAGE = "Your changes are queued and will publish after the current update finishes. Nothing was discarded.";
+const ORDER_STATUS = {
+  PAYMENT_PENDING: "payment_pending",
+  PAYMENT_RECEIVED: "payment_received",
+  ORDER_READY: "order_ready",
+  ORDER_COMPLETED: "order_completed",
+  CANCELLED: "cancelled",
+};
+const ACTIVE_ORDER_STATUSES = [
+  ORDER_STATUS.PAYMENT_PENDING,
+  ORDER_STATUS.PAYMENT_RECEIVED,
+  ORDER_STATUS.ORDER_READY,
+];
+const ADMIN_ORDER_STATUSES = [
+  ORDER_STATUS.PAYMENT_PENDING,
+  ORDER_STATUS.PAYMENT_RECEIVED,
+  ORDER_STATUS.ORDER_READY,
+  ORDER_STATUS.ORDER_COMPLETED,
+];
 
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({ region: REGION }), {
   marshallOptions: { removeUndefinedValues: true },
@@ -880,6 +901,252 @@ async function handleGroupUpdate(body, user) {
 
 const delay = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
+function normalizeOrderStatus(status) {
+  if (status === 0 || status === "0") return ORDER_STATUS.CANCELLED;
+  if (status === 1 || status === "1") return ORDER_STATUS.PAYMENT_PENDING;
+  if (status === 2 || status === "2") return ORDER_STATUS.ORDER_COMPLETED;
+  const value = String(status || "").trim();
+  if (
+    value === ORDER_STATUS.PAYMENT_PENDING ||
+    value === ORDER_STATUS.PAYMENT_RECEIVED ||
+    value === ORDER_STATUS.ORDER_READY ||
+    value === ORDER_STATUS.ORDER_COMPLETED ||
+    value === ORDER_STATUS.CANCELLED
+  ) {
+    return value;
+  }
+  return ORDER_STATUS.PAYMENT_PENDING;
+}
+
+function publicOrder(order) {
+  if (!order || typeof order !== "object") return order;
+  return { ...order, status: normalizeOrderStatus(order.status) };
+}
+
+function isActiveOrderStatus(status) {
+  return ACTIVE_ORDER_STATUSES.includes(normalizeOrderStatus(status));
+}
+
+function orderStatusLabel(status) {
+  switch (normalizeOrderStatus(status)) {
+    case ORDER_STATUS.PAYMENT_PENDING:
+      return "Payment pending";
+    case ORDER_STATUS.PAYMENT_RECEIVED:
+      return "Payment received";
+    case ORDER_STATUS.ORDER_READY:
+      return "Order ready";
+    case ORDER_STATUS.ORDER_COMPLETED:
+      return "Order completed";
+    case ORDER_STATUS.CANCELLED:
+      return "Cancelled";
+    default:
+      return "Payment pending";
+  }
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function orderStatusBodyCopy(status) {
+  switch (normalizeOrderStatus(status)) {
+    case ORDER_STATUS.PAYMENT_PENDING:
+      return "A member of our team will contact you for payment details soon.";
+    case ORDER_STATUS.PAYMENT_RECEIVED:
+      return "Payment received. We are preparing your order.";
+    case ORDER_STATUS.ORDER_READY:
+      return "Your order is ready for pickup.";
+    case ORDER_STATUS.ORDER_COMPLETED:
+      return "Your order has been marked completed. Thank you for supporting CHBE Council.";
+    default:
+      return "Your order status has been updated.";
+  }
+}
+
+function buildOrderStatusEmailHtml(order, status) {
+  const label = orderStatusLabel(status);
+  const body = orderStatusBodyCopy(status);
+  const orderID = String(order.orderID || "");
+  const orderUrl = `${SITE_URL}/account/orders/view/?id=${encodeURIComponent(orderID)}`;
+  const allOrdersUrl = `${SITE_URL}/account/orders`;
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>${escapeHtml(label)} — ${escapeHtml(orderID)}</title>
+</head>
+<body style="margin:0;padding:0;background-color:#fdf9ef;-webkit-text-size-adjust:100%;">
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#fdf9ef;">
+    <tr>
+      <td align="center" style="padding:32px 16px;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width:560px;background-color:#ffffff;border:1px solid rgba(58,75,74,0.15);">
+          <tr>
+            <td align="center" style="background-color:#3a4b4a;padding:28px 24px 24px;">
+              <a href="${SITE_URL}" target="_blank" rel="noopener" style="text-decoration:none;">
+                <img src="${SITE_URL}/logos/logo-text-white.png" alt="CHBE" width="168" style="display:block;width:168px;max-width:70%;height:auto;border:0;" />
+              </a>
+              <p style="margin:14px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:rgba(253,249,239,0.65);">UBC CHBE Council</p>
+            </td>
+          </tr>
+          <tr><td style="height:4px;background-color:#72a691;font-size:0;line-height:0;">&nbsp;</td></tr>
+          <tr>
+            <td style="padding:36px 32px 16px;font-family:Arial,Helvetica,sans-serif;color:#3a4b4a;">
+              <h1 style="margin:0 0 12px;font-family:Georgia,'Times New Roman',serif;font-size:26px;font-weight:700;line-height:1.25;color:#3a4b4a;">${escapeHtml(label)}</h1>
+              <p style="margin:0 0 18px;font-size:15px;line-height:1.6;color:rgba(58,75,74,0.8);">${escapeHtml(body)}</p>
+              <p style="margin:0 0 8px;font-size:13px;color:rgba(58,75,74,0.65);">Order ID</p>
+              <p style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;font-size:18px;font-weight:700;color:#3a4b4a;">${escapeHtml(orderID)}</p>
+              <p style="margin:0;font-size:14px;line-height:1.6;color:rgba(58,75,74,0.75);">
+                Hi ${escapeHtml(order.name || "there")}. You can review this order any time in your account.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:8px 32px 28px;font-family:Arial,Helvetica,sans-serif;color:#3a4b4a;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td style="background-color:#3a4b4a;">
+                    <a href="${orderUrl}" target="_blank" rel="noopener" style="display:inline-block;padding:14px 22px;font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#fdf9ef;text-decoration:none;">View order status</a>
+                  </td>
+                </tr>
+              </table>
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-top:10px;">
+                <tr>
+                  <td style="background-color:transparent;border:1.5px solid #3a4b4a;">
+                    <a href="${allOrdersUrl}" target="_blank" rel="noopener" style="display:inline-block;padding:13px 22px;font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#3a4b4a;text-decoration:none;">View all orders</a>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin:16px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.5;color:rgba(58,75,74,0.65);">
+                Problem with this order? <a href="${SITE_URL}/contact" target="_blank" rel="noopener" style="color:#4a8550;text-decoration:underline;">Contact us</a> now.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="background-color:#f7f3e8;border-top:1px solid rgba(58,75,74,0.12);padding:20px 32px;">
+              <p style="margin:0 0 6px;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.5;color:rgba(58,75,74,0.65);">UBC Chemical &amp; Biological Engineering Student Council</p>
+              <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.5;">
+                <a href="${SITE_URL}" target="_blank" rel="noopener" style="color:#4a8550;text-decoration:underline;">ubcchbecouncil.com</a>
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
+async function sendOrderStatusEmail(order, status) {
+  const to = String(order.email || "").trim();
+  if (!to) return;
+  const label = orderStatusLabel(status);
+  const subject = `${label} — ${order.orderID}`;
+  await enqueueEmails([
+    emailJob({
+      to,
+      subject,
+      html: buildOrderStatusEmailHtml(order, status),
+      source: ORDERS_SES_FROM,
+    }),
+  ]);
+}
+
+async function scanOrdersTable(tableName) {
+  const items = [];
+  let startKey;
+  do {
+    const result = await ddb.send(new ScanCommand({
+      TableName: tableName,
+      ExclusiveStartKey: startKey,
+    }));
+    items.push(...(result.Items || []).map(publicOrder));
+    startKey = result.LastEvaluatedKey;
+  } while (startKey);
+  items.sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
+  return items;
+}
+
+async function migrateTerminalOrdersFromActive() {
+  const active = await scanOrdersTable(ORDERS_TABLE);
+  const terminal = active.filter((order) => !isActiveOrderStatus(order.status));
+  for (const order of terminal) {
+    const orderID = String(order.orderID || "");
+    if (!orderID) continue;
+    const next = {
+      ...order,
+      status: normalizeOrderStatus(order.status),
+      updatedAt: order.updatedAt || new Date().toISOString(),
+    };
+    await ddb.send(new PutCommand({ TableName: ORDERS_COMPLETE_TABLE, Item: next }));
+    await ddb.send(new DeleteCommand({ TableName: ORDERS_TABLE, Key: { orderID } }));
+  }
+  return terminal.length;
+}
+
+async function handleListOrders(event, user) {
+  requireGroup(user, "merch");
+  const scope = String(event.queryStringParameters?.scope || "active").toLowerCase();
+  if (scope === "complete" || scope === "completed") {
+    await migrateTerminalOrdersFromActive();
+    const orders = await scanOrdersTable(ORDERS_COMPLETE_TABLE);
+    return json(200, { orders, scope: "complete" });
+  }
+  await migrateTerminalOrdersFromActive();
+  const active = (await scanOrdersTable(ORDERS_TABLE)).filter((order) => isActiveOrderStatus(order.status));
+  return json(200, { orders: active, scope: "active" });
+}
+
+async function handleUpdateOrderStatus(body, user) {
+  requireGroup(user, "merch");
+  const orderID = String(body.orderID || body.orderId || "").trim();
+  const status = normalizeOrderStatus(body.status);
+  if (!orderID) throw bad("Order ID is required.");
+  if (!ADMIN_ORDER_STATUSES.includes(status)) throw bad("Invalid order status.");
+
+  const active = await ddb.send(new GetCommand({ TableName: ORDERS_TABLE, Key: { orderID } }));
+  const complete = active.Item
+    ? null
+    : await ddb.send(new GetCommand({ TableName: ORDERS_COMPLETE_TABLE, Key: { orderID } }));
+  const existing = active.Item || complete?.Item;
+  if (!existing) throw Object.assign(new Error("Order not found."), { status: 404 });
+
+  const previousStatus = normalizeOrderStatus(existing.status);
+  const now = new Date().toISOString();
+  const next = { ...existing, status, updatedAt: now, updatedBy: user.email };
+
+  if (status === ORDER_STATUS.ORDER_COMPLETED) {
+    await ddb.send(new PutCommand({ TableName: ORDERS_COMPLETE_TABLE, Item: next }));
+    if (active.Item) {
+      await ddb.send(new DeleteCommand({ TableName: ORDERS_TABLE, Key: { orderID } }));
+    }
+  } else if (active.Item) {
+    await ddb.send(new PutCommand({ TableName: ORDERS_TABLE, Item: next }));
+  } else {
+    // Reactivate from complete table
+    await ddb.send(new PutCommand({ TableName: ORDERS_TABLE, Item: next }));
+    await ddb.send(new DeleteCommand({ TableName: ORDERS_COMPLETE_TABLE, Key: { orderID } }));
+  }
+
+  let emailed = false;
+  if (previousStatus !== status) {
+    try {
+      await sendOrderStatusEmail(next, status);
+      emailed = true;
+    } catch (error) {
+      console.error("Order status email failed", { orderID, status, error });
+    }
+  }
+
+  await recordAudit("order.status.update", user, { orderID, status, emailed });
+  return json(200, { ok: true, emailed, order: publicOrder(next) });
+}
+
 async function handleEmailQueue(event) {
   const batchStartedAt = Date.now();
   const results = await Promise.all((event.Records || []).map(async (record) => {
@@ -921,6 +1188,7 @@ export async function handler(event) {
     if (method === "GET" && queryAction === "assets") return await handleListAssets(event, user);
     if (method === "GET" && queryAction === "users") return await handleListUsers(event, user);
     if (method === "GET" && queryAction === "publishStatus") return await handlePublishStatus(event, user);
+    if (method === "GET" && queryAction === "orders") return await handleListOrders(event, user);
     if (method !== "POST") return json(405, { error: "Method not allowed." });
     const body = parseBody(event);
     if (body.action === "publishWorkspace") return await handlePublishWorkspace(body, user);
@@ -930,6 +1198,7 @@ export async function handler(event) {
     if (body.action === "uploadAsset") return await handleUploadAsset(body, user);
     if (body.action === "sendNotification") return await handleSendNotification(body, user);
     if (body.action === "groupUpdate") return await handleGroupUpdate(body, user);
+    if (body.action === "updateOrderStatus") return await handleUpdateOrderStatus(body, user);
     return json(400, { error: "Unknown action." });
   } catch (error) {
     const status = error?.status || 500;

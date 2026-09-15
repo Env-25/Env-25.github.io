@@ -16,6 +16,7 @@ REGION="${AWS_REGION:-us-east-2}"
 LAMBDA_NAME="${ORDERS_LAMBDA_NAME:-chbe-orders}"
 ROLE_NAME="${ORDERS_ROLE_NAME:-chbe-orders-lambda-role}"
 ORDERS_TABLE="${ORDERS_TABLE:-orders}"
+ORDERS_COMPLETE_TABLE="${ORDERS_COMPLETE_TABLE:-orders-complete}"
 INVENTORY_TABLE="${INVENTORY_TABLE:-inventory}"
 SES_FROM="${SES_FROM:-CHBE Orders <orders@ubcchbecouncil.com>}"
 STAFF_ORDER_EMAILS="${STAFF_ORDER_EMAILS:-akshaj243@gmail.com,sachdevaakshaj1@gmail.com}"
@@ -47,9 +48,25 @@ winpath() {
 }
 
 echo "==> Account $ACCOUNT_ID  Region $REGION  Function $LAMBDA_NAME"
-echo "    Tables: $ORDERS_TABLE / $INVENTORY_TABLE"
+echo "    Tables: $ORDERS_TABLE / $ORDERS_COMPLETE_TABLE / $INVENTORY_TABLE"
 echo "    SES from: $SES_FROM"
 echo "    Email queue: $EMAIL_QUEUE_NAME"
+
+ensure_table() {
+  local table="$1" key="$2"
+  if ! aws dynamodb describe-table --region "$REGION" --table-name "$table" >/dev/null 2>&1; then
+    echo "==> Creating DynamoDB table $table"
+    aws dynamodb create-table --region "$REGION" --table-name "$table" \
+      --attribute-definitions "AttributeName=$key,AttributeType=S" \
+      --key-schema "AttributeName=$key,KeyType=HASH" \
+      --billing-mode PAY_PER_REQUEST >/dev/null
+    aws dynamodb wait table-exists --region "$REGION" --table-name "$table"
+  fi
+}
+
+ensure_table "$ORDERS_TABLE" orderID
+ensure_table "$ORDERS_COMPLETE_TABLE" orderID
+ensure_table "$INVENTORY_TABLE" sku
 
 # --- IAM role ---
 echo "==> Ensuring IAM role $ROLE_NAME"
@@ -88,8 +105,10 @@ cat > "$POLICY_JSON" <<EOF
       ],
       "Resource": [
         "arn:aws:dynamodb:${REGION}:${ACCOUNT_ID}:table/${ORDERS_TABLE}",
+        "arn:aws:dynamodb:${REGION}:${ACCOUNT_ID}:table/${ORDERS_COMPLETE_TABLE}",
         "arn:aws:dynamodb:${REGION}:${ACCOUNT_ID}:table/${INVENTORY_TABLE}",
         "arn:aws:dynamodb:${REGION}:${ACCOUNT_ID}:table/${ORDERS_TABLE}/index/*",
+        "arn:aws:dynamodb:${REGION}:${ACCOUNT_ID}:table/${ORDERS_COMPLETE_TABLE}/index/*",
         "arn:aws:dynamodb:${REGION}:${ACCOUNT_ID}:table/${INVENTORY_TABLE}/index/*"
       ]
     },
@@ -135,13 +154,14 @@ PY
 )
 
 # Environment
-export ORDERS_TABLE INVENTORY_TABLE SES_FROM STAFF_ORDER_EMAILS EMAIL_QUEUE_URL
+export ORDERS_TABLE ORDERS_COMPLETE_TABLE INVENTORY_TABLE SES_FROM STAFF_ORDER_EMAILS EMAIL_QUEUE_URL
 export COGNITO_USER_POOL_ID COGNITO_CLIENT_ID SITE_URL
 python - "$ENV_JSON" <<'PY'
 import json, os, sys
 path = sys.argv[1]
 vars = {
     "ORDERS_TABLE": os.environ.get("ORDERS_TABLE", "orders"),
+    "ORDERS_COMPLETE_TABLE": os.environ.get("ORDERS_COMPLETE_TABLE", "orders-complete"),
     "INVENTORY_TABLE": os.environ.get("INVENTORY_TABLE", "inventory"),
     "SES_FROM": os.environ.get(
         "SES_FROM",

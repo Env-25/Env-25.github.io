@@ -191,7 +191,7 @@ export async function placeOrder(args: {
   idToken: string;
   studentNumber: string;
   items: CartItem[];
-}): Promise<{ orderID: string; status: number }> {
+}): Promise<{ orderID: string; status: string | number }> {
   const base = ordersApiUrl();
   if (!base) throw new Error("Orders API is not configured.");
   const res = await fetch(`${base}/`, {

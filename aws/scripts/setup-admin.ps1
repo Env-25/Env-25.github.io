@@ -12,6 +12,8 @@ param(
   [string]$UserPoolId = "us-east-2_HeZCWYUt3",
   [string]$ClientId = "285b5dv7j67uos6r1rcv572bo5",
   [string]$InventoryTable = "inventory",
+  [string]$OrdersTable = "orders",
+  [string]$OrdersCompleteTable = "orders-complete",
   [string]$LockerChangesTable = "locker-changes",
   [string]$AdminAuditTable = "admin-audit",
   [string]$AdminPublishQueueTable = "admin-publish-queue",
@@ -72,6 +74,8 @@ New-Item -ItemType Directory -Path $buildDir -Force | Out-Null
 Ensure-Table $LockerChangesTable "changeId"
 Ensure-Table $AdminAuditTable "auditId"
 Ensure-CompositeTable $AdminPublishQueueTable
+Ensure-Table $OrdersTable "orderID"
+Ensure-Table $OrdersCompleteTable "orderID"
 
 $emailDlqUrl = & aws sqs get-queue-url --region $Region --queue-name $EmailDlqName --query QueueUrl --output text 2>$null
 if ($LASTEXITCODE -ne 0 -or -not $emailDlqUrl) {
@@ -123,6 +127,14 @@ $policy = @{
       )
     },
     @{
+      Sid = "OrdersTables"; Effect = "Allow"
+      Action = @("dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:DeleteItem", "dynamodb:Scan")
+      Resource = @(
+        "arn:aws:dynamodb:$Region`:$accountId`:table/$OrdersTable",
+        "arn:aws:dynamodb:$Region`:$accountId`:table/$OrdersCompleteTable"
+      )
+    },
+    @{
       Sid = "PublishQueue"; Effect = "Allow"
       Action = @("dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:DeleteItem", "dynamodb:Query")
       Resource = "arn:aws:dynamodb:$Region`:$accountId`:table/$AdminPublishQueueTable"
@@ -169,9 +181,14 @@ try {
 $lambdaEnvironment = @{
   Variables = @{
     COGNITO_USER_POOL_ID = $UserPoolId; COGNITO_CLIENT_ID = $ClientId
-    INVENTORY_TABLE = $InventoryTable; LOCKER_CHANGES_TABLE = $LockerChangesTable; ADMIN_AUDIT_TABLE = $AdminAuditTable
+    INVENTORY_TABLE = $InventoryTable
+    ORDERS_TABLE = $OrdersTable
+    ORDERS_COMPLETE_TABLE = $OrdersCompleteTable
+    LOCKER_CHANGES_TABLE = $LockerChangesTable; ADMIN_AUDIT_TABLE = $AdminAuditTable
     ADMIN_PUBLISH_QUEUE_TABLE = $AdminPublishQueueTable
-    SES_FROM = $SesFrom; EMAIL_QUEUE_URL = $emailQueueUrl; SITE_URL = $SiteUrl
+    SES_FROM = $SesFrom
+    ORDERS_SES_FROM = "CHBE Orders <orders@ubcchbecouncil.com>"
+    EMAIL_QUEUE_URL = $emailQueueUrl; SITE_URL = $SiteUrl
     GITHUB_APP_ID = $env:GITHUB_APP_ID; GITHUB_INSTALLATION_ID = $env:GITHUB_INSTALLATION_ID
     GITHUB_OWNER = $env:GITHUB_OWNER; GITHUB_REPO = $env:GITHUB_REPO; GITHUB_BRANCH = $GithubBranch
     GITHUB_PRIVATE_KEY_SECRET_ID = $env:GITHUB_PRIVATE_KEY_SECRET_ID

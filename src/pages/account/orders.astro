@@ -59,6 +59,7 @@ import "../../styles/cart.css";
   import { getSessionProfile, grantVerifyAccess, getIdToken } from "../../utils/auth";
   import { isAuthConfigured } from "../../utils/auth-config";
   import { listOrders } from "../../utils/cart";
+  import { orderStatusClass, orderStatusLabel } from "../../utils/order-status";
 
   const gate = document.getElementById("gate")!;
   const unverified = document.getElementById("unverified")!;
@@ -129,7 +130,7 @@ import "../../styles/cart.css";
       listEl.innerHTML = "";
       orders.forEach((order) => {
         const id = String(order.orderID || "");
-        const status = Number(order.status);
+        const statusLabel = orderStatusLabel(order.status);
         const items = Array.isArray(order.items) ? order.items : [];
         const thumb = items[0]?.image || "/logos/logo-round.png";
         const a = document.createElement("a");
@@ -142,10 +143,8 @@ import "../../styles/cart.css";
           <div class="orders-row-body">
             <div class="orders-row-topline">
               <span class="orders-row-date">${formatDate(order.createdAt)}</span>
-              <span class="orders-row-status ${
-                status === 0 ? "is-cancelled" : status === 2 ? "is-done" : "is-open"
-              }">
-                ${status === 0 ? "Cancelled" : status === 2 ? "Completed" : "Received"}
+              <span class="orders-row-status ${orderStatusClass(order.status)}">
+                ${statusLabel}
               </span>
             </div>
             <p class="orders-row-summary">${itemSummary(items)}</p>

@@ -100,6 +100,20 @@
 .admin-crop-box [data-handle="sw"] { bottom:-7px; left:-7px; cursor:nesw-resize; }
 .admin-crop-box [data-handle="se"] { bottom:-7px; right:-7px; cursor:nwse-resize; }
 .admin-crop-modal__actions { display:flex; justify-content:flex-end; flex-wrap:wrap; gap:.7rem; margin-top:1.25rem; }
+.admin-orders-section { margin-top:2rem; }
+.admin-orders-section h3 { margin:0; font:1.1rem "RocaTwo-Bl",sans-serif; }
+.admin-sort-button {
+  border:0; background:transparent; color:inherit; padding:0; cursor:pointer;
+  font:inherit; letter-spacing:inherit; text-transform:inherit; text-align:left;
+}
+.admin-sort-button:hover { text-decoration:underline; }
+.admin-order-detail { display:grid; gap:1rem; padding:.25rem 0 .5rem; }
+.admin-order-items { margin:0; padding-left:1.1rem; color:rgba(58,75,74,.82); font-size:.86rem; line-height:1.55; }
+.admin-order-totals { display:flex; flex-wrap:wrap; gap:1rem; font-size:.86rem; font-weight:700; }
+.admin-order-status-row { display:flex; flex-wrap:wrap; gap:.7rem; align-items:end; }
+.admin-order-status-row label { font-size:.68rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; }
+.admin-order-status-row select { min-height:40px; min-width:220px; padding:.55rem; border:1px solid rgba(58,75,74,.28); background:#fff; }
+.admin-order-row.is-open td { background:rgba(114,166,145,.08); }
 .admin-image-manager { display:grid; gap:1rem; margin-top:1.25rem; padding:1.1rem; background:#fff; border:1px solid rgba(58,75,74,.18); }
 .admin-image-manager h4 { margin:0; font:1rem "RocaTwo-Bl",sans-serif; }
 .admin-image-manager .admin-panel__intro { margin:.35rem 0 0; }

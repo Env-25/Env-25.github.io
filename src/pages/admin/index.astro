@@ -13,16 +13,34 @@ import "../../styles/admin.css";
   import { fileToBase64, getAdmin, postAdmin } from "../../utils/admin";
   import { isAuthConfigured } from "../../utils/auth-config";
   import { cropImageFile, cropImageFiles } from "../../utils/image-crop";
+  import {
+    ADMIN_ORDER_STATUSES,
+    normalizeOrderStatus,
+    orderStatusLabel,
+  } from "../../utils/order-status";
 
-  type Workspace = "lockers" | "merch" | "notifications" | "members" | "events" | "resources" | "admin";
+  type Workspace = "lockers" | "merch" | "notifications" | "members" | "events" | "resources" | "orders" | "admin";
   type CsvRow = Record<string, string>;
   type ContentState = { workspace: Workspace; year?: string; headers: string[]; rows: CsvRow[]; caption?: string; originalInventory?: InventoryItem[] };
   type InventoryItem = { sku: string; kind: "locker" | "merch"; productId: string; label: string; name: string; color?: string; quantity: number };
+  type AdminOrder = {
+    orderID: string;
+    email?: string;
+    name?: string;
+    studentNumber?: string;
+    status?: string | number;
+    createdAt?: string;
+    updatedAt?: string;
+    cashSubtotal?: number;
+    cardSubtotal?: number;
+    items?: Array<Record<string, unknown>>;
+  };
 
   const root = document.getElementById("adminRoot")!;
   const workspaces: { id: Workspace; label: string; group: string }[] = [
     { id: "lockers", label: "Lockers", group: "lockers" },
     { id: "merch", label: "Merch", group: "merch" },
+    { id: "orders", label: "Orders", group: "merch" },
     { id: "notifications", label: "Notifications", group: "notifications" },
     { id: "members", label: "Members", group: "members" },
     { id: "events", label: "Events", group: "events" },
@@ -195,10 +213,11 @@ import "../../styles/admin.css";
     root.querySelectorAll<HTMLButtonElement>("[data-workspace]").forEach((button) => button.setAttribute("aria-current", String(button.dataset.workspace === workspace)));
     if (workspace === "notifications") return renderNotifications();
     if (workspace === "admin") return renderUserAdmin();
+    if (workspace === "orders") return renderOrdersWorkspace();
     await loadContentWorkspace(workspace);
   }
 
-  async function loadContentWorkspace(workspace: Exclude<Workspace, "notifications" | "admin">, year = "2026") {
+  async function loadContentWorkspace(workspace: Exclude<Workspace, "notifications" | "admin" | "orders">, year = "2026") {
     panel().innerHTML = `<p class="admin-status">Loading ${escape(workspace)}…</p>`;
     try {
       const data = await getAdmin<{ content: string; caption?: string }>({ action: "content", workspace, ...(workspace === "members" ? { year } : {}) });
@@ -558,6 +577,216 @@ import "../../styles/admin.css";
       note?.classList.add("admin-message--error");
     } finally {
       setPublishBusy(false);
+    }
+  }
+
+  function money(value: unknown) {
+    const amount = Number(value);
+    return `$${(Number.isFinite(amount) ? amount : 0).toFixed(2)}`;
+  }
+
+  function formatOrderDate(value: unknown) {
+    const raw = String(value || "");
+    if (!raw) return "—";
+    const date = new Date(raw);
+    if (Number.isNaN(date.getTime())) return raw;
+    return date.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+  }
+
+  function orderItemsSummary(order: AdminOrder) {
+    const items = Array.isArray(order.items) ? order.items : [];
+    if (!items.length) return "No items";
+    return items.map((item) => {
+      const name = String(item.name || "Item");
+      const qty = Number(item.qty) || 1;
+      const detail = item.kind === "locker"
+        ? String(item.level || "")
+        : [item.color, item.size].filter(Boolean).join(" ");
+      return detail ? `${name} (${detail}) ×${qty}` : `${name} ×${qty}`;
+    }).join("; ");
+  }
+
+  function orderDetailHtml(order: AdminOrder, editable: boolean) {
+    const items = Array.isArray(order.items) ? order.items : [];
+    const status = normalizeOrderStatus(order.status);
+    const options = ADMIN_ORDER_STATUSES.map((value) =>
+      `<option value="${value}" ${value === status ? "selected" : ""}>${orderStatusLabel(value)}</option>`
+    ).join("");
+    const lines = items.map((item) => {
+      const detail = item.kind === "locker"
+        ? `${escape(item.level || "")} · ${escape(item.location || "")}`
+        : `${escape(item.color || "")} · ${escape(item.size || "")} × ${Number(item.qty) || 1}`;
+      return `<li><strong>${escape(item.name || "Item")}</strong> — ${detail} — ${money(Number(item.unitPrice || 0) * (Number(item.qty) || 1))}</li>`;
+    }).join("") || "<li>No line items.</li>";
+    return `<div class="admin-order-detail" data-order-detail="${escape(order.orderID)}">
+      <ul class="admin-order-items">${lines}</ul>
+      <div class="admin-order-totals"><span>Cash ${money(order.cashSubtotal)}</span><span>Card ${money(order.cardSubtotal)}</span></div>
+      ${editable ? `<div class="admin-order-status-row"><label for="order-status-${escape(order.orderID)}">Status</label><select id="order-status-${escape(order.orderID)}" data-order-status="${escape(order.orderID)}">${options}</select><button type="button" class="admin-button" data-save-order-status="${escape(order.orderID)}">Save status</button></div>` : `<p class="admin-panel__intro">Status: ${escape(orderStatusLabel(status))}</p>`}
+    </div>`;
+  }
+
+  function sortOrders(orders: AdminOrder[], key: string, direction: "asc" | "desc") {
+    const factor = direction === "asc" ? 1 : -1;
+    return [...orders].sort((a, b) => {
+      const left = key === "cashSubtotal" || key === "cardSubtotal"
+        ? Number((a as Record<string, unknown>)[key] || 0)
+        : key === "status"
+          ? orderStatusLabel(a.status)
+          : key === "items"
+            ? orderItemsSummary(a)
+            : String((a as Record<string, unknown>)[key] || "");
+      const right = key === "cashSubtotal" || key === "cardSubtotal"
+        ? Number((b as Record<string, unknown>)[key] || 0)
+        : key === "status"
+          ? orderStatusLabel(b.status)
+          : key === "items"
+            ? orderItemsSummary(b)
+            : String((b as Record<string, unknown>)[key] || "");
+      if (typeof left === "number" && typeof right === "number") return (left - right) * factor;
+      return String(left).localeCompare(String(right), undefined, { numeric: true, sensitivity: "base" }) * factor;
+    });
+  }
+
+  async function renderOrdersWorkspace() {
+    state = null;
+    panel().innerHTML = `<p class="admin-status">Loading orders…</p>`;
+    let activeOrders: AdminOrder[] = [];
+    let completeOrders: AdminOrder[] = [];
+    let completeLoaded = false;
+    let sortKey = "createdAt";
+    let sortDir: "asc" | "desc" = "desc";
+    let expanded = "";
+    let note = "";
+
+    const columns: { key: string; label: string }[] = [
+      { key: "orderID", label: "Order ID" },
+      { key: "createdAt", label: "Placed" },
+      { key: "name", label: "Name" },
+      { key: "email", label: "Email" },
+      { key: "studentNumber", label: "Student #" },
+      { key: "items", label: "Items" },
+      { key: "cashSubtotal", label: "Cash" },
+      { key: "cardSubtotal", label: "Card" },
+      { key: "status", label: "Status" },
+    ];
+
+    const renderTable = (orders: AdminOrder[], editable: boolean, sortable: boolean) => {
+      const rows = sortable ? sortOrders(orders, sortKey, sortDir) : orders;
+      if (!rows.length) return `<p class="admin-status">No orders in this section.</p>`;
+      const head = columns.map((column) => {
+        if (!sortable) return `<th>${escape(column.label)}</th>`;
+        const marker = sortKey === column.key ? (sortDir === "asc" ? " ↑" : " ↓") : "";
+        return `<th><button type="button" class="admin-sort-button" data-sort="${column.key}">${escape(column.label)}${marker}</button></th>`;
+      }).join("") + "<th></th>";
+      const body = rows.map((order) => {
+        const open = expanded === order.orderID;
+        return `<tr class="admin-order-row${open ? " is-open" : ""}">
+          <td class="admin-table__identifier">${escape(order.orderID)}</td>
+          <td>${escape(formatOrderDate(order.createdAt))}</td>
+          <td>${escape(order.name || "—")}</td>
+          <td>${order.email ? `<a href="mailto:${escape(order.email)}">${escape(order.email)}</a>` : "—"}</td>
+          <td>${escape(order.studentNumber || "—")}</td>
+          <td>${escape(orderItemsSummary(order))}</td>
+          <td>${money(order.cashSubtotal)}</td>
+          <td>${money(order.cardSubtotal)}</td>
+          <td>${escape(orderStatusLabel(order.status))}</td>
+          <td><button type="button" class="admin-link-button" data-expand-order="${escape(order.orderID)}">${open ? "Hide" : "Details"}</button></td>
+        </tr>
+        ${open ? `<tr class="admin-order-detail-row"><td colspan="10">${orderDetailHtml(order, editable)}</td></tr>` : ""}`;
+      }).join("");
+      return `<div class="admin-table-wrap"><table class="admin-table admin-orders-table"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
+    };
+
+    const paint = () => {
+      panel().innerHTML = `
+        <h2>Orders</h2>
+        <p class="admin-panel__intro">Active orders load automatically. Completed orders stay in a separate table and load only when requested. Emails open in your mail client.</p>
+        ${note ? message(note) : ""}
+        <section class="admin-orders-section">
+          <div class="admin-toolbar"><h3>Active</h3></div>
+          ${renderTable(activeOrders, true, true)}
+        </section>
+        <section class="admin-orders-section">
+          <div class="admin-toolbar">
+            <h3>Complete</h3>
+            <div class="admin-row-actions">
+              <button type="button" class="admin-secondary" id="loadCompleteOrders">${completeLoaded ? "Reload completed orders" : "Load completed orders"}</button>
+            </div>
+          </div>
+          ${completeLoaded ? renderTable(completeOrders, false, false) : `<p class="admin-status">Completed orders are not loaded yet.</p>`}
+        </section>`;
+
+      panel().querySelectorAll<HTMLButtonElement>("[data-sort]").forEach((button) => {
+        button.addEventListener("click", () => {
+          const key = button.dataset.sort || "createdAt";
+          if (sortKey === key) sortDir = sortDir === "asc" ? "desc" : "asc";
+          else {
+            sortKey = key;
+            sortDir = key === "createdAt" ? "desc" : "asc";
+          }
+          paint();
+        });
+      });
+
+      panel().querySelectorAll<HTMLButtonElement>("[data-expand-order]").forEach((button) => {
+        button.addEventListener("click", () => {
+          const id = button.dataset.expandOrder || "";
+          expanded = expanded === id ? "" : id;
+          paint();
+        });
+      });
+
+      panel().querySelectorAll<HTMLButtonElement>("[data-save-order-status]").forEach((button) => {
+        button.addEventListener("click", async () => {
+          const orderID = button.dataset.saveOrderStatus || "";
+          const select = panel().querySelector<HTMLSelectElement>(`[data-order-status="${CSS.escape(orderID)}"]`);
+          const status = select?.value || "";
+          button.disabled = true;
+          try {
+            const response = await postAdmin<{ order?: AdminOrder }>({ action: "updateOrderStatus", orderID, status });
+            const next = response.order;
+            activeOrders = activeOrders.filter((order) => order.orderID !== orderID);
+            completeOrders = completeOrders.filter((order) => order.orderID !== orderID);
+            if (next && normalizeOrderStatus(next.status) === "order_completed") {
+              if (completeLoaded) completeOrders = [next, ...completeOrders];
+              note = "Order marked completed and moved to the complete list.";
+            } else if (next) {
+              activeOrders = [next, ...activeOrders];
+              note = "Order status updated.";
+            }
+            paint();
+          } catch (error) {
+            note = error instanceof Error ? error.message : "Could not update order status.";
+            paint();
+            panel().querySelector(".admin-message")?.classList.add("admin-message--error");
+          }
+        });
+      });
+
+      document.getElementById("loadCompleteOrders")?.addEventListener("click", async () => {
+        const button = document.getElementById("loadCompleteOrders") as HTMLButtonElement;
+        button.disabled = true;
+        button.textContent = "Loading…";
+        try {
+          const response = await getAdmin<{ orders: AdminOrder[] }>({ action: "orders", scope: "complete" });
+          completeOrders = response.orders || [];
+          completeLoaded = true;
+          note = `Loaded ${completeOrders.length} completed order(s).`;
+          paint();
+        } catch (error) {
+          note = error instanceof Error ? error.message : "Could not load completed orders.";
+          paint();
+          panel().querySelector(".admin-message")?.classList.add("admin-message--error");
+        }
+      });
+    };
+
+    try {
+      const response = await getAdmin<{ orders: AdminOrder[] }>({ action: "orders", scope: "active" });
+      activeOrders = response.orders || [];
+      paint();
+    } catch (error) {
+      panel().innerHTML = message(error instanceof Error ? error.message : "Could not load orders.", true);
     }
   }
 

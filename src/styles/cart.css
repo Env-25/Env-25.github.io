@@ -507,6 +507,12 @@
 .orders-row-status.is-open {
   color: var(--clr-dark-teal);
 }
+.orders-row-status.is-paid {
+  color: #2f6f7a;
+}
+.orders-row-status.is-ready {
+  color: #6a5a2f;
+}
 .orders-row-status.is-done {
   color: var(--clr-forest, #4a8550);
 }
