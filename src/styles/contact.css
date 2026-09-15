@@ -203,10 +203,17 @@
   background: var(--clr-dark-teal);
   color: var(--clr-cream);
   border: none;
-  cursor: not-allowed;
-  opacity: 0.45;
+  cursor: pointer;
+  opacity: 1;
   align-self: flex-start;
-  transition: opacity 0.2s;
+  transition: opacity 0.2s, background 0.2s;
+}
+.form-submit:hover:not(:disabled) {
+  background: #2f3d3c;
+}
+.form-submit:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 .form-submit svg {
   width: 14px;
@@ -328,20 +335,25 @@
 /* ── Feedback messages ── */
 .form-feedback {
   font-family: "Telegraf", sans-serif;
-  font-size: 0.88rem;
+  font-size: 0.95rem;
+  font-weight: 600;
   letter-spacing: 0.04em;
-  padding: 0.8rem 1.1rem;
+  line-height: 1.5;
+  padding: 1rem 1.15rem;
   border-radius: 3px;
-  text-align: center;
-  margin-top: 0.25rem;
+  text-align: left;
+  margin-top: 0.75rem;
+}
+.form-feedback[hidden] {
+  display: none !important;
 }
 .form-feedback--success {
   color: var(--clr-forest);
-  background: rgba(58, 75, 74, 0.08);
-  border: 1px solid rgba(58, 75, 74, 0.2);
+  background: rgba(74, 133, 80, 0.12);
+  border: 1px solid rgba(74, 133, 80, 0.35);
 }
 .form-feedback--error {
   color: #a83232;
-  background: rgba(168, 50, 50, 0.07);
-  border: 1px solid rgba(168, 50, 50, 0.2);
+  background: rgba(168, 50, 50, 0.08);
+  border: 1px solid rgba(168, 50, 50, 0.25);
 }

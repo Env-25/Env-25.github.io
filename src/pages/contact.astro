@@ -126,6 +126,13 @@ const contactApiUrl = (import.meta.env.PUBLIC_CONTACT_API_URL as string | undefi
             <p class="field-error" id="captchaError">Please complete the CAPTCHA verification.</p>
           </div>
 
+          <p class="form-feedback form-feedback--success" id="formSuccess" hidden>
+            Message sent. Thanks — we'll be in touch soon. A confirmation email is on its way.
+          </p>
+          <p class="form-feedback form-feedback--error" id="formError" hidden>
+            Something went wrong — please try again or email us directly.
+          </p>
+
           <button type="submit" class="form-submit" id="submitBtn">
             <span class="btn-label">Send Message</span>
             <svg class="btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -134,13 +141,6 @@ const contactApiUrl = (import.meta.env.PUBLIC_CONTACT_API_URL as string | undefi
             </svg>
             <span class="btn-spinner" aria-hidden="true"></span>
           </button>
-
-          <p class="form-feedback form-feedback--success" id="formSuccess" hidden>
-            ✓ Message sent! We'll be in touch soon.
-          </p>
-          <p class="form-feedback form-feedback--error" id="formError" hidden>
-            Something went wrong — please try again or email us directly.
-          </p>
 
         </form>
       </div>
@@ -217,34 +217,36 @@ const contactApiUrl = (import.meta.env.PUBLIC_CONTACT_API_URL as string | undefi
 </BaseLayout>
 
 <script define:vars={{ contactApiUrl }}>
-  const form = document.getElementById("contactForm") as HTMLFormElement;
-  const inquiryEl = document.getElementById("contactInquiry") as HTMLSelectElement;
-  const nameEl = document.getElementById("contactName") as HTMLInputElement;
-  const emailEl = document.getElementById("contactEmail") as HTMLInputElement;
-  const subjectEl = document.getElementById("contactSubject") as HTMLInputElement;
-  const messageEl = document.getElementById("contactMessage") as HTMLTextAreaElement;
-  const submitBtn = document.getElementById("submitBtn") as HTMLButtonElement;
-  const captchaError = document.getElementById("captchaError")!;
-  const formSuccess = document.getElementById("formSuccess") as HTMLElement;
-  const formError = document.getElementById("formError") as HTMLElement;
+  const form = document.getElementById("contactForm");
+  const inquiryEl = document.getElementById("contactInquiry");
+  const nameEl = document.getElementById("contactName");
+  const emailEl = document.getElementById("contactEmail");
+  const subjectEl = document.getElementById("contactSubject");
+  const messageEl = document.getElementById("contactMessage");
+  const submitBtn = document.getElementById("submitBtn");
+  const captchaError = document.getElementById("captchaError");
+  const formSuccess = document.getElementById("formSuccess");
+  const formError = document.getElementById("formError");
 
-  function turnstileToken(): string | null {
-    return (window as any).__chbeTurnstileToken || null;
+  function turnstileToken() {
+    return window.__chbeTurnstileToken || null;
   }
 
-  function validate(el: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement): boolean {
+  function validate(el) {
     let invalid = el.value.trim() === "";
-    if (!invalid && (el as HTMLInputElement).type === "email") {
+    if (!invalid && el.type === "email") {
       invalid = !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(el.value);
     }
     el.classList.toggle("error", invalid);
-    el.closest(".form-field")?.querySelector(".field-error")?.classList.toggle("visible", invalid);
+    const err = el.closest(".form-field")?.querySelector(".field-error");
+    if (err) err.classList.toggle("visible", invalid);
     return !invalid;
   }
 
-  function clearError(el: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement) {
+  function clearError(el) {
     el.classList.remove("error");
-    el.closest(".form-field")?.querySelector(".field-error")?.classList.remove("visible");
+    const err = el.closest(".form-field")?.querySelector(".field-error");
+    if (err) err.classList.remove("visible");
   }
 
   inquiryEl.addEventListener("change", () => clearError(inquiryEl));
@@ -305,14 +307,16 @@ const contactApiUrl = (import.meta.env.PUBLIC_CONTACT_API_URL as string | undefi
 
       formSuccess.hidden = false;
       form.reset();
-      (window as any).__chbeTurnstileToken = null;
-      (window as any).turnstile?.reset?.();
-    } catch (err: any) {
+      window.__chbeTurnstileToken = null;
+      window.turnstile?.reset?.();
+      formSuccess.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    } catch (err) {
       console.error("Contact send error:", err);
       formError.textContent = err?.message || "Something went wrong — please try again or email us directly.";
       formError.hidden = false;
-      (window as any).__chbeTurnstileToken = null;
-      (window as any).turnstile?.reset?.();
+      window.__chbeTurnstileToken = null;
+      window.turnstile?.reset?.();
+      formError.scrollIntoView({ behavior: "smooth", block: "nearest" });
     } finally {
       submitBtn.classList.remove("loading");
       submitBtn.disabled = false;

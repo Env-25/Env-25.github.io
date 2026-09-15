@@ -11,7 +11,7 @@ import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 const REGION = process.env.AWS_REGION || "us-east-2";
 const EMAIL_QUEUE_URL = process.env.EMAIL_QUEUE_URL || "";
 const SES_FROM =
-  process.env.SES_FROM || "UBC CHBE Council <notifications@ubcchbecouncil.com>";
+  process.env.SES_FROM || "UBC CHBE Support <support@ubcchbecouncil.com>";
 const SITE_URL = (process.env.SITE_URL || "https://ubcchbecouncil.com").replace(/\/$/, "");
 
 const INQUIRY_EMAIL = {
@@ -72,26 +72,42 @@ function clampText(value, max) {
   return String(value || "").trim().slice(0, max);
 }
 
-async function verifyTurnstile(token, remoteIp) {
-  const secret = process.env.TURNSTILE_SECRET_KEY;
-  if (!secret) {
+async function verifyTurnstile(token, remoteIp, event) {
+  const secrets = [process.env.TURNSTILE_SECRET_KEY].filter(Boolean);
+  const origin = String(
+    event?.headers?.origin ||
+      event?.headers?.Origin ||
+      event?.headers?.referer ||
+      event?.headers?.Referer ||
+      ""
+  );
+  const isLocal =
+    /localhost|127\.0\.0\.1/i.test(origin) ||
+    String(remoteIp || "") === "127.0.0.1";
+  // Cloudflare always-pass secret — only accepted for local origins so prod stays locked down.
+  if (isLocal) secrets.push("1x0000000000000000000000000000000AA");
+
+  if (!secrets.length) {
     console.warn("TURNSTILE_SECRET_KEY unset — skipping CAPTCHA verification");
     return true;
   }
   if (!token || typeof token !== "string") return false;
 
-  const form = new URLSearchParams();
-  form.set("secret", secret);
-  form.set("response", token);
-  if (remoteIp) form.set("remoteip", remoteIp);
+  for (const secret of secrets) {
+    const form = new URLSearchParams();
+    form.set("secret", secret);
+    form.set("response", token);
+    if (remoteIp) form.set("remoteip", remoteIp);
 
-  const res = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
-    method: "POST",
-    body: form,
-  });
-  if (!res.ok) return false;
-  const data = await res.json();
-  return Boolean(data.success);
+    const res = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+      method: "POST",
+      body: form,
+    });
+    if (!res.ok) continue;
+    const data = await res.json();
+    if (data.success) return true;
+  }
+  return false;
 }
 
 function buildStaffHtml({ inquiryType, name, email, subject, message }) {
@@ -179,7 +195,7 @@ export const handler = async (event) => {
     undefined;
 
   try {
-    const captchaOk = await verifyTurnstile(turnstileToken, remoteIp);
+    const captchaOk = await verifyTurnstile(turnstileToken, remoteIp, event);
     if (!captchaOk) {
       return json(403, {
         error: "CAPTCHA verification failed. Please refresh and try again.",

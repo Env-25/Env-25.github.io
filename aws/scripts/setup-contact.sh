@@ -11,10 +11,24 @@ REGION="${AWS_REGION:-us-east-2}"
 LAMBDA_NAME="${CONTACT_LAMBDA_NAME:-chbe-contact}"
 ROLE_NAME="${CONTACT_ROLE_NAME:-chbe-contact-lambda-role}"
 EMAIL_QUEUE_NAME="${EMAIL_QUEUE_NAME:-chbe-ses-send.fifo}"
-SES_FROM="${SES_FROM:-UBC CHBE Council <notifications@ubcchbecouncil.com>}"
+SES_FROM="${SES_FROM:-UBC CHBE Support <support@ubcchbecouncil.com>}"
 SITE_URL="${SITE_URL:-https://ubcchbecouncil.com}"
 export ALLOWED_ORIGINS="${ALLOWED_ORIGINS:-https://ubcchbecouncil.com,https://www.ubcchbecouncil.com,https://chbe-site.akshajs.org,http://localhost:3001,http://localhost:4321}"
 export TURNSTILE_SECRET_KEY="${TURNSTILE_SECRET_KEY:-}"
+if [[ -z "$TURNSTILE_SECRET_KEY" ]]; then
+  EXISTING_SECRET="$(aws lambda get-function-configuration --function-name "$LAMBDA_NAME" --region "$REGION" --query 'Environment.Variables.TURNSTILE_SECRET_KEY' --output text 2>/dev/null || true)"
+  if [[ -n "$EXISTING_SECRET" && "$EXISTING_SECRET" != "None" ]]; then
+    export TURNSTILE_SECRET_KEY="$EXISTING_SECRET"
+    echo "    Reusing TURNSTILE_SECRET_KEY already on $LAMBDA_NAME"
+  else
+    EXISTING_SECRET="$(aws lambda get-function-configuration --function-name chbe-email-validate --region "$REGION" --query 'Environment.Variables.TURNSTILE_SECRET_KEY' --output text 2>/dev/null || true)"
+    if [[ -n "$EXISTING_SECRET" && "$EXISTING_SECRET" != "None" ]]; then
+      export TURNSTILE_SECRET_KEY="$EXISTING_SECRET"
+      echo "    Copied TURNSTILE_SECRET_KEY from chbe-email-validate"
+    fi
+  fi
+  unset EXISTING_SECRET
+fi
 
 ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text)"
 EMAIL_QUEUE_URL="$(aws sqs get-queue-url --region "$REGION" --queue-name "$EMAIL_QUEUE_NAME" --query QueueUrl --output text)"
@@ -102,7 +116,7 @@ python - "$ENV_JSON" <<'PY'
 import json, os, sys
 vars = {
     "EMAIL_QUEUE_URL": os.environ.get("EMAIL_QUEUE_URL", ""),
-    "SES_FROM": os.environ.get("SES_FROM", "UBC CHBE Council <notifications@ubcchbecouncil.com>"),
+    "SES_FROM": os.environ.get("SES_FROM", "UBC CHBE Support <support@ubcchbecouncil.com>"),
     "SITE_URL": os.environ.get("SITE_URL", "https://ubcchbecouncil.com"),
     "ALLOWED_ORIGINS": os.environ.get("ALLOWED_ORIGINS", ""),
 }
