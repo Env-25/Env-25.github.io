@@ -1,7 +1,7 @@
 /**
  * CHBE orders API (Function URL).
  *
- * POST  { action:"place", studentNumber, items[] }  → create order + decrement stock + email
+ * POST  { action:"place", items[] }  → create order + decrement stock + email
  * GET   ?orderId=...                                 → fetch one order (owner only)
  * GET   ?inventory=1[&skus=a,b]                      → live stock map
  *
@@ -22,6 +22,7 @@ const REGION = process.env.AWS_REGION || "us-east-2";
 const ORDERS_TABLE = process.env.ORDERS_TABLE || "orders";
 const ORDERS_COMPLETE_TABLE = process.env.ORDERS_COMPLETE_TABLE || "orders-complete";
 const INVENTORY_TABLE = process.env.INVENTORY_TABLE || "inventory";
+const LOCKER_MANAGEMENT_TABLE = process.env.LOCKER_MANAGEMENT_TABLE || "locker-management";
 const USER_POOL_ID = process.env.COGNITO_USER_POOL_ID || "";
 const CLIENT_ID = process.env.COGNITO_CLIENT_ID || "";
 const SES_FROM =
@@ -62,7 +63,8 @@ function normalizeOrderStatus(status) {
 
 function publicOrder(order) {
   if (!order || typeof order !== "object") return order;
-  return { ...order, status: normalizeOrderStatus(order.status) };
+  const { studentNumber: _ignored, ...rest } = order;
+  return { ...rest, status: normalizeOrderStatus(order.status) };
 }
 
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({ region: REGION }), {
@@ -123,7 +125,6 @@ async function requireUser(event) {
       emailVerified:
         payload.email_verified === true ||
         payload.email_verified === "true",
-      studentNumber: String(payload["custom:student_number"] || ""),
       profileComplete:
         payload["custom:profile_complete"] === true ||
         payload["custom:profile_complete"] === "true",
@@ -182,6 +183,7 @@ function normalizeItem(raw) {
     image,
     level,
     location: String(raw.location || "").trim(),
+    term: String(raw.term || "").trim(),
     qty: 1,
     unitPrice,
     sku: lockerSku(id, level),
@@ -194,7 +196,7 @@ function buildOrderEmailHtml({ orderID, name, items, cashSubtotal, cardSubtotal,
       const detail =
         it.kind === "merch"
           ? `${escapeHtml(it.color || "")} · ${escapeHtml(it.size || "")} × ${it.qty}`
-          : `${escapeHtml(it.level || "")} level · ${escapeHtml(it.location || "")}`;
+          : `${escapeHtml(it.level || "")} level · ${escapeHtml(it.location || "")}${it.term ? ` · ${escapeHtml(it.term)}` : ""}`;
       const line = (it.unitPrice * it.qty).toFixed(2);
       return `<tr>
         <td style="padding:10px 0;border-bottom:1px solid rgba(58,75,74,0.12);font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#3a4b4a;">
@@ -319,7 +321,7 @@ function buildStaffEmailHtml(order) {
       const detail =
         it.kind === "merch"
           ? `${it.color || ""} / ${it.size || ""} × ${it.qty}`
-          : `${it.level} @ ${it.location || ""}`;
+          : `${it.level} @ ${it.location || ""}${it.term ? ` · ${it.term}` : ""}`;
       return `• ${it.name} (${detail}) — $${(it.unitPrice * it.qty).toFixed(2)}`;
     })
     .join("<br/>");
@@ -329,8 +331,7 @@ function buildStaffEmailHtml(order) {
   <h1 style="font-family:Georgia,serif;">New CHBE order</h1>
   <p><strong>Order ID:</strong> ${escapeHtml(order.orderID)}</p>
   <p><strong>Name:</strong> ${escapeHtml(order.name)}<br/>
-     <strong>Email:</strong> ${escapeHtml(order.email)}<br/>
-     <strong>Student #:</strong> ${escapeHtml(order.studentNumber)}</p>
+     <strong>Email:</strong> ${escapeHtml(order.email)}</p>
   <p>${lines}</p>
   <p>Cash: $${order.cashSubtotal.toFixed(2)} · Card: $${order.cardSubtotal.toFixed(2)}</p>
   <p><a href="${SITE_URL}/account/orders/view/?id=${encodeURIComponent(order.orderID)}">Open order</a></p>
@@ -505,10 +506,6 @@ async function handlePlace(event, user) {
   }
 
   const body = parseBody(event);
-  const studentNumber = String(body.studentNumber || user.studentNumber || "").trim();
-  if (!studentNumber) {
-    return json(400, { error: "Student number is required." });
-  }
 
   const rawItems = Array.isArray(body.items) ? body.items : [];
   const items = rawItems.map(normalizeItem).filter(Boolean);
@@ -548,7 +545,6 @@ async function handlePlace(event, user) {
     userSub: user.sub,
     email: user.email,
     name: user.name,
-    studentNumber,
     status: ORDER_STATUS.PAYMENT_PENDING,
     items: lineItems.map(({ sku, ...rest }) => rest),
     cashSubtotal,
@@ -556,6 +552,25 @@ async function handlePlace(event, user) {
     createdAt: now,
     updatedAt: now,
   };
+
+  const lockerAssignments = lineItems
+    .filter((it) => it.kind === "locker")
+    .map((it) => ({
+      lockerAssignmentId: `${orderID}#${it.id}#${it.level}`,
+      orderID,
+      userSub: user.sub,
+      email: user.email,
+      name: user.name,
+      lockerId: it.id,
+      lockerName: it.name,
+      level: it.level,
+      location: it.location || "",
+      term: it.term || "",
+      unitPrice: it.unitPrice,
+      orderStatus: ORDER_STATUS.PAYMENT_PENDING,
+      createdAt: now,
+      updatedAt: now,
+    }));
 
   const transactItems = [
     {
@@ -575,6 +590,13 @@ async function handlePlace(event, user) {
           ":q": it.qty,
           ":u": now,
         },
+      },
+    })),
+    ...lockerAssignments.map((item) => ({
+      Put: {
+        TableName: LOCKER_MANAGEMENT_TABLE,
+        Item: item,
+        ConditionExpression: "attribute_not_exists(lockerAssignmentId)",
       },
     })),
   ];

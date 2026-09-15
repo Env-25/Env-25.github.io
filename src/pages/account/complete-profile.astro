@@ -20,26 +20,11 @@ const years = Array.from({ length: 12 }, (_, i) => String(currentYear - i));
     <div class="auth-shell">
       <h2 class="auth-block-title">Student details</h2>
       <p class="auth-block-sub">
-        Add your student number, enrollment year, and department. You can finish later — your
-        profile will stay marked incomplete until saved.
+        Add your enrollment year and department. You can finish later — your profile will stay
+        marked incomplete until saved.
       </p>
 
       <form class="auth-form" id="completeForm" novalidate>
-        <div class="form-field">
-          <label for="studentNumber" class="form-label">
-            Student number <span class="required">*</span>
-          </label>
-          <input
-            type="text"
-            id="studentNumber"
-            class="form-input"
-            inputmode="numeric"
-            placeholder="e.g. 12345678"
-            required
-          />
-          <p class="field-error" id="studentError">Please enter your student number.</p>
-        </div>
-
         <div class="form-field">
           <label for="enrollmentYear" class="form-label">
             UBC enrollment year <span class="required">*</span>
@@ -89,7 +74,6 @@ const years = Array.from({ length: 12 }, (_, i) => String(currentYear - i));
   import { isAuthConfigured } from "../../utils/auth-config";
 
   const form = document.getElementById("completeForm") as HTMLFormElement;
-  const studentEl = document.getElementById("studentNumber") as HTMLInputElement;
   const yearEl = document.getElementById("enrollmentYear") as HTMLSelectElement;
   const deptEl = document.getElementById("department") as HTMLSelectElement;
   const submitBtn = document.getElementById("submitBtn") as HTMLButtonElement;
@@ -116,7 +100,6 @@ const years = Array.from({ length: 12 }, (_, i) => String(currentYear - i));
       window.location.replace("/account/profile");
       return;
     }
-    if (profile.studentNumber) studentEl.value = profile.studentNumber;
     if (profile.enrollmentYear) yearEl.value = profile.enrollmentYear;
     if (profile.department) deptEl.value = profile.department;
   })();
@@ -126,32 +109,26 @@ const years = Array.from({ length: 12 }, (_, i) => String(currentYear - i));
   }
 
   function validateAll(): boolean {
-    const studentOk = studentEl.value.trim().length > 0;
     const yearOk = yearEl.value.trim().length > 0;
     const deptOk = deptEl.value.trim().length > 0;
-    studentEl.classList.toggle("error", !studentOk);
     yearEl.classList.toggle("error", !yearOk);
     deptEl.classList.toggle("error", !deptOk);
-    showErr("studentError", !studentOk);
     showErr("yearError", !yearOk);
     showErr("deptError", !deptOk);
-    return studentOk && yearOk && deptOk;
+    return yearOk && deptOk;
   }
 
   laterBtn.addEventListener("click", async () => {
     formError.hidden = true;
     laterBtn.disabled = true;
     try {
-      // Keep incomplete flag; save any partial values if present
       await saveProfileDetails({
-        studentNumber: studentEl.value.trim(),
         enrollmentYear: yearEl.value.trim(),
         department: deptEl.value.trim(),
         complete: false,
       });
       window.location.href = "/account/profile";
     } catch (err) {
-      // Not signed in yet (verify later without session) — still allow visiting profile/sign-in
       if ((err as { name?: string }).name === "UserUnAuthenticatedException") {
         window.location.href = "/account/sign-in?next=/account/profile";
         return;
@@ -172,7 +149,6 @@ const years = Array.from({ length: 12 }, (_, i) => String(currentYear - i));
 
     try {
       await saveProfileDetails({
-        studentNumber: studentEl.value.trim(),
         enrollmentYear: yearEl.value.trim(),
         department: deptEl.value.trim(),
         complete: true,

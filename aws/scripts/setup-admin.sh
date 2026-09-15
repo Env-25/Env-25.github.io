@@ -15,6 +15,7 @@ INVENTORY_TABLE="${INVENTORY_TABLE:-inventory}"
 ORDERS_TABLE="${ORDERS_TABLE:-orders}"
 ORDERS_COMPLETE_TABLE="${ORDERS_COMPLETE_TABLE:-orders-complete}"
 LOCKER_CHANGES_TABLE="${LOCKER_CHANGES_TABLE:-locker-changes}"
+LOCKER_MANAGEMENT_TABLE="${LOCKER_MANAGEMENT_TABLE:-locker-management}"
 ADMIN_AUDIT_TABLE="${ADMIN_AUDIT_TABLE:-admin-audit}"
 ADMIN_PUBLISH_QUEUE_TABLE="${ADMIN_PUBLISH_QUEUE_TABLE:-admin-publish-queue}"
 SES_FROM="${SES_FROM:-UBC CHBE Council Notifications <notifications@ubcchbecouncil.com>}"
@@ -69,6 +70,7 @@ ensure_composite_table() {
 }
 
 ensure_table "$LOCKER_CHANGES_TABLE" changeId
+ensure_table "$LOCKER_MANAGEMENT_TABLE" lockerAssignmentId
 ensure_table "$ADMIN_AUDIT_TABLE" auditId
 ensure_composite_table "$ADMIN_PUBLISH_QUEUE_TABLE"
 ensure_table "$ORDERS_TABLE" orderID
@@ -127,7 +129,8 @@ cat > "$POLICY_PATH" <<EOF
     ]},
     {"Sid":"OrdersTables","Effect":"Allow","Action":["dynamodb:GetItem","dynamodb:PutItem","dynamodb:UpdateItem","dynamodb:DeleteItem","dynamodb:Scan"],"Resource":[
       "arn:aws:dynamodb:$REGION:$ACCOUNT_ID:table/$ORDERS_TABLE",
-      "arn:aws:dynamodb:$REGION:$ACCOUNT_ID:table/$ORDERS_COMPLETE_TABLE"
+      "arn:aws:dynamodb:$REGION:$ACCOUNT_ID:table/$ORDERS_COMPLETE_TABLE",
+      "arn:aws:dynamodb:$REGION:$ACCOUNT_ID:table/$LOCKER_MANAGEMENT_TABLE"
     ]},
     {"Sid":"PublishQueue","Effect":"Allow","Action":["dynamodb:GetItem","dynamodb:PutItem","dynamodb:UpdateItem","dynamodb:DeleteItem","dynamodb:Query"],"Resource":"arn:aws:dynamodb:$REGION:$ACCOUNT_ID:table/$ADMIN_PUBLISH_QUEUE_TABLE"},
     {"Sid":"InventoryDelete","Effect":"Allow","Action":"dynamodb:DeleteItem","Resource":"arn:aws:dynamodb:$REGION:$ACCOUNT_ID:table/$INVENTORY_TABLE"},
@@ -169,6 +172,7 @@ variables = {
   "ORDERS_TABLE": "$ORDERS_TABLE",
   "ORDERS_COMPLETE_TABLE": "$ORDERS_COMPLETE_TABLE",
   "LOCKER_CHANGES_TABLE": "$LOCKER_CHANGES_TABLE",
+  "LOCKER_MANAGEMENT_TABLE": "$LOCKER_MANAGEMENT_TABLE",
   "ADMIN_AUDIT_TABLE": "$ADMIN_AUDIT_TABLE",
   "ADMIN_PUBLISH_QUEUE_TABLE": "$ADMIN_PUBLISH_QUEUE_TABLE",
   "SES_FROM": "$SES_FROM",

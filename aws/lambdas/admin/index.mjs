@@ -33,6 +33,7 @@ const INVENTORY_TABLE = process.env.INVENTORY_TABLE || "inventory";
 const ORDERS_TABLE = process.env.ORDERS_TABLE || "orders";
 const ORDERS_COMPLETE_TABLE = process.env.ORDERS_COMPLETE_TABLE || "orders-complete";
 const LOCKER_CHANGES_TABLE = process.env.LOCKER_CHANGES_TABLE || "locker-changes";
+const LOCKER_MANAGEMENT_TABLE = process.env.LOCKER_MANAGEMENT_TABLE || "locker-management";
 const ADMIN_AUDIT_TABLE = process.env.ADMIN_AUDIT_TABLE || "admin-audit";
 const ADMIN_PUBLISH_QUEUE_TABLE = process.env.ADMIN_PUBLISH_QUEUE_TABLE || "admin-publish-queue";
 const SES_FROM = process.env.SES_FROM || "UBC CHBE Council Notifications <notifications@ubcchbecouncil.com>";
@@ -920,7 +921,8 @@ function normalizeOrderStatus(status) {
 
 function publicOrder(order) {
   if (!order || typeof order !== "object") return order;
-  return { ...order, status: normalizeOrderStatus(order.status) };
+  const { studentNumber: _ignored, ...rest } = order;
+  return { ...rest, status: normalizeOrderStatus(order.status) };
 }
 
 function isActiveOrderStatus(status) {
@@ -1089,6 +1091,56 @@ async function migrateTerminalOrdersFromActive() {
   return terminal.length;
 }
 
+async function syncLockerManagementStatus(order, status, updatedAt) {
+  const orderID = String(order?.orderID || "").trim();
+  if (!orderID) return;
+  const lockerItems = Array.isArray(order.items)
+    ? order.items.filter((item) => item && item.kind === "locker")
+    : [];
+  await Promise.all(
+    lockerItems.map(async (item) => {
+      const lockerId = String(item.id || "").trim();
+      const level = String(item.level || "").trim();
+      if (!lockerId || !level) return;
+      const lockerAssignmentId = `${orderID}#${lockerId}#${level}`;
+      try {
+        await ddb.send(new UpdateCommand({
+          TableName: LOCKER_MANAGEMENT_TABLE,
+          Key: { lockerAssignmentId },
+          UpdateExpression: "SET orderStatus = :status, updatedAt = :updatedAt",
+          ConditionExpression: "attribute_exists(lockerAssignmentId)",
+          ExpressionAttributeValues: {
+            ":status": status,
+            ":updatedAt": updatedAt,
+          },
+        }));
+      } catch (error) {
+        const name = String(error?.name || "");
+        if (name !== "ConditionalCheckFailedException") throw error;
+      }
+    })
+  );
+}
+
+async function handleListLockerManagement(_event, user) {
+  requireGroup(user, "lockers");
+  const assignments = [];
+  let startKey;
+  do {
+    const result = await ddb.send(new ScanCommand({
+      TableName: LOCKER_MANAGEMENT_TABLE,
+      ExclusiveStartKey: startKey,
+    }));
+    assignments.push(...(result.Items || []).map((item) => ({
+      ...item,
+      orderStatus: normalizeOrderStatus(item.orderStatus),
+    })));
+    startKey = result.LastEvaluatedKey;
+  } while (startKey);
+  assignments.sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
+  return json(200, { assignments });
+}
+
 async function handleListOrders(event, user) {
   requireGroup(user, "merch");
   const scope = String(event.queryStringParameters?.scope || "active").toLowerCase();
@@ -1131,6 +1183,12 @@ async function handleUpdateOrderStatus(body, user) {
     // Reactivate from complete table
     await ddb.send(new PutCommand({ TableName: ORDERS_TABLE, Item: next }));
     await ddb.send(new DeleteCommand({ TableName: ORDERS_COMPLETE_TABLE, Key: { orderID } }));
+  }
+
+  try {
+    await syncLockerManagementStatus(next, status, now);
+  } catch (error) {
+    console.error("Locker management status sync failed", { orderID, status, error });
   }
 
   let emailed = false;
@@ -1189,6 +1247,7 @@ export async function handler(event) {
     if (method === "GET" && queryAction === "users") return await handleListUsers(event, user);
     if (method === "GET" && queryAction === "publishStatus") return await handlePublishStatus(event, user);
     if (method === "GET" && queryAction === "orders") return await handleListOrders(event, user);
+    if (method === "GET" && queryAction === "lockerManagement") return await handleListLockerManagement(event, user);
     if (method !== "POST") return json(405, { error: "Method not allowed." });
     const body = parseBody(event);
     if (body.action === "publishWorkspace") return await handlePublishWorkspace(body, user);

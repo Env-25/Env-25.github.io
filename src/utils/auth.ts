@@ -46,7 +46,6 @@ export type UserProfile = {
   email: string;
   name: string;
   emailVerified: boolean;
-  studentNumber: string;
   enrollmentYear: string;
   department: string;
   profileComplete: boolean;
@@ -106,7 +105,6 @@ export async function getSessionProfile(options?: {
       email: record.email ?? "",
       name: record.name ?? "",
       emailVerified: asBool(record.email_verified),
-      studentNumber: attr(record, "student_number"),
       enrollmentYear: attr(record, "enrollment_year"),
       department: attr(record, "department"),
       profileComplete: asBool(attr(record, "profile_complete")),
@@ -306,14 +304,12 @@ export async function saveSubscriptionPrefs(prefs: {
 
 export async function saveProfileDetails(details: {
   name?: string;
-  studentNumber: string;
   enrollmentYear: string;
   department: string;
   complete: boolean;
 }) {
   ensureAmplify();
   const userAttributes: Record<string, string> = {
-    "custom:student_number": details.studentNumber.trim(),
     "custom:enrollment_year": details.enrollmentYear.trim(),
     "custom:department": details.department.trim(),
     "custom:profile_complete": String(details.complete),

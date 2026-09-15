@@ -18,6 +18,7 @@ ROLE_NAME="${ORDERS_ROLE_NAME:-chbe-orders-lambda-role}"
 ORDERS_TABLE="${ORDERS_TABLE:-orders}"
 ORDERS_COMPLETE_TABLE="${ORDERS_COMPLETE_TABLE:-orders-complete}"
 INVENTORY_TABLE="${INVENTORY_TABLE:-inventory}"
+LOCKER_MANAGEMENT_TABLE="${LOCKER_MANAGEMENT_TABLE:-locker-management}"
 SES_FROM="${SES_FROM:-CHBE Orders <orders@ubcchbecouncil.com>}"
 STAFF_ORDER_EMAILS="${STAFF_ORDER_EMAILS:-akshaj243@gmail.com,sachdevaakshaj1@gmail.com}"
 EMAIL_QUEUE_NAME="${EMAIL_QUEUE_NAME:-chbe-ses-send.fifo}"
@@ -48,7 +49,7 @@ winpath() {
 }
 
 echo "==> Account $ACCOUNT_ID  Region $REGION  Function $LAMBDA_NAME"
-echo "    Tables: $ORDERS_TABLE / $ORDERS_COMPLETE_TABLE / $INVENTORY_TABLE"
+echo "    Tables: $ORDERS_TABLE / $ORDERS_COMPLETE_TABLE / $INVENTORY_TABLE / $LOCKER_MANAGEMENT_TABLE"
 echo "    SES from: $SES_FROM"
 echo "    Email queue: $EMAIL_QUEUE_NAME"
 
@@ -67,6 +68,7 @@ ensure_table() {
 ensure_table "$ORDERS_TABLE" orderID
 ensure_table "$ORDERS_COMPLETE_TABLE" orderID
 ensure_table "$INVENTORY_TABLE" sku
+ensure_table "$LOCKER_MANAGEMENT_TABLE" lockerAssignmentId
 
 # --- IAM role ---
 echo "==> Ensuring IAM role $ROLE_NAME"
@@ -107,9 +109,11 @@ cat > "$POLICY_JSON" <<EOF
         "arn:aws:dynamodb:${REGION}:${ACCOUNT_ID}:table/${ORDERS_TABLE}",
         "arn:aws:dynamodb:${REGION}:${ACCOUNT_ID}:table/${ORDERS_COMPLETE_TABLE}",
         "arn:aws:dynamodb:${REGION}:${ACCOUNT_ID}:table/${INVENTORY_TABLE}",
+        "arn:aws:dynamodb:${REGION}:${ACCOUNT_ID}:table/${LOCKER_MANAGEMENT_TABLE}",
         "arn:aws:dynamodb:${REGION}:${ACCOUNT_ID}:table/${ORDERS_TABLE}/index/*",
         "arn:aws:dynamodb:${REGION}:${ACCOUNT_ID}:table/${ORDERS_COMPLETE_TABLE}/index/*",
-        "arn:aws:dynamodb:${REGION}:${ACCOUNT_ID}:table/${INVENTORY_TABLE}/index/*"
+        "arn:aws:dynamodb:${REGION}:${ACCOUNT_ID}:table/${INVENTORY_TABLE}/index/*",
+        "arn:aws:dynamodb:${REGION}:${ACCOUNT_ID}:table/${LOCKER_MANAGEMENT_TABLE}/index/*"
       ]
     },
     {
@@ -154,7 +158,7 @@ PY
 )
 
 # Environment
-export ORDERS_TABLE ORDERS_COMPLETE_TABLE INVENTORY_TABLE SES_FROM STAFF_ORDER_EMAILS EMAIL_QUEUE_URL
+export ORDERS_TABLE ORDERS_COMPLETE_TABLE INVENTORY_TABLE LOCKER_MANAGEMENT_TABLE SES_FROM STAFF_ORDER_EMAILS EMAIL_QUEUE_URL
 export COGNITO_USER_POOL_ID COGNITO_CLIENT_ID SITE_URL
 python - "$ENV_JSON" <<'PY'
 import json, os, sys
@@ -163,6 +167,7 @@ vars = {
     "ORDERS_TABLE": os.environ.get("ORDERS_TABLE", "orders"),
     "ORDERS_COMPLETE_TABLE": os.environ.get("ORDERS_COMPLETE_TABLE", "orders-complete"),
     "INVENTORY_TABLE": os.environ.get("INVENTORY_TABLE", "inventory"),
+    "LOCKER_MANAGEMENT_TABLE": os.environ.get("LOCKER_MANAGEMENT_TABLE", "locker-management"),
     "SES_FROM": os.environ.get(
         "SES_FROM",
         "CHBE Orders <orders@ubcchbecouncil.com>",

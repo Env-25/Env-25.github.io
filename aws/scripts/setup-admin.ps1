@@ -15,6 +15,7 @@ param(
   [string]$OrdersTable = "orders",
   [string]$OrdersCompleteTable = "orders-complete",
   [string]$LockerChangesTable = "locker-changes",
+  [string]$LockerManagementTable = "locker-management",
   [string]$AdminAuditTable = "admin-audit",
   [string]$AdminPublishQueueTable = "admin-publish-queue",
   [string]$SesFrom = "UBC CHBE Council Notifications <notifications@ubcchbecouncil.com>",
@@ -72,6 +73,7 @@ $queueAttributesPath = Join-Path $buildDir "$LambdaName-queue-attributes.json"
 New-Item -ItemType Directory -Path $buildDir -Force | Out-Null
 
 Ensure-Table $LockerChangesTable "changeId"
+Ensure-Table $LockerManagementTable "lockerAssignmentId"
 Ensure-Table $AdminAuditTable "auditId"
 Ensure-CompositeTable $AdminPublishQueueTable
 Ensure-Table $OrdersTable "orderID"
@@ -131,7 +133,8 @@ $policy = @{
       Action = @("dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:DeleteItem", "dynamodb:Scan")
       Resource = @(
         "arn:aws:dynamodb:$Region`:$accountId`:table/$OrdersTable",
-        "arn:aws:dynamodb:$Region`:$accountId`:table/$OrdersCompleteTable"
+        "arn:aws:dynamodb:$Region`:$accountId`:table/$OrdersCompleteTable",
+        "arn:aws:dynamodb:$Region`:$accountId`:table/$LockerManagementTable"
       )
     },
     @{
@@ -184,7 +187,9 @@ $lambdaEnvironment = @{
     INVENTORY_TABLE = $InventoryTable
     ORDERS_TABLE = $OrdersTable
     ORDERS_COMPLETE_TABLE = $OrdersCompleteTable
-    LOCKER_CHANGES_TABLE = $LockerChangesTable; ADMIN_AUDIT_TABLE = $AdminAuditTable
+    LOCKER_CHANGES_TABLE = $LockerChangesTable
+    LOCKER_MANAGEMENT_TABLE = $LockerManagementTable
+    ADMIN_AUDIT_TABLE = $AdminAuditTable
     ADMIN_PUBLISH_QUEUE_TABLE = $AdminPublishQueueTable
     SES_FROM = $SesFrom
     ORDERS_SES_FROM = "CHBE Orders <orders@ubcchbecouncil.com>"

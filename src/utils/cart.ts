@@ -17,6 +17,7 @@ export type CartItem = {
   size?: string;
   level?: "Top" | "Mid" | "Bottom";
   location?: string;
+  term?: string;
 };
 
 function storageKeyFor(userSub: string | null | undefined): string {
@@ -189,7 +190,6 @@ export async function fetchInventoryStock(skus?: string[]): Promise<Record<strin
 
 export async function placeOrder(args: {
   idToken: string;
-  studentNumber: string;
   items: CartItem[];
 }): Promise<{ orderID: string; status: string | number }> {
   const base = ordersApiUrl();
@@ -202,7 +202,6 @@ export async function placeOrder(args: {
     },
     body: JSON.stringify({
       action: "place",
-      studentNumber: args.studentNumber,
       items: args.items,
     }),
   });

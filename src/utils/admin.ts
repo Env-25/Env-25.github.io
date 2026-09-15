@@ -3,6 +3,7 @@ import { AUTH_CONFIG } from "./auth-config";
 
 export type AdminWorkspace =
   | "lockers"
+  | "locker-management"
   | "merch"
   | "notifications"
   | "members"

@@ -19,7 +19,7 @@ import "../../styles/admin.css";
     orderStatusLabel,
   } from "../../utils/order-status";
 
-  type Workspace = "lockers" | "merch" | "notifications" | "members" | "events" | "resources" | "orders" | "admin";
+  type Workspace = "lockers" | "merch" | "notifications" | "members" | "events" | "resources" | "orders" | "locker-management" | "admin";
   type CsvRow = Record<string, string>;
   type ContentState = { workspace: Workspace; year?: string; headers: string[]; rows: CsvRow[]; caption?: string; originalInventory?: InventoryItem[] };
   type InventoryItem = { sku: string; kind: "locker" | "merch"; productId: string; label: string; name: string; color?: string; quantity: number };
@@ -27,7 +27,6 @@ import "../../styles/admin.css";
     orderID: string;
     email?: string;
     name?: string;
-    studentNumber?: string;
     status?: string | number;
     createdAt?: string;
     updatedAt?: string;
@@ -35,10 +34,26 @@ import "../../styles/admin.css";
     cardSubtotal?: number;
     items?: Array<Record<string, unknown>>;
   };
+  type LockerAssignment = {
+    lockerAssignmentId: string;
+    orderID?: string;
+    email?: string;
+    name?: string;
+    lockerId?: string;
+    lockerName?: string;
+    level?: string;
+    location?: string;
+    term?: string;
+    orderStatus?: string | number;
+    unitPrice?: number;
+    createdAt?: string;
+    updatedAt?: string;
+  };
 
   const root = document.getElementById("adminRoot")!;
   const workspaces: { id: Workspace; label: string; group: string }[] = [
     { id: "lockers", label: "Lockers", group: "lockers" },
+    { id: "locker-management", label: "Locker management", group: "lockers" },
     { id: "merch", label: "Merch", group: "merch" },
     { id: "orders", label: "Orders", group: "merch" },
     { id: "notifications", label: "Notifications", group: "notifications" },
@@ -214,6 +229,7 @@ import "../../styles/admin.css";
     if (workspace === "notifications") return renderNotifications();
     if (workspace === "admin") return renderUserAdmin();
     if (workspace === "orders") return renderOrdersWorkspace();
+    if (workspace === "locker-management") return renderLockerManagementWorkspace();
     await loadContentWorkspace(workspace);
   }
 
@@ -663,7 +679,6 @@ import "../../styles/admin.css";
       { key: "createdAt", label: "Placed" },
       { key: "name", label: "Name" },
       { key: "email", label: "Email" },
-      { key: "studentNumber", label: "Student #" },
       { key: "items", label: "Items" },
       { key: "cashSubtotal", label: "Cash" },
       { key: "cardSubtotal", label: "Card" },
@@ -685,14 +700,13 @@ import "../../styles/admin.css";
           <td>${escape(formatOrderDate(order.createdAt))}</td>
           <td>${escape(order.name || "—")}</td>
           <td>${order.email ? `<a href="mailto:${escape(order.email)}">${escape(order.email)}</a>` : "—"}</td>
-          <td>${escape(order.studentNumber || "—")}</td>
           <td>${escape(orderItemsSummary(order))}</td>
           <td>${money(order.cashSubtotal)}</td>
           <td>${money(order.cardSubtotal)}</td>
           <td>${escape(orderStatusLabel(order.status))}</td>
           <td><button type="button" class="admin-link-button" data-expand-order="${escape(order.orderID)}">${open ? "Hide" : "Details"}</button></td>
         </tr>
-        ${open ? `<tr class="admin-order-detail-row"><td colspan="10">${orderDetailHtml(order, editable)}</td></tr>` : ""}`;
+        ${open ? `<tr class="admin-order-detail-row"><td colspan="9">${orderDetailHtml(order, editable)}</td></tr>` : ""}`;
       }).join("");
       return `<div class="admin-table-wrap"><table class="admin-table admin-orders-table"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
     };
@@ -788,6 +802,109 @@ import "../../styles/admin.css";
     } catch (error) {
       panel().innerHTML = message(error instanceof Error ? error.message : "Could not load orders.", true);
     }
+  }
+
+  async function renderLockerManagementWorkspace() {
+    state = null;
+    panel().innerHTML = `<p class="admin-status">Loading locker assignments…</p>`;
+    let assignments: LockerAssignment[] = [];
+    let sortKey = "createdAt";
+    let sortDir: "asc" | "desc" = "desc";
+    let note = "";
+
+    const columns: { key: string; label: string }[] = [
+      { key: "createdAt", label: "Placed" },
+      { key: "name", label: "Name" },
+      { key: "email", label: "Email" },
+      { key: "lockerName", label: "Locker" },
+      { key: "level", label: "Level" },
+      { key: "location", label: "Location" },
+      { key: "term", label: "Term" },
+      { key: "orderStatus", label: "Order status" },
+      { key: "orderID", label: "Order ID" },
+    ];
+
+    const sortAssignments = (rows: LockerAssignment[]) => {
+      const factor = sortDir === "asc" ? 1 : -1;
+      return [...rows].sort((a, b) => {
+        const left =
+          sortKey === "orderStatus"
+            ? orderStatusLabel(a.orderStatus)
+            : String((a as Record<string, unknown>)[sortKey] || "");
+        const right =
+          sortKey === "orderStatus"
+            ? orderStatusLabel(b.orderStatus)
+            : String((b as Record<string, unknown>)[sortKey] || "");
+        return left.localeCompare(right, undefined, { numeric: true, sensitivity: "base" }) * factor;
+      });
+    };
+
+    const paint = () => {
+      const rows = sortAssignments(assignments);
+      const head = columns.map((column) => {
+        const marker = sortKey === column.key ? (sortDir === "asc" ? " ↑" : " ↓") : "";
+        return `<th><button type="button" class="admin-sort-button" data-sort="${column.key}">${escape(column.label)}${marker}</button></th>`;
+      }).join("");
+      const body = rows.length
+        ? rows.map((row) => `<tr>
+            <td>${escape(formatOrderDate(row.createdAt))}</td>
+            <td>${escape(row.name || "—")}</td>
+            <td>${row.email ? `<a href="mailto:${escape(row.email)}">${escape(row.email)}</a>` : "—"}</td>
+            <td>${escape(row.lockerName || row.lockerId || "—")}</td>
+            <td>${escape(row.level || "—")}</td>
+            <td>${escape(row.location || "—")}</td>
+            <td>${escape(row.term || "—")}</td>
+            <td>${escape(orderStatusLabel(row.orderStatus))}</td>
+            <td class="admin-table__identifier">${escape(row.orderID || "—")}</td>
+          </tr>`).join("")
+        : `<tr><td colspan="${columns.length}">No locker purchases yet.</td></tr>`;
+
+      panel().innerHTML = `
+        <h2>Locker management</h2>
+        <p class="admin-panel__intro">Who bought which locker and for what term. Order status is stored on each assignment and stays in sync when Orders updates it.</p>
+        ${note ? message(note) : ""}
+        <div class="admin-toolbar">
+          <div class="admin-row-actions">
+            <button type="button" class="admin-secondary" id="reloadLockerAssignments">Reload</button>
+          </div>
+        </div>
+        <div class="admin-table-wrap">
+          <table class="admin-table admin-orders-table">
+            <thead><tr>${head}</tr></thead>
+            <tbody>${body}</tbody>
+          </table>
+        </div>`;
+
+      panel().querySelectorAll<HTMLButtonElement>("[data-sort]").forEach((button) => {
+        button.addEventListener("click", () => {
+          const key = button.dataset.sort || "createdAt";
+          if (sortKey === key) sortDir = sortDir === "asc" ? "desc" : "asc";
+          else {
+            sortKey = key;
+            sortDir = key === "createdAt" ? "desc" : "asc";
+          }
+          paint();
+        });
+      });
+
+      document.getElementById("reloadLockerAssignments")?.addEventListener("click", () => {
+        void load();
+      });
+    };
+
+    const load = async () => {
+      panel().innerHTML = `<p class="admin-status">Loading locker assignments…</p>`;
+      try {
+        const response = await getAdmin<{ assignments: LockerAssignment[] }>({ action: "lockerManagement" });
+        assignments = response.assignments || [];
+        note = `Loaded ${assignments.length} locker assignment(s).`;
+        paint();
+      } catch (error) {
+        panel().innerHTML = message(error instanceof Error ? error.message : "Could not load locker assignments.", true);
+      }
+    };
+
+    await load();
   }
 
   function emailPreview(html: string) {

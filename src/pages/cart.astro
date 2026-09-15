@@ -63,10 +63,6 @@ import "../styles/cart.css";
           </div>
 
           <div id="placeForm" hidden>
-            <div class="cart-student">
-              <label for="studentNumber">Student number (required)</label>
-              <input id="studentNumber" name="studentNumber" type="text" autocomplete="off" required />
-            </div>
             <p class="cart-error" id="cartError" hidden></p>
             <button type="button" class="cart-place-btn" id="placeOrderBtn" disabled>Coming soon</button>
           </div>
@@ -107,7 +103,6 @@ import "../styles/cart.css";
   const listEl = document.getElementById("cartList")!;
   const cashEl = document.getElementById("cashTotal")!;
   const cardEl = document.getElementById("cardTotal")!;
-  const studentInput = document.getElementById("studentNumber") as HTMLInputElement;
   const errorEl = document.getElementById("cartError")!;
   const placeBtn = document.getElementById("placeOrderBtn") as HTMLButtonElement;
   const placeGate = document.getElementById("placeGate")!;
@@ -141,6 +136,8 @@ import "../styles/cart.css";
     placeIncomplete.hidden = state !== "incomplete";
     placeForm.hidden = state !== "ready";
     canPlace = state === "ready";
+    placeBtn.disabled = !canPlace;
+    placeBtn.textContent = canPlace ? "Place order" : "Coming soon";
   }
 
   function renderCart() {
@@ -160,7 +157,7 @@ import "../styles/cart.css";
       const detail =
         it.kind === "merch"
           ? `${it.color || ""} · Size ${it.size || ""}`
-          : `${it.level} level · ${it.location || ""}`;
+          : `${it.level} level · ${it.location || ""}${it.term ? ` · ${it.term}` : ""}`;
       row.innerHTML = `
         <img src="${it.image}" alt="" />
         <div>
@@ -205,12 +202,6 @@ import "../styles/cart.css";
   placeBtn.addEventListener("click", () => {
     if (!canPlace) return;
     errorEl.hidden = true;
-    const studentNumber = studentInput.value.trim();
-    if (!studentNumber) {
-      errorEl.textContent = "Student number is required.";
-      errorEl.hidden = false;
-      return;
-    }
     if (!readCart().length) return;
     openConfirm();
   });
@@ -220,9 +211,8 @@ import "../styles/cart.css";
 
   confirmSubmit.addEventListener("click", async () => {
     if (!canPlace) return;
-    const studentNumber = studentInput.value.trim();
     const items = readCart();
-    if (!studentNumber || !items.length) {
+    if (!items.length) {
       closeConfirm();
       return;
     }
@@ -234,7 +224,7 @@ import "../styles/cart.css";
     try {
       const idToken = await getIdToken({ forceRefresh: true });
       if (!idToken) throw new Error("Sign in required.");
-      const result = await placeOrder({ idToken, studentNumber, items });
+      const result = await placeOrder({ idToken, items });
       clearCart();
       window.location.href = `/account/orders/view/?id=${encodeURIComponent(result.orderID)}`;
     } catch (err: any) {
@@ -284,7 +274,6 @@ import "../styles/cart.css";
       setPlaceState("incomplete");
       return;
     }
-    studentInput.value = profile.studentNumber || "";
     setPlaceState("ready");
   })();
 </script>
