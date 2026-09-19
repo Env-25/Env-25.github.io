@@ -1,6 +1,7 @@
 ---
 import "../../../styles/council-member.css";
 import "../../../styles/global.css";
+import GoogleAnalytics from "../../../components/GoogleAnalytics.astro";
 
 export async function getStaticPaths() {
   const { getMembers, nameToSlug } = await import("../../../utils/council");
@@ -29,6 +30,7 @@ const { member, year } = Astro.props;
     <link rel="preload" href="/fonts/RocaTwo-Bl.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="/fonts/Telegraf.woff2" as="font" type="font/woff2" crossorigin />
     <title>{member.Name} — CHBE Council</title>
+    <GoogleAnalytics />
   </head>
   <body class="member-body">
 

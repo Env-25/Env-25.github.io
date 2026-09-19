@@ -1,6 +1,7 @@
 ---
 import "../../styles/event.css";
 import "../../styles/global.css";
+import GoogleAnalytics from "../../components/GoogleAnalytics.astro";
 
 export async function getStaticPaths() {
   const { getEvents } = await import("../../utils/events");
@@ -27,6 +28,7 @@ function mapsUrl(loc: string) {
     <link rel="preload" href="/fonts/RocaTwo-Bl.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="/fonts/Telegraf.woff2" as="font" type="font/woff2" crossorigin />
     <title>{event.Name} — CHBE Events</title>
+    <GoogleAnalytics />
   </head>
   <body class="event-body">
 
