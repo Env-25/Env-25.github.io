@@ -67,6 +67,44 @@
   margin: 0 auto;
 }
 
+.cart-order-notice {
+  background: #fff;
+  border: 1px solid rgba(58, 75, 74, 0.12);
+  padding: 1.5rem 1.75rem;
+  margin-bottom: 1.5rem;
+}
+.cart-order-notice p {
+  font-family: "Telegraf", sans-serif;
+  color: rgba(58, 75, 74, 0.8);
+  margin: 0 0 1rem;
+  line-height: 1.6;
+}
+.cart-form-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  margin-top: 0;
+  cursor: pointer;
+}
+.cart-form-btn:hover {
+  background: #2f3d3c;
+}
+.cart-order-notice-fallback {
+  font-size: 0.78rem;
+  color: rgba(58, 75, 74, 0.6);
+  margin: 0.9rem 0 0 !important;
+  line-height: 1.55;
+}
+.cart-order-notice-link {
+  display: block;
+  margin-top: 0.35rem;
+  word-break: break-all;
+  user-select: all;
+  color: var(--clr-dark-teal);
+  text-decoration: underline;
+}
+
 .cart-empty,
 .order-panel {
   background: #fff;

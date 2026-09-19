@@ -15,6 +15,30 @@ import "../styles/cart.css";
 
   <section class="cart-section">
     <div class="cart-shell">
+      <div class="cart-order-notice" role="status">
+        <p>
+          Unfortunately, we are not accepting orders through the website right now.
+          Please place your order via this Google Form:
+        </p>
+        <a
+          class="cart-place-btn cart-form-btn"
+          href="https://docs.google.com/forms/d/e/1FAIpQLSecJE1CQ9RGk-X6qag3ghZlvi0rtncnjwED1w2bIyfiXjQAlg/viewform"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Open Google Form
+        </a>
+        <p class="cart-order-notice-fallback">
+          If the button is not working, please visit or copy and paste this link:
+          <a
+            class="cart-order-notice-link"
+            href="https://docs.google.com/forms/d/e/1FAIpQLSecJE1CQ9RGk-X6qag3ghZlvi0rtncnjwED1w2bIyfiXjQAlg/viewform"
+            target="_blank"
+            rel="noopener noreferrer"
+          >https://docs.google.com/forms/d/e/1FAIpQLSecJE1CQ9RGk-X6qag3ghZlvi0rtncnjwED1w2bIyfiXjQAlg/viewform</a>
+        </p>
+      </div>
+
       <div id="cartEmpty" class="cart-empty" hidden>
         <h2>Your cart is empty</h2>
         <p>Add merch or a locker rental to get started.</p>
