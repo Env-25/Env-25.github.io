@@ -1,7 +1,7 @@
-"ID",Name,type_id,Type,Color,Desc,Price,Sizes_Stock,Cover_image,Additional_images
+ID,Name,type_id,Type,Color,Desc,Price,Sizes_Stock,Cover_image,Additional_images
 1,CHBE Short Sleeve T-Shirt,short_sleeve,T-Shirt,Green,,NA,,product.jpg,
 2,CHBE Short Sleeve T-Shirt,short_sleeve,T-Shirt,Maroon,,NA,,product.jpg,
-3,CHBE Short Sleeve T-Shirt,short_sleeve,T-Shirt,Navy,,NA,,product.jpg,
+3,CHBE Short Sleeve T-Shirt,short_sleeve,T-Shirt,Navy,,NA,,img_2716-cropped.jpg,
 4,CHBE Short Sleeve T-Shirt,short_sleeve,T-Shirt,White (Orange/Yellow),,NA,S:3|L:1,product.jpg,
 5,CHBE Short Sleeve T-Shirt,short_sleeve,T-Shirt,White (Pink/Green),,NA,S:4|M:2|XL:1,product.jpg,
 6,CHBE Short Sleeve T-Shirt,short_sleeve,T-Shirt,White,,NA,S:3|M:1|XL:3,product.jpg,
@@ -17,7 +17,6 @@
 16,CHBE Hoodie,hoodie,Hoodie,Gray,,NA,XL:1,product.jpg,
 17,CHBE Hoodie,hoodie,Hoodie,White + Back Design,,NA,S:3,product.jpg,
 18,CHBE Hoodie,hoodie,Hoodie,Run the Process,,NA,S:3|M:8|L:3|XL:3,product.jpg,
-19,CHBE Hoodie,hoodie,Hoodie,White,,NA,S:3|M:3,product.jpg,
 20,CHBE Hoodie,hoodie,Hoodie,Black,,NA,S:4|M:6|L:5|XL:2,black_hoodie.jpg,
 21,CHBE Crewneck,crewneck,Crewneck,Green,,NA,,charcoal_crewneck.jpg,
 22,CHBE Crewneck,crewneck,Crewneck,Maroon,,NA,S:3|M:5|L:2|XL:2,product.jpg,
