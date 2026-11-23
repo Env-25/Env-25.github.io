@@ -163,7 +163,7 @@ import "../../../styles/hackathon.css";
         academicYearOther: academicYearOther.value.trim(),
       });
       formWrap.hidden = true;
-      successMsg.textContent = `Your registration is confirmed — you are team #${res.teamNumber}.`;
+      successMsg.textContent = `You're registered — your participant ID is #${res.participantId}.`;
       success.hidden = false;
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (e: any) {

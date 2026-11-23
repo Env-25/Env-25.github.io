@@ -9,10 +9,11 @@ export type HackathonTeammate = {
   name: string;
   email: string;
   studentNumber: string;
+  participantId: number | null;
 };
 
 export type HackathonParticipant = {
-  teamNumber: number;
+  participantId: number;
   role: "first-year" | "upper-year";
   name: string;
   email: string;
@@ -78,7 +79,12 @@ export function registerFirstYear(input: {
   studentNumber: string;
   partnerStudentNumber: string;
   partnerEmail: string;
-}): Promise<{ ok: boolean; teamNumber: number; role: string }> {
+}): Promise<{
+  ok: boolean;
+  participantId: number;
+  partnerParticipantId: number;
+  role: string;
+}> {
   return authedFetch("/", {
     method: "POST",
     body: JSON.stringify({ action: "register-first-year", ...input }),
@@ -89,7 +95,7 @@ export function registerUpperYear(input: {
   studentNumber: string;
   academicYear: string;
   academicYearOther?: string;
-}): Promise<{ ok: boolean; teamNumber: number; role: string }> {
+}): Promise<{ ok: boolean; participantId: number; role: string }> {
   return authedFetch("/", {
     method: "POST",
     body: JSON.stringify({ action: "register-upper-year", ...input }),

@@ -26,7 +26,7 @@ import "../../styles/hackathon.css";
       <!-- Not registered -->
       <div id="notRegistered" class="auth-status-panel" hidden>
         <h2>You haven't signed up yet</h2>
-        <p>Register for the CHBE Hackathon to see your team and info here.</p>
+        <p>Register for the CHBE Hackathon to see your participant info here.</p>
         <a class="form-submit" href="/hackathon" style="text-decoration:none;">Go to hackathon page</a>
       </div>
 
@@ -43,8 +43,8 @@ import "../../styles/hackathon.css";
         </p>
 
         <div class="hack-team-badge">
-          <span class="hack-team-label">Your Team Number</span>
-          <span class="hack-team-number" id="teamNumber">—</span>
+          <span class="hack-team-label">Your Participant ID</span>
+          <span class="hack-team-number" id="participantId">—</span>
         </div>
 
         <h3 class="hack-subsection-title">Your info</h3>
@@ -82,7 +82,7 @@ import "../../styles/hackathon.css";
   const notRegistered = document.getElementById("notRegistered")!;
   const loading = document.getElementById("loading")!;
   const content = document.getElementById("content")!;
-  const teamNumberEl = document.getElementById("teamNumber")!;
+  const participantIdEl = document.getElementById("participantId")!;
   const yourInfo = document.getElementById("yourInfo")!;
   const teammateBlock = document.getElementById("teammateBlock")!;
   const teammateInfo = document.getElementById("teammateInfo")!;
@@ -106,12 +106,12 @@ import "../../styles/hackathon.css";
   }
 
   function render(p: HackathonParticipant) {
-    teamNumberEl.textContent = String(p.teamNumber);
+    participantIdEl.textContent = String(p.participantId);
     yourInfo.innerHTML = [
       row("Name", p.name),
       row("Email", p.email),
       row("Student #", p.studentNumber),
-      row("Track", p.role === "first-year" ? "First year (team of 2)" : "Senior year"),
+      row("Track", p.role === "first-year" ? "First year (pair)" : "Senior year"),
       row("Year", yearLabel(p)),
     ].join("");
 
@@ -121,6 +121,10 @@ import "../../styles/hackathon.css";
         row("Name", p.teammate.name),
         row("Email", p.teammate.email),
         row("Student #", p.teammate.studentNumber),
+        row(
+          "Participant ID",
+          p.teammate.participantId != null ? String(p.teammate.participantId) : ""
+        ),
       ].join("");
     }
   }

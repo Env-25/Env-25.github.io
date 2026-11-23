@@ -52,7 +52,7 @@ import "../../styles/admin.css";
   };
   type HackathonParticipant = {
     userSub: string;
-    teamNumber?: number;
+    participantId?: number;
     role?: string;
     name?: string;
     email?: string;
@@ -64,6 +64,7 @@ import "../../styles/admin.css";
     teammateName?: string;
     teammateEmail?: string;
     teammateStudentNumber?: string;
+    teammateParticipantId?: number;
     createdAt?: string;
     updatedAt?: string;
   };
@@ -974,13 +975,13 @@ import "../../styles/admin.css";
     state = null;
     panel().innerHTML = `<p class="admin-status">Loading hackathon participants…</p>`;
     let participants: HackathonParticipant[] = [];
-    let sortKey = "teamNumber";
+    let sortKey = "participantId";
     let sortDir: "asc" | "desc" = "asc";
     let note = "";
     let query = "";
 
     const columns: { key: string; label: string }[] = [
-      { key: "teamNumber", label: "Team #" },
+      { key: "participantId", label: "Participant ID" },
       { key: "name", label: "Name" },
       { key: "email", label: "Email" },
       { key: "studentNumber", label: "Student #" },
@@ -1008,7 +1009,7 @@ import "../../styles/admin.css";
         ? participants
         : participants.filter((row) =>
             [
-              row.teamNumber,
+              row.participantId,
               row.name,
               row.email,
               row.studentNumber,
@@ -1018,14 +1019,15 @@ import "../../styles/admin.css";
               row.teammateName,
               row.teammateEmail,
               row.teammateStudentNumber,
+              row.teammateParticipantId,
             ]
               .map((value) => String(value || "").toLowerCase())
               .some((value) => value.includes(q))
           );
       const factor = sortDir === "asc" ? 1 : -1;
       return [...rows].sort((a, b) => {
-        if (sortKey === "teamNumber") {
-          return ((Number(a.teamNumber) || 0) - (Number(b.teamNumber) || 0)) * factor;
+        if (sortKey === "participantId") {
+          return ((Number(a.participantId) || 0) - (Number(b.participantId) || 0)) * factor;
         }
         if (sortKey === "createdAt") {
           return String(a.createdAt || "").localeCompare(String(b.createdAt || "")) * factor;
@@ -1055,7 +1057,7 @@ import "../../styles/admin.css";
         <h3>Edit participant</h3>
         <p class="admin-modal__copy">${escape(row.email || row.name || row.userSub)}</p>
         <div class="admin-fields">
-          ${field("hkTeamNumber", "Team number", String(row.teamNumber ?? ""), { type: "number" })}
+          ${field("hkParticipantId", "Participant ID", String(row.participantId ?? ""), { type: "number" })}
           ${field("hkRole", "Role (first-year / upper-year)", row.role || "")}
           ${field("hkName", "Name", row.name || "")}
           ${field("hkEmail", "Email", row.email || "", { type: "email" })}
@@ -1065,6 +1067,7 @@ import "../../styles/admin.css";
           ${field("hkTeammateName", "Teammate name", row.teammateName || "")}
           ${field("hkTeammateEmail", "Teammate email", row.teammateEmail || "", { type: "email" })}
           ${field("hkTeammateStudentNumber", "Teammate student number", row.teammateStudentNumber || "")}
+          ${field("hkTeammateParticipantId", "Teammate participant ID", String(row.teammateParticipantId ?? ""), { type: "number" })}
         </div>
         <div class="admin-modal__actions">
           <button class="admin-secondary" type="button" id="cancelHackathonEdit">Cancel</button>
@@ -1081,7 +1084,7 @@ import "../../styles/admin.css";
             action: "updateHackathonParticipant",
             userSub: row.userSub,
             updates: {
-              teamNumber: valueOf("hkTeamNumber"),
+              participantId: valueOf("hkParticipantId"),
               role: valueOf("hkRole"),
               name: valueOf("hkName"),
               email: valueOf("hkEmail"),
@@ -1091,6 +1094,7 @@ import "../../styles/admin.css";
               teammateName: valueOf("hkTeammateName"),
               teammateEmail: valueOf("hkTeammateEmail"),
               teammateStudentNumber: valueOf("hkTeammateStudentNumber"),
+              teammateParticipantId: valueOf("hkTeammateParticipantId"),
             },
           });
           const next = response.participant;
@@ -1123,13 +1127,17 @@ import "../../styles/admin.css";
         ? rows
             .map(
               (row) => `<tr>
-            <td class="admin-table__identifier">${escape(String(row.teamNumber ?? "—"))}</td>
+            <td class="admin-table__identifier">${escape(String(row.participantId ?? "—"))}</td>
             <td>${escape(row.name || "—")}</td>
             <td>${row.email ? `<a href="mailto:${escape(row.email)}">${escape(row.email)}</a>` : "—"}</td>
             <td>${escape(row.studentNumber || "—")}</td>
             <td>${escape(roleLabel(row.role))}</td>
             <td>${escape(yearLabel(row))}</td>
-            <td>${escape(row.teammateName || row.teammateEmail || "—")}</td>
+            <td>${escape(
+              row.teammateParticipantId != null
+                ? `${row.teammateName || row.teammateEmail || "Teammate"} (#${row.teammateParticipantId})`
+                : (row.teammateName || row.teammateEmail || "—")
+            )}</td>
             <td>${escape(formatOrderDate(row.createdAt))}</td>
             <td><div class="admin-row-actions">
               <button type="button" class="admin-link-button" data-edit-hackathon="${escape(row.userSub)}">Update</button>
@@ -1145,7 +1153,7 @@ import "../../styles/admin.css";
         <p class="admin-panel__intro">Registered hackathon participants from the live database. Edit details or remove a signup if needed.</p>
         ${note ? message(note) : ""}
         <div class="admin-toolbar">
-          <input class="admin-search" id="hackathonSearch" placeholder="Search name, email, team #…" value="${escape(query)}">
+          <input class="admin-search" id="hackathonSearch" placeholder="Search name, email, participant ID…" value="${escape(query)}">
           <div class="admin-row-actions">
             <button type="button" class="admin-button" id="searchHackathon">Search</button>
             <button type="button" class="admin-secondary" id="reloadHackathon">Reload</button>
@@ -1174,11 +1182,11 @@ import "../../styles/admin.css";
 
       panel().querySelectorAll<HTMLButtonElement>("[data-sort]").forEach((button) => {
         button.addEventListener("click", () => {
-          const key = button.dataset.sort || "teamNumber";
+          const key = button.dataset.sort || "participantId";
           if (sortKey === key) sortDir = sortDir === "asc" ? "desc" : "asc";
           else {
             sortKey = key;
-            sortDir = key === "teamNumber" || key === "createdAt" ? "asc" : "asc";
+            sortDir = "asc";
           }
           paint();
         });

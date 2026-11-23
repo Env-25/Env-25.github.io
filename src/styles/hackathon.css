@@ -54,6 +54,9 @@
   line-height: 1.75;
   color: rgba(58, 75, 74, 0.8);
 }
+.hack-desc p + p {
+  margin-top: 1rem;
+}
 
 /* ── Two signup tracks ── */
 .hack-tracks {

@@ -202,7 +202,7 @@ import "../../../styles/hackathon.css";
         partnerEmail: email,
       });
       formWrap.hidden = true;
-      successMsg.textContent = `Your team is confirmed — you are team #${res.teamNumber}. Your partner is now on your team too.`;
+      successMsg.textContent = `You're registered — your participant ID is #${res.participantId}. Your partner's ID is #${res.partnerParticipantId}.`;
       success.hidden = false;
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (e: any) {

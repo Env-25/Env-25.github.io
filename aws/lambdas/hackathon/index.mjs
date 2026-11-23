@@ -42,10 +42,14 @@ const SIGNUP_ENABLED = process.env.HACKATHON_SIGNUP_ENABLED !== "false";
 /** Require a verified email before registering (matches the orders flow). */
 const REQUIRE_VERIFIED_EMAIL = process.env.HACKATHON_REQUIRE_VERIFIED !== "false";
 
-/** Reserved partition-key row that stores the incrementing team-number counter. */
-const COUNTER_KEY = "__TEAM_COUNTER__";
-/** First team number handed out. */
-const TEAM_NUMBER_START = 1;
+/**
+ * Reserved partition-key rows that store incrementing participant-ID counters.
+ * Upper-year IDs start at 1001; first-year pair IDs start at 2001 (lead + partner are consecutive).
+ */
+const COUNTER_KEY_UPPER = "__ID_COUNTER_UPPER__";
+const COUNTER_KEY_FIRST = "__ID_COUNTER_FIRST__";
+const PARTICIPANT_ID_UPPER_START = 1001;
+const PARTICIPANT_ID_FIRST_START = 2001;
 
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({ region: REGION }), {
   marshallOptions: { removeUndefinedValues: true },
@@ -136,7 +140,7 @@ function escapeHtml(s) {
 }
 
 /** Registration confirmation email — matches the site's email template/branding. */
-function buildRegistrationEmailHtml({ name, teamNumber }) {
+function buildRegistrationEmailHtml({ name, participantId }) {
   const participantUrl = `${SITE_URL}/hackathon/participant`;
   const contactUrl = `${SITE_URL}/contact?topic=hackathon`;
   return `<!DOCTYPE html>
@@ -168,10 +172,10 @@ function buildRegistrationEmailHtml({ name, teamNumber }) {
               <p style="margin:0 0 18px;font-size:15px;line-height:1.6;color:rgba(58,75,74,0.8);">
                 Hi ${escapeHtml(name || "there")}, you have registered for the <strong>CHBE Hackathon</strong>.
               </p>
-              <p style="margin:0 0 6px;font-size:13px;color:rgba(58,75,74,0.65);">Your team number</p>
-              <p style="margin:0 0 20px;font-family:Georgia,'Times New Roman',serif;font-size:30px;font-weight:700;color:#4a8550;">#${escapeHtml(String(teamNumber))}</p>
+              <p style="margin:0 0 6px;font-size:13px;color:rgba(58,75,74,0.65);">Your participant ID</p>
+              <p style="margin:0 0 20px;font-family:Georgia,'Times New Roman',serif;font-size:30px;font-weight:700;color:#4a8550;">#${escapeHtml(String(participantId))}</p>
               <p style="margin:0 0 18px;font-size:14px;line-height:1.7;color:rgba(58,75,74,0.8);">
-                You can access the hackathon participant page any time to view your team info and, later, submission instructions.
+                You can access the hackathon participant portal any time to view your info and, later, submission instructions.
               </p>
             </td>
           </tr>
@@ -180,7 +184,7 @@ function buildRegistrationEmailHtml({ name, teamNumber }) {
               <table role="presentation" cellpadding="0" cellspacing="0" border="0">
                 <tr>
                   <td style="background-color:#3a4b4a;">
-                    <a href="${participantUrl}" target="_blank" rel="noopener" style="display:inline-block;padding:14px 22px;font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#fdf9ef;text-decoration:none;">Open participant page</a>
+                    <a href="${participantUrl}" target="_blank" rel="noopener" style="display:inline-block;padding:14px 22px;font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#fdf9ef;text-decoration:none;">Open participant portal</a>
                   </td>
                 </tr>
               </table>
@@ -206,20 +210,21 @@ function buildRegistrationEmailHtml({ name, teamNumber }) {
 </html>`;
 }
 
-/** Queue a confirmation email via the shared FIFO queue (drained by chbe-admin). */
-async function sendRegistrationEmails(recipients, teamNumber) {
+/** Queue confirmation emails (each recipient gets their own participant ID). */
+async function sendRegistrationEmails(recipients) {
   if (!EMAIL_QUEUE_URL) {
     console.warn("EMAIL_QUEUE_URL unset — skipping registration emails.");
     return;
   }
   await Promise.all(
     recipients
-      .filter((r) => looksLikeEmail(r?.email))
+      .filter((r) => looksLikeEmail(r?.email) && Number.isFinite(Number(r.participantId)))
       .map(async (r) => {
+        const participantId = Number(r.participantId);
         const job = {
           to: String(r.email).trim().toLowerCase(),
-          subject: `You're registered — CHBE Hackathon (Team #${teamNumber})`,
-          html: buildRegistrationEmailHtml({ name: r.name, teamNumber }),
+          subject: `You're registered — CHBE Hackathon (ID #${participantId})`,
+          html: buildRegistrationEmailHtml({ name: r.name, participantId }),
           source: SES_FROM,
         };
         if (Buffer.byteLength(JSON.stringify(job), "utf8") > 250 * 1024) {
@@ -275,28 +280,37 @@ async function getParticipant(userSub) {
   return res.Item || null;
 }
 
-/** Atomically allocate the next incremental team number (shared across all teams). */
-async function allocateTeamNumber() {
+/**
+ * Atomically allocate the next participant ID for a track.
+ * @param {"upper"|"first"} track
+ * @param {number} [count=1] how many consecutive IDs to reserve (first-year pairs use 2)
+ * @returns {Promise<number>} the first ID in the reserved block
+ */
+async function allocateParticipantIds(track, count = 1) {
+  const key = track === "first" ? COUNTER_KEY_FIRST : COUNTER_KEY_UPPER;
+  const start = track === "first" ? PARTICIPANT_ID_FIRST_START : PARTICIPANT_ID_UPPER_START;
+  const step = Math.max(1, Math.floor(Number(count)) || 1);
   const res = await ddb.send(
     new UpdateCommand({
       TableName: TABLE,
-      Key: { userSub: COUNTER_KEY },
-      UpdateExpression: "SET seq = if_not_exists(seq, :start) + :one",
+      Key: { userSub: key },
+      UpdateExpression: "SET seq = if_not_exists(seq, :start) + :step",
       ExpressionAttributeValues: {
-        ":start": TEAM_NUMBER_START - 1,
-        ":one": 1,
+        ":start": start - 1,
+        ":step": step,
       },
       ReturnValues: "UPDATED_NEW",
     })
   );
-  return Number(res.Attributes?.seq);
+  // Counter now equals the last ID handed out; the first ID in this block is last - step + 1.
+  return Number(res.Attributes?.seq) - step + 1;
 }
 
 /** Public shape returned to the browser for a participant record. */
 function publicParticipant(item) {
   if (!item) return null;
   return {
-    teamNumber: Number(item.teamNumber),
+    participantId: Number(item.participantId),
     role: item.role,
     name: item.name || "",
     email: item.email || "",
@@ -309,6 +323,9 @@ function publicParticipant(item) {
           name: item.teammateName || "",
           email: item.teammateEmail || "",
           studentNumber: item.teammateStudentNumber || "",
+          participantId: item.teammateParticipantId
+            ? Number(item.teammateParticipantId)
+            : null,
         }
       : null,
     createdAt: item.createdAt || "",
@@ -362,7 +379,7 @@ async function checkPartner(user, partnerEmail) {
     return {
       ok: false,
       status: 409,
-      error: `Your partner is already part of a team (team #${partnerRecord.teamNumber}).`,
+      error: `Your partner is already registered (participant ID #${partnerRecord.participantId}).`,
     };
   }
 
@@ -376,7 +393,7 @@ async function handleValidatePartner(event, user) {
   const existing = await getParticipant(user.sub);
   if (existing) {
     return json(409, {
-      error: `You have already signed up (team #${existing.teamNumber}).`,
+      error: `You have already signed up (participant ID #${existing.participantId}).`,
       code: "ALREADY_REGISTERED",
     });
   }
@@ -420,7 +437,7 @@ async function handleRegisterFirstYear(event, user) {
   const existing = await getParticipant(user.sub);
   if (existing) {
     return json(409, {
-      error: `You have already signed up (team #${existing.teamNumber}).`,
+      error: `You have already signed up (participant ID #${existing.participantId}).`,
       code: "ALREADY_REGISTERED",
     });
   }
@@ -431,12 +448,14 @@ async function handleRegisterFirstYear(event, user) {
   }
   const partner = check.partner;
 
-  const teamNumber = await allocateTeamNumber();
+  // Reserve two consecutive first-year IDs (e.g. 2001 + 2002 = same pair).
+  const leadId = await allocateParticipantIds("first", 2);
+  const partnerId = leadId + 1;
   const now = new Date().toISOString();
 
   const leadItem = {
     userSub: user.sub,
-    teamNumber,
+    participantId: leadId,
     role: "first-year",
     isTeamLead: true,
     name: user.name,
@@ -446,12 +465,13 @@ async function handleRegisterFirstYear(event, user) {
     teammateName: partner.name,
     teammateEmail: partner.email,
     teammateStudentNumber: partnerStudentNumber,
+    teammateParticipantId: partnerId,
     createdAt: now,
     updatedAt: now,
   };
   const partnerItem = {
     userSub: partner.sub,
-    teamNumber,
+    participantId: partnerId,
     role: "first-year",
     isTeamLead: false,
     addedByPartner: true,
@@ -462,6 +482,7 @@ async function handleRegisterFirstYear(event, user) {
     teammateName: user.name,
     teammateEmail: user.email,
     teammateStudentNumber: studentNumber,
+    teammateParticipantId: leadId,
     createdAt: now,
     updatedAt: now,
   };
@@ -492,7 +513,7 @@ async function handleRegisterFirstYear(event, user) {
     if (msg.includes("ConditionalCheckFailed") || msg.includes("TransactionCanceled")) {
       return json(409, {
         error:
-          "Either you or your partner was just signed up to another team. Please refresh and try again.",
+          "Either you or your partner was just signed up. Please refresh and try again.",
         code: "RACE_CONFLICT",
       });
     }
@@ -501,18 +522,20 @@ async function handleRegisterFirstYear(event, user) {
   }
 
   try {
-    await sendRegistrationEmails(
-      [
-        { email: user.email, name: user.name },
-        { email: partner.email, name: partner.name },
-      ],
-      teamNumber
-    );
+    await sendRegistrationEmails([
+      { email: user.email, name: user.name, participantId: leadId },
+      { email: partner.email, name: partner.name, participantId: partnerId },
+    ]);
   } catch (err) {
     console.error("First-year confirmation email failed", err);
   }
 
-  return json(201, { ok: true, teamNumber, role: "first-year" });
+  return json(201, {
+    ok: true,
+    participantId: leadId,
+    partnerParticipantId: partnerId,
+    role: "first-year",
+  });
 }
 
 async function handleRegisterUpperYear(event, user) {
@@ -547,17 +570,17 @@ async function handleRegisterUpperYear(event, user) {
   const existing = await getParticipant(user.sub);
   if (existing) {
     return json(409, {
-      error: `You have already signed up (team #${existing.teamNumber}).`,
+      error: `You have already signed up (participant ID #${existing.participantId}).`,
       code: "ALREADY_REGISTERED",
     });
   }
 
-  const teamNumber = await allocateTeamNumber();
+  const participantId = await allocateParticipantIds("upper", 1);
   const now = new Date().toISOString();
 
   const item = {
     userSub: user.sub,
-    teamNumber,
+    participantId,
     role: "upper-year",
     isTeamLead: true,
     name: user.name,
@@ -590,12 +613,14 @@ async function handleRegisterUpperYear(event, user) {
   }
 
   try {
-    await sendRegistrationEmails([{ email: user.email, name: user.name }], teamNumber);
+    await sendRegistrationEmails([
+      { email: user.email, name: user.name, participantId },
+    ]);
   } catch (err) {
     console.error("Upper-year confirmation email failed", err);
   }
 
-  return json(201, { ok: true, teamNumber, role: "upper-year" });
+  return json(201, { ok: true, participantId, role: "upper-year" });
 }
 
 export async function handler(event) {

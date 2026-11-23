@@ -37,8 +37,12 @@ const LOCKER_MANAGEMENT_TABLE = process.env.LOCKER_MANAGEMENT_TABLE || "locker-m
 const ADMIN_AUDIT_TABLE = process.env.ADMIN_AUDIT_TABLE || "admin-audit";
 const ADMIN_PUBLISH_QUEUE_TABLE = process.env.ADMIN_PUBLISH_QUEUE_TABLE || "admin-publish-queue";
 const HACKATHON_TABLE = process.env.HACKATHON_TABLE || "hackathon-participants";
-/** Reserved row in the hackathon table that holds the team-number counter (not a person). */
-const HACKATHON_COUNTER_KEY = "__TEAM_COUNTER__";
+/** Reserved rows in the hackathon table that hold participant-ID counters (not people). */
+const HACKATHON_COUNTER_KEYS = new Set([
+  "__ID_COUNTER_UPPER__",
+  "__ID_COUNTER_FIRST__",
+  "__TEAM_COUNTER__", // legacy counter from earlier signup schema
+]);
 const SES_FROM = process.env.SES_FROM || "UBC CHBE Council Notifications <notifications@ubcchbecouncil.com>";
 const ORDERS_SES_FROM = process.env.ORDERS_SES_FROM || "CHBE Orders <orders@ubcchbecouncil.com>";
 const EMAIL_QUEUE_URL = process.env.EMAIL_QUEUE_URL || "";
@@ -862,7 +866,7 @@ async function hackathonRecipients() {
       ExclusiveStartKey,
     }));
     for (const item of page.Items || []) {
-      if (item.userSub === HACKATHON_COUNTER_KEY) continue;
+      if (HACKATHON_COUNTER_KEYS.has(String(item.userSub || ""))) continue;
       const email = String(item.email || "").trim().toLowerCase();
       if (email) recipients.add(email);
     }
@@ -1272,19 +1276,19 @@ async function handleListHackathon(_event, user) {
   do {
     const page = await ddb.send(new ScanCommand({ TableName: HACKATHON_TABLE, ExclusiveStartKey }));
     for (const item of page.Items || []) {
-      if (item.userSub === HACKATHON_COUNTER_KEY) continue;
+      if (HACKATHON_COUNTER_KEYS.has(String(item.userSub || ""))) continue;
       participants.push(item);
     }
     ExclusiveStartKey = page.LastEvaluatedKey;
   } while (ExclusiveStartKey);
-  participants.sort((a, b) => (Number(a.teamNumber) || 0) - (Number(b.teamNumber) || 0));
+  participants.sort((a, b) => (Number(a.participantId) || 0) - (Number(b.participantId) || 0));
   return json(200, { participants });
 }
 
 async function handleUpdateHackathon(body, user) {
   requireGroup(user, "hackathon");
   const userSub = String(body.userSub || "").trim();
-  if (!userSub || userSub === HACKATHON_COUNTER_KEY) throw bad("A valid participant is required.");
+  if (!userSub || HACKATHON_COUNTER_KEYS.has(userSub)) throw bad("A valid participant is required.");
   const updates = body.updates && typeof body.updates === "object" ? body.updates : {};
 
   const existing = await ddb.send(new GetCommand({ TableName: HACKATHON_TABLE, Key: { userSub } }));
@@ -1304,12 +1308,24 @@ async function handleUpdateHackathon(body, user) {
     sets.push(`#${key} = :${key}`);
   }
 
-  if ("teamNumber" in updates) {
-    const teamNumber = Math.floor(Number(updates.teamNumber));
-    if (!Number.isFinite(teamNumber) || teamNumber < 0) throw bad("Team number must be a non-negative whole number.");
-    names["#teamNumber"] = "teamNumber";
-    values[":teamNumber"] = teamNumber;
-    sets.push("#teamNumber = :teamNumber");
+  if ("participantId" in updates || "teamNumber" in updates) {
+    const participantId = Math.floor(Number(updates.participantId ?? updates.teamNumber));
+    if (!Number.isFinite(participantId) || participantId < 0) {
+      throw bad("Participant ID must be a non-negative whole number.");
+    }
+    names["#participantId"] = "participantId";
+    values[":participantId"] = participantId;
+    sets.push("#participantId = :participantId");
+  }
+
+  if ("teammateParticipantId" in updates) {
+    const teammateParticipantId = Math.floor(Number(updates.teammateParticipantId));
+    if (!Number.isFinite(teammateParticipantId) || teammateParticipantId < 0) {
+      throw bad("Teammate participant ID must be a non-negative whole number.");
+    }
+    names["#teammateParticipantId"] = "teammateParticipantId";
+    values[":teammateParticipantId"] = teammateParticipantId;
+    sets.push("#teammateParticipantId = :teammateParticipantId");
   }
 
   if (sets.length === 1) throw bad("No changes to save.");
@@ -1331,7 +1347,7 @@ async function handleUpdateHackathon(body, user) {
 async function handleDeleteHackathon(body, user) {
   requireGroup(user, "hackathon");
   const userSub = String(body.userSub || "").trim();
-  if (!userSub || userSub === HACKATHON_COUNTER_KEY) throw bad("A valid participant is required.");
+  if (!userSub || HACKATHON_COUNTER_KEYS.has(userSub)) throw bad("A valid participant is required.");
 
   const existing = await ddb.send(new GetCommand({ TableName: HACKATHON_TABLE, Key: { userSub } }));
   if (!existing.Item) throw Object.assign(new Error("Participant not found."), { status: 404 });
@@ -1339,7 +1355,7 @@ async function handleDeleteHackathon(body, user) {
   await ddb.send(new DeleteCommand({ TableName: HACKATHON_TABLE, Key: { userSub } }));
   await recordAudit("hackathon.participant.delete", user, {
     userSub,
-    teamNumber: existing.Item.teamNumber,
+    participantId: existing.Item.participantId,
     email: existing.Item.email,
   });
   return json(200, { ok: true });
