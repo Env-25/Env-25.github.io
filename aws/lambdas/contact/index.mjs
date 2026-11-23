@@ -22,8 +22,7 @@ const INQUIRY_EMAIL = {
   "3rd-year": "3rdyearrep@chbecouncil.com",
   "4th-year": "4thyearrep@chbecouncil.com",
   sponsorship: "ubcenvision@gmail.com",
-  // TODO: replace with the real hackathon organisers' inbox before launch.
-  hackathon: process.env.HACKATHON_CONTACT_EMAIL || "hackathon@chbecouncil.com",
+  hackathon: process.env.HACKATHON_CONTACT_EMAIL || "ubcenvision@gmail.com",
 };
 
 const INQUIRY_LABEL = {
@@ -34,7 +33,7 @@ const INQUIRY_LABEL = {
   "3rd-year": "3rd Year Representative",
   "4th-year": "4th Year Representative",
   sponsorship: "Sponsorship",
-  hackathon: "Hackathon Participants",
+  hackathon: "Hackathon",
 };
 
 const sqs = new SQSClient({ region: REGION });

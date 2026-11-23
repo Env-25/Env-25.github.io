@@ -36,6 +36,9 @@ const LOCKER_CHANGES_TABLE = process.env.LOCKER_CHANGES_TABLE || "locker-changes
 const LOCKER_MANAGEMENT_TABLE = process.env.LOCKER_MANAGEMENT_TABLE || "locker-management";
 const ADMIN_AUDIT_TABLE = process.env.ADMIN_AUDIT_TABLE || "admin-audit";
 const ADMIN_PUBLISH_QUEUE_TABLE = process.env.ADMIN_PUBLISH_QUEUE_TABLE || "admin-publish-queue";
+const HACKATHON_TABLE = process.env.HACKATHON_TABLE || "hackathon-participants";
+/** Reserved row in the hackathon table that holds the team-number counter (not a person). */
+const HACKATHON_COUNTER_KEY = "__TEAM_COUNTER__";
 const SES_FROM = process.env.SES_FROM || "UBC CHBE Council Notifications <notifications@ubcchbecouncil.com>";
 const ORDERS_SES_FROM = process.env.ORDERS_SES_FROM || "CHBE Orders <orders@ubcchbecouncil.com>";
 const EMAIL_QUEUE_URL = process.env.EMAIL_QUEUE_URL || "";
@@ -91,7 +94,7 @@ const WORKSPACES = {
   members: { group: "members" },
   resources: { group: "resources", path: "public/resources/resources.csv" },
 };
-const ADMIN_GROUPS = ["superusers", "merch", "lockers", "notifications", "members", "events", "resources", "admin"];
+const ADMIN_GROUPS = ["superusers", "merch", "lockers", "notifications", "members", "events", "resources", "hackathon", "admin"];
 const FILE_LIMIT_BYTES = 5 * 1024 * 1024;
 
 function json(statusCode, body) {
@@ -848,10 +851,49 @@ async function subscribedRecipients(audiences) {
   return [...recipients];
 }
 
+/** Every registered hackathon participant's email (skips the team-number counter row). */
+async function hackathonRecipients() {
+  const recipients = new Set();
+  let ExclusiveStartKey;
+  do {
+    const page = await ddb.send(new ScanCommand({
+      TableName: HACKATHON_TABLE,
+      ProjectionExpression: "userSub, email",
+      ExclusiveStartKey,
+    }));
+    for (const item of page.Items || []) {
+      if (item.userSub === HACKATHON_COUNTER_KEY) continue;
+      const email = String(item.email || "").trim().toLowerCase();
+      if (email) recipients.add(email);
+    }
+    ExclusiveStartKey = page.LastEvaluatedKey;
+  } while (ExclusiveStartKey);
+  return [...recipients];
+}
+
+/** Union of subscription-based audiences (Cognito) and the hackathon participant list. */
+async function notificationRecipients(audiences) {
+  const subAudiences = audiences.filter((audience) => ["general", "events", "important"].includes(audience));
+  const recipients = new Set();
+  if (subAudiences.length) {
+    for (const email of await subscribedRecipients(subAudiences)) recipients.add(email);
+  }
+  if (audiences.includes("hackathon")) {
+    for (const email of await hackathonRecipients()) recipients.add(email);
+  }
+  return [...recipients];
+}
+
 async function handleSendNotification(body, user) {
   requireGroup(user, "notifications");
   const subject = String(body.subject || "").trim().replace(/[\r\n]+/g, " ");
-  const audiences = [...new Set((Array.isArray(body.audiences) ? body.audiences : []).map(String))].filter((item) => ["general", "events", "important"].includes(item));
+  const audiences = [
+    ...new Set(
+      (Array.isArray(body.audiences) ? body.audiences : [])
+        .map((item) => String(item || "").trim().toLowerCase())
+        .filter((item) => ["general", "events", "important", "hackathon"].includes(item))
+    ),
+  ];
   if (!subject || subject.length > 160) throw bad("A subject is required and must be 160 characters or fewer.");
   const html = notificationHtml(cleanRichHtml(body.html));
   if (body.test === true) {
@@ -860,7 +902,7 @@ async function handleSendNotification(body, user) {
     return json(200, { ok: true, message: "Test email queued for delivery." });
   }
   if (!audiences.length) throw bad("Select at least one audience.");
-  const recipients = await subscribedRecipients(audiences);
+  const recipients = await notificationRecipients(audiences);
   await enqueueEmails(recipients.map((email) => emailJob({ to: email, subject, html })));
   await recordAudit("notification.queue", user, { subject, audiences, queued: recipients.length });
   return json(200, { ok: true, queued: recipients.length });
@@ -1210,6 +1252,99 @@ async function handleUpdateOrderStatus(body, user) {
   return json(200, { ok: true, emailed, order: publicOrder(next) });
 }
 
+/** Fields an admin may edit on a hackathon participant record. */
+const HACKATHON_EDITABLE_STRINGS = [
+  "name",
+  "email",
+  "studentNumber",
+  "role",
+  "academicYear",
+  "academicYearOther",
+  "teammateName",
+  "teammateEmail",
+  "teammateStudentNumber",
+];
+
+async function handleListHackathon(_event, user) {
+  requireGroup(user, "hackathon");
+  const participants = [];
+  let ExclusiveStartKey;
+  do {
+    const page = await ddb.send(new ScanCommand({ TableName: HACKATHON_TABLE, ExclusiveStartKey }));
+    for (const item of page.Items || []) {
+      if (item.userSub === HACKATHON_COUNTER_KEY) continue;
+      participants.push(item);
+    }
+    ExclusiveStartKey = page.LastEvaluatedKey;
+  } while (ExclusiveStartKey);
+  participants.sort((a, b) => (Number(a.teamNumber) || 0) - (Number(b.teamNumber) || 0));
+  return json(200, { participants });
+}
+
+async function handleUpdateHackathon(body, user) {
+  requireGroup(user, "hackathon");
+  const userSub = String(body.userSub || "").trim();
+  if (!userSub || userSub === HACKATHON_COUNTER_KEY) throw bad("A valid participant is required.");
+  const updates = body.updates && typeof body.updates === "object" ? body.updates : {};
+
+  const existing = await ddb.send(new GetCommand({ TableName: HACKATHON_TABLE, Key: { userSub } }));
+  if (!existing.Item) throw Object.assign(new Error("Participant not found."), { status: 404 });
+
+  const names = {};
+  const values = { ":updatedAt": new Date().toISOString() };
+  const sets = ["#updatedAt = :updatedAt"];
+  names["#updatedAt"] = "updatedAt";
+
+  for (const key of HACKATHON_EDITABLE_STRINGS) {
+    if (!(key in updates)) continue;
+    let value = String(updates[key] ?? "").trim();
+    if (key === "email" || key === "teammateEmail") value = value.toLowerCase();
+    names[`#${key}`] = key;
+    values[`:${key}`] = value;
+    sets.push(`#${key} = :${key}`);
+  }
+
+  if ("teamNumber" in updates) {
+    const teamNumber = Math.floor(Number(updates.teamNumber));
+    if (!Number.isFinite(teamNumber) || teamNumber < 0) throw bad("Team number must be a non-negative whole number.");
+    names["#teamNumber"] = "teamNumber";
+    values[":teamNumber"] = teamNumber;
+    sets.push("#teamNumber = :teamNumber");
+  }
+
+  if (sets.length === 1) throw bad("No changes to save.");
+
+  const result = await ddb.send(new UpdateCommand({
+    TableName: HACKATHON_TABLE,
+    Key: { userSub },
+    UpdateExpression: `SET ${sets.join(", ")}`,
+    ExpressionAttributeNames: names,
+    ExpressionAttributeValues: values,
+    ConditionExpression: "attribute_exists(userSub)",
+    ReturnValues: "ALL_NEW",
+  }));
+
+  await recordAudit("hackathon.participant.update", user, { userSub, fields: Object.keys(updates) });
+  return json(200, { ok: true, participant: result.Attributes });
+}
+
+async function handleDeleteHackathon(body, user) {
+  requireGroup(user, "hackathon");
+  const userSub = String(body.userSub || "").trim();
+  if (!userSub || userSub === HACKATHON_COUNTER_KEY) throw bad("A valid participant is required.");
+
+  const existing = await ddb.send(new GetCommand({ TableName: HACKATHON_TABLE, Key: { userSub } }));
+  if (!existing.Item) throw Object.assign(new Error("Participant not found."), { status: 404 });
+
+  await ddb.send(new DeleteCommand({ TableName: HACKATHON_TABLE, Key: { userSub } }));
+  await recordAudit("hackathon.participant.delete", user, {
+    userSub,
+    teamNumber: existing.Item.teamNumber,
+    email: existing.Item.email,
+  });
+  return json(200, { ok: true });
+}
+
 async function handleEmailQueue(event) {
   const batchStartedAt = Date.now();
   const results = await Promise.all((event.Records || []).map(async (record) => {
@@ -1255,6 +1390,7 @@ export async function handler(event) {
     if (method === "GET" && queryAction === "publishStatus") return await handlePublishStatus(event, user);
     if (method === "GET" && queryAction === "orders") return await handleListOrders(event, user);
     if (method === "GET" && queryAction === "lockerManagement") return await handleListLockerManagement(event, user);
+    if (method === "GET" && queryAction === "hackathon") return await handleListHackathon(event, user);
     if (method !== "POST") return json(405, { error: "Method not allowed." });
     const body = parseBody(event);
     if (body.action === "publishWorkspace") return await handlePublishWorkspace(body, user);
@@ -1265,6 +1401,8 @@ export async function handler(event) {
     if (body.action === "sendNotification") return await handleSendNotification(body, user);
     if (body.action === "groupUpdate") return await handleGroupUpdate(body, user);
     if (body.action === "updateOrderStatus") return await handleUpdateOrderStatus(body, user);
+    if (body.action === "updateHackathonParticipant") return await handleUpdateHackathon(body, user);
+    if (body.action === "deleteHackathonParticipant") return await handleDeleteHackathon(body, user);
     return json(400, { error: "Unknown action." });
   } catch (error) {
     const status = error?.status || 500;

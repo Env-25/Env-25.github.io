@@ -5,7 +5,7 @@ set -euo pipefail
 REGION="${AWS_REGION:-us-east-2}"
 USER_POOL_ID="${COGNITO_USER_POOL_ID:-us-east-2_HeZCWYUt3}"
 
-for group in superusers merch lockers notifications members events resources admin; do
+for group in superusers merch lockers notifications members events resources hackathon admin; do
   if aws cognito-idp get-group --region "$REGION" --user-pool-id "$USER_POOL_ID" --group-name "$group" >/dev/null 2>&1; then
     echo "Exists: $group"
   else

@@ -61,7 +61,7 @@ const contactApiUrl = (import.meta.env.PUBLIC_CONTACT_API_URL as string | undefi
               <option value="3rd-year">3rd Year Representative</option>
               <option value="4th-year">4th Year Representative</option>
               <option value="sponsorship">Sponsorship</option>
-              <option value="hackathon">Hackathon Participants</option>
+              <option value="hackathon">Hackathon</option>
             </select>
             <p class="field-error" id="inquiryError">Please select a type of inquiry.</p>
           </div>
@@ -220,6 +220,15 @@ const contactApiUrl = (import.meta.env.PUBLIC_CONTACT_API_URL as string | undefi
 <script define:vars={{ contactApiUrl }}>
   const form = document.getElementById("contactForm");
   const inquiryEl = document.getElementById("contactInquiry");
+
+  // Preselect the inquiry type from a ?topic= query param (e.g. the hackathon pages
+  // link here with ?topic=hackathon so the right inbox is chosen automatically).
+  try {
+    const topic = new URLSearchParams(window.location.search).get("topic");
+    if (topic && inquiryEl.querySelector(`option[value="${CSS.escape(topic)}"]`)) {
+      inquiryEl.value = topic;
+    }
+  } catch (_) {}
   const nameEl = document.getElementById("contactName");
   const emailEl = document.getElementById("contactEmail");
   const subjectEl = document.getElementById("contactSubject");

@@ -20,7 +20,7 @@ import "../../styles/admin.css";
     orderStatusLabel,
   } from "../../utils/order-status";
 
-  type Workspace = "lockers" | "merch" | "notifications" | "members" | "events" | "resources" | "orders" | "locker-management" | "admin";
+  type Workspace = "lockers" | "merch" | "notifications" | "members" | "events" | "resources" | "orders" | "locker-management" | "hackathon" | "admin";
   type CsvRow = Record<string, string>;
   type ContentState = { workspace: Workspace; year?: string; headers: string[]; rows: CsvRow[]; caption?: string; originalInventory?: InventoryItem[] };
   type InventoryItem = { sku: string; kind: "locker" | "merch"; productId: string; label: string; name: string; color?: string; quantity: number };
@@ -50,6 +50,23 @@ import "../../styles/admin.css";
     createdAt?: string;
     updatedAt?: string;
   };
+  type HackathonParticipant = {
+    userSub: string;
+    teamNumber?: number;
+    role?: string;
+    name?: string;
+    email?: string;
+    studentNumber?: string;
+    academicYear?: string;
+    academicYearOther?: string;
+    isTeamLead?: boolean;
+    teammateSub?: string;
+    teammateName?: string;
+    teammateEmail?: string;
+    teammateStudentNumber?: string;
+    createdAt?: string;
+    updatedAt?: string;
+  };
 
   const root = document.getElementById("adminRoot")!;
   const workspaces: { id: Workspace; label: string; group: string }[] = [
@@ -61,6 +78,7 @@ import "../../styles/admin.css";
     { id: "members", label: "Members", group: "members" },
     { id: "events", label: "Events", group: "events" },
     { id: "resources", label: "Resources", group: "resources" },
+    { id: "hackathon", label: "Hackathon", group: "hackathon" },
     { id: "admin", label: "Admin", group: "admin" },
   ];
   const headers: Record<string, string[]> = {
@@ -215,12 +233,13 @@ import "../../styles/admin.css";
   }
 
   function renderShell() {
+    const visible = workspaces.filter((item) => profile?.groups.includes(item.group));
     root.innerHTML = `
       <nav class="admin-nav"><a href="/" class="admin-nav__brand">CHBE ADMIN</a><a href="/" class="admin-nav__back">← Back to site</a></nav>
       <div class="admin-layout">
         <div class="admin-heading"><h1>Admin Console</h1><p class="admin-email">${escape(profile?.email)}</p></div>
         <div class="admin-body">
-          <aside class="admin-menu">${workspaces.map((item) => `<button type="button" data-workspace="${item.id}">${item.label}</button>`).join("")}</aside>
+          <aside class="admin-menu">${visible.map((item) => `<button type="button" data-workspace="${item.id}">${item.label}</button>`).join("") || `<p class="admin-status">No workspaces assigned to your account.</p>`}</aside>
           <section class="admin-panel" id="adminPanel"><p class="admin-status">Choose an area from the menu.</p></section>
         </div>
       </div>`;
@@ -250,10 +269,11 @@ import "../../styles/admin.css";
     if (workspace === "admin") return renderUserAdmin();
     if (workspace === "orders") return renderOrdersWorkspace();
     if (workspace === "locker-management") return renderLockerManagementWorkspace();
+    if (workspace === "hackathon") return renderHackathonWorkspace();
     await loadContentWorkspace(workspace);
   }
 
-  async function loadContentWorkspace(workspace: Exclude<Workspace, "notifications" | "admin" | "orders">, year = "2026") {
+  async function loadContentWorkspace(workspace: Exclude<Workspace, "notifications" | "admin" | "orders" | "locker-management" | "hackathon">, year = "2026") {
     panel().innerHTML = `<p class="admin-status">Loading ${escape(workspace)}…</p>`;
     try {
       const data = await getAdmin<{ content: string; caption?: string }>({ action: "content", workspace, ...(workspace === "members" ? { year } : {}) });
@@ -950,6 +970,267 @@ import "../../styles/admin.css";
     await load();
   }
 
+  async function renderHackathonWorkspace() {
+    state = null;
+    panel().innerHTML = `<p class="admin-status">Loading hackathon participants…</p>`;
+    let participants: HackathonParticipant[] = [];
+    let sortKey = "teamNumber";
+    let sortDir: "asc" | "desc" = "asc";
+    let note = "";
+    let query = "";
+
+    const columns: { key: string; label: string }[] = [
+      { key: "teamNumber", label: "Team #" },
+      { key: "name", label: "Name" },
+      { key: "email", label: "Email" },
+      { key: "studentNumber", label: "Student #" },
+      { key: "role", label: "Role" },
+      { key: "academicYear", label: "Year" },
+      { key: "teammateName", label: "Teammate" },
+      { key: "createdAt", label: "Signed up" },
+    ];
+
+    const roleLabel = (role?: string) => {
+      if (role === "first-year") return "First year";
+      if (role === "upper-year") return "Upper year";
+      return role || "—";
+    };
+
+    const yearLabel = (row: HackathonParticipant) => {
+      if (!row.academicYear) return "—";
+      if (row.academicYear === "other") return row.academicYearOther || "Other";
+      return row.academicYear;
+    };
+
+    const filtered = () => {
+      const q = query.trim().toLowerCase();
+      const rows = !q
+        ? participants
+        : participants.filter((row) =>
+            [
+              row.teamNumber,
+              row.name,
+              row.email,
+              row.studentNumber,
+              row.role,
+              row.academicYear,
+              row.academicYearOther,
+              row.teammateName,
+              row.teammateEmail,
+              row.teammateStudentNumber,
+            ]
+              .map((value) => String(value || "").toLowerCase())
+              .some((value) => value.includes(q))
+          );
+      const factor = sortDir === "asc" ? 1 : -1;
+      return [...rows].sort((a, b) => {
+        if (sortKey === "teamNumber") {
+          return ((Number(a.teamNumber) || 0) - (Number(b.teamNumber) || 0)) * factor;
+        }
+        if (sortKey === "createdAt") {
+          return String(a.createdAt || "").localeCompare(String(b.createdAt || "")) * factor;
+        }
+        if (sortKey === "role") {
+          return roleLabel(a.role).localeCompare(roleLabel(b.role)) * factor;
+        }
+        if (sortKey === "academicYear") {
+          return yearLabel(a).localeCompare(yearLabel(b), undefined, { numeric: true }) * factor;
+        }
+        return String((a as Record<string, unknown>)[sortKey] || "").localeCompare(
+          String((b as Record<string, unknown>)[sortKey] || ""),
+          undefined,
+          { numeric: true, sensitivity: "base" }
+        ) * factor;
+      });
+    };
+
+    const field = (id: string, label: string, value: string, opts?: { type?: string; full?: boolean }) =>
+      `<div class="admin-field${opts?.full ? " admin-field--full" : ""}"><label for="${id}">${escape(label)}</label><input id="${id}" ${opts?.type ? `type="${opts.type}"` : 'type="text"'} value="${escape(value)}"></div>`;
+
+    const openEditor = (row: HackathonParticipant) => {
+      closeModal();
+      document.body.insertAdjacentHTML(
+        "beforeend",
+        modal(`
+        <h3>Edit participant</h3>
+        <p class="admin-modal__copy">${escape(row.email || row.name || row.userSub)}</p>
+        <div class="admin-fields">
+          ${field("hkTeamNumber", "Team number", String(row.teamNumber ?? ""), { type: "number" })}
+          ${field("hkRole", "Role (first-year / upper-year)", row.role || "")}
+          ${field("hkName", "Name", row.name || "")}
+          ${field("hkEmail", "Email", row.email || "", { type: "email" })}
+          ${field("hkStudentNumber", "Student number", row.studentNumber || "")}
+          ${field("hkAcademicYear", "Academic year", row.academicYear || "")}
+          ${field("hkAcademicYearOther", "Academic year (other)", row.academicYearOther || "", { full: true })}
+          ${field("hkTeammateName", "Teammate name", row.teammateName || "")}
+          ${field("hkTeammateEmail", "Teammate email", row.teammateEmail || "", { type: "email" })}
+          ${field("hkTeammateStudentNumber", "Teammate student number", row.teammateStudentNumber || "")}
+        </div>
+        <div class="admin-modal__actions">
+          <button class="admin-secondary" type="button" id="cancelHackathonEdit">Cancel</button>
+          <button class="admin-button" type="button" id="saveHackathonEdit">Save changes</button>
+        </div>`)
+      );
+      document.getElementById("cancelHackathonEdit")?.addEventListener("click", closeModal);
+      document.getElementById("saveHackathonEdit")?.addEventListener("click", async () => {
+        const button = document.getElementById("saveHackathonEdit") as HTMLButtonElement;
+        const valueOf = (id: string) => (document.getElementById(id) as HTMLInputElement | null)?.value ?? "";
+        button.disabled = true;
+        try {
+          const response = await postAdmin<{ participant?: HackathonParticipant }>({
+            action: "updateHackathonParticipant",
+            userSub: row.userSub,
+            updates: {
+              teamNumber: valueOf("hkTeamNumber"),
+              role: valueOf("hkRole"),
+              name: valueOf("hkName"),
+              email: valueOf("hkEmail"),
+              studentNumber: valueOf("hkStudentNumber"),
+              academicYear: valueOf("hkAcademicYear"),
+              academicYearOther: valueOf("hkAcademicYearOther"),
+              teammateName: valueOf("hkTeammateName"),
+              teammateEmail: valueOf("hkTeammateEmail"),
+              teammateStudentNumber: valueOf("hkTeammateStudentNumber"),
+            },
+          });
+          const next = response.participant;
+          if (next) {
+            participants = participants.map((item) => (item.userSub === row.userSub ? { ...item, ...next } : item));
+          }
+          closeModal();
+          note = `Updated ${next?.email || row.email || "participant"}.`;
+          paint();
+        } catch (error) {
+          button.disabled = false;
+          document.querySelector(".admin-modal__dialog")?.insertAdjacentHTML(
+            "afterbegin",
+            message(error instanceof Error ? error.message : "Could not save changes.", true)
+          );
+        }
+      });
+    };
+
+    const paint = () => {
+      const rows = filtered();
+      const head =
+        columns
+          .map((column) => {
+            const marker = sortKey === column.key ? (sortDir === "asc" ? " ↑" : " ↓") : "";
+            return `<th><button type="button" class="admin-sort-button" data-sort="${column.key}">${escape(column.label)}${marker}</button></th>`;
+          })
+          .join("") + "<th></th>";
+      const body = rows.length
+        ? rows
+            .map(
+              (row) => `<tr>
+            <td class="admin-table__identifier">${escape(String(row.teamNumber ?? "—"))}</td>
+            <td>${escape(row.name || "—")}</td>
+            <td>${row.email ? `<a href="mailto:${escape(row.email)}">${escape(row.email)}</a>` : "—"}</td>
+            <td>${escape(row.studentNumber || "—")}</td>
+            <td>${escape(roleLabel(row.role))}</td>
+            <td>${escape(yearLabel(row))}</td>
+            <td>${escape(row.teammateName || row.teammateEmail || "—")}</td>
+            <td>${escape(formatOrderDate(row.createdAt))}</td>
+            <td><div class="admin-row-actions">
+              <button type="button" class="admin-link-button" data-edit-hackathon="${escape(row.userSub)}">Update</button>
+              <button type="button" class="admin-link-button admin-link-button--danger" data-delete-hackathon="${escape(row.userSub)}">Delete</button>
+            </div></td>
+          </tr>`
+            )
+            .join("")
+        : `<tr><td colspan="${columns.length + 1}">No participants${query.trim() ? " match this search" : " yet"}.</td></tr>`;
+
+      panel().innerHTML = `
+        <h2>Hackathon</h2>
+        <p class="admin-panel__intro">Registered hackathon participants from the live database. Edit details or remove a signup if needed.</p>
+        ${note ? message(note) : ""}
+        <div class="admin-toolbar">
+          <input class="admin-search" id="hackathonSearch" placeholder="Search name, email, team #…" value="${escape(query)}">
+          <div class="admin-row-actions">
+            <button type="button" class="admin-button" id="searchHackathon">Search</button>
+            <button type="button" class="admin-secondary" id="reloadHackathon">Reload</button>
+          </div>
+        </div>
+        <p class="admin-status">${rows.length} of ${participants.length} participant(s).</p>
+        <div class="admin-table-wrap">
+          <table class="admin-table admin-orders-table">
+            <thead><tr>${head}</tr></thead>
+            <tbody>${body}</tbody>
+          </table>
+        </div>`;
+
+      const searchInput = document.getElementById("hackathonSearch") as HTMLInputElement | null;
+      const applySearch = () => {
+        query = searchInput?.value || "";
+        paint();
+      };
+      document.getElementById("searchHackathon")?.addEventListener("click", applySearch);
+      searchInput?.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          applySearch();
+        }
+      });
+
+      panel().querySelectorAll<HTMLButtonElement>("[data-sort]").forEach((button) => {
+        button.addEventListener("click", () => {
+          const key = button.dataset.sort || "teamNumber";
+          if (sortKey === key) sortDir = sortDir === "asc" ? "desc" : "asc";
+          else {
+            sortKey = key;
+            sortDir = key === "teamNumber" || key === "createdAt" ? "asc" : "asc";
+          }
+          paint();
+        });
+      });
+
+      panel().querySelectorAll<HTMLButtonElement>("[data-edit-hackathon]").forEach((button) => {
+        button.addEventListener("click", () => {
+          const row = participants.find((item) => item.userSub === button.dataset.editHackathon);
+          if (row) openEditor(row);
+        });
+      });
+
+      panel().querySelectorAll<HTMLButtonElement>("[data-delete-hackathon]").forEach((button) => {
+        button.addEventListener("click", async () => {
+          const userSub = button.dataset.deleteHackathon || "";
+          const row = participants.find((item) => item.userSub === userSub);
+          if (!row) return;
+          if (!window.confirm(`Delete ${row.email || row.name || "this participant"} from the hackathon? This cannot be undone.`)) return;
+          button.disabled = true;
+          try {
+            await postAdmin({ action: "deleteHackathonParticipant", userSub });
+            participants = participants.filter((item) => item.userSub !== userSub);
+            note = `Deleted ${row.email || row.name || "participant"}.`;
+            paint();
+          } catch (error) {
+            note = error instanceof Error ? error.message : "Could not delete this participant.";
+            paint();
+            panel().querySelector(".admin-message")?.classList.add("admin-message--error");
+          }
+        });
+      });
+
+      document.getElementById("reloadHackathon")?.addEventListener("click", () => {
+        void load();
+      });
+    };
+
+    const load = async () => {
+      panel().innerHTML = `<p class="admin-status">Loading hackathon participants…</p>`;
+      try {
+        const response = await getAdmin<{ participants: HackathonParticipant[] }>({ action: "hackathon" });
+        participants = response.participants || [];
+        note = `Loaded ${participants.length} participant(s).`;
+        paint();
+      } catch (error) {
+        panel().innerHTML = message(error instanceof Error ? error.message : "Could not load hackathon participants.", true);
+      }
+    };
+
+    await load();
+  }
+
   function emailPreview(html: string) {
     return `<!doctype html><html><body style="margin:0;background:#fdf9ef;color:#3a4b4a;font-family:Arial,Helvetica,sans-serif"><table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:20px"><table width="100%" style="max-width:600px;background:#fff;border:1px solid #dce3df"><tr><td style="padding:24px;background:#3a4b4a;color:#fff;text-align:center"><img src="${window.location.origin}/logos/logo-text-white.png" alt="CHBE" width="150" style="display:block;margin:auto"><p style="margin:12px 0 0;color:#fff;font-weight:bold;letter-spacing:2px;font-size:11px">UBC CHBE COUNCIL</p></td></tr><tr><td style="padding:28px;font-size:16px;line-height:1.65">${html}</td></tr><tr><td style="padding:0 28px 28px;text-align:center"><span style="display:inline-block;padding:12px 18px;background:#3a4b4a;color:#fff;font-size:13px;font-weight:bold">Want to unsubscribe? Manage subscriptions</span><p style="font-size:12px">Contact us</p></td></tr></table></td></tr></table></body></html>`;
   }
@@ -998,7 +1279,7 @@ import "../../styles/admin.css";
     closeModal();
     panel().innerHTML = `
       <h2>Notifications</h2><p class="admin-panel__intro">Send email to subscribed users.</p><div id="mailNote">${note ? message(note) : ""}</div>
-      <div class="admin-email-grid"><div><div class="admin-field"><label for="mailSubject">Subject</label><input id="mailSubject" maxlength="160" placeholder="Email subject"></div><div class="admin-field" style="margin-top:1rem"><label for="mailBody">Message</label><div class="admin-rte-toolbar" aria-label="Message formatting"><button type="button" data-format="bold"><strong>B</strong></button><button type="button" data-format="italic"><em>I</em></button><button type="button" data-format="insertUnorderedList">List</button><button type="button" data-format="link">Link</button><button type="button" data-format="emailImages">Images</button></div><div id="mailBody" class="admin-rte" contenteditable="true" role="textbox" aria-multiline="true"><p>Write your announcement here.</p></div><div class="admin-rte-actions"><button class="admin-secondary" type="button" id="clearMailBody">Clear</button><button class="admin-secondary" type="button" id="downloadMailDraft">Download draft</button><button class="admin-secondary" type="button" id="uploadMailDraft">Upload draft</button><input id="mailDraftFile" type="file" accept="application/json,.json" hidden></div><p class="admin-panel__intro">Click an image in the message and drag its bottom-right handle to resize it.</p></div><section class="admin-image-manager" id="emailImages"><div><h4>Email images</h4><p class="admin-panel__intro">Choose an existing image to insert, or preview a new file before uploading and inserting it. Uploaded images are saved in the email image library.</p></div><div class="admin-field"><label for="emailImageUploads">Add new images</label><input id="emailImageUploads" type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple></div><div class="admin-image-grid" id="emailImageOptions"><p class="admin-panel__intro">No email images have been uploaded yet.</p></div></section><div class="admin-audience"><label><input type="checkbox" value="general"> General</label><label><input type="checkbox" value="events"> Events</label><label><input type="checkbox" value="important"> Important</label></div><div class="admin-row-actions"><button class="admin-secondary" id="sendTest">Send test to me</button><button class="admin-button" id="sendNotification">Send notification</button></div></div><div><label class="admin-field"><span>Live preview</span><iframe title="Email preview" class="admin-preview" id="mailPreview" sandbox=""></iframe></label></div></div>`;
+      <div class="admin-email-grid"><div><div class="admin-field"><label for="mailSubject">Subject</label><input id="mailSubject" maxlength="160" placeholder="Email subject"></div><div class="admin-field" style="margin-top:1rem"><label for="mailBody">Message</label><div class="admin-rte-toolbar" aria-label="Message formatting"><button type="button" data-format="bold"><strong>B</strong></button><button type="button" data-format="italic"><em>I</em></button><button type="button" data-format="insertUnorderedList">List</button><button type="button" data-format="link">Link</button><button type="button" data-format="emailImages">Images</button></div><div id="mailBody" class="admin-rte" contenteditable="true" role="textbox" aria-multiline="true"><p>Write your announcement here.</p></div><div class="admin-rte-actions"><button class="admin-secondary" type="button" id="clearMailBody">Clear</button><button class="admin-secondary" type="button" id="downloadMailDraft">Download draft</button><button class="admin-secondary" type="button" id="uploadMailDraft">Upload draft</button><input id="mailDraftFile" type="file" accept="application/json,.json" hidden></div><p class="admin-panel__intro">Click an image in the message and drag its bottom-right handle to resize it.</p></div><section class="admin-image-manager" id="emailImages"><div><h4>Email images</h4><p class="admin-panel__intro">Choose an existing image to insert, or preview a new file before uploading and inserting it. Uploaded images are saved in the email image library.</p></div><div class="admin-field"><label for="emailImageUploads">Add new images</label><input id="emailImageUploads" type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple></div><div class="admin-image-grid" id="emailImageOptions"><p class="admin-panel__intro">No email images have been uploaded yet.</p></div></section><div class="admin-audience"><label><input type="checkbox" value="general"> General</label><label><input type="checkbox" value="events"> Events</label><label><input type="checkbox" value="important"> Important</label><label><input type="checkbox" value="hackathon"> Hackathon participants</label></div><div class="admin-row-actions"><button class="admin-secondary" id="sendTest">Send test to me</button><button class="admin-button" id="sendNotification">Send notification</button></div></div><div><label class="admin-field"><span>Live preview</span><iframe title="Email preview" class="admin-preview" id="mailPreview" sandbox=""></iframe></label></div></div>`;
     const body = document.getElementById("mailBody")!;
     const subjectInput = document.getElementById("mailSubject") as HTMLInputElement;
     const draftFile = document.getElementById("mailDraftFile") as HTMLInputElement;
@@ -1009,7 +1290,10 @@ import "../../styles/admin.css";
       note.innerHTML = text ? message(text, error) : "";
     };
     const renderPreview = () => { preview.srcdoc = emailPreview(body.innerHTML.replace(/<script[\s\S]*?<\/script>/gi, "")); };
-    const readAudiences = () => Array.from(panel().querySelectorAll<HTMLInputElement>(".admin-audience input:checked")).map((input) => input.value);
+    const readAudiences = () =>
+      Array.from(panel().querySelectorAll<HTMLInputElement>(".admin-audience input[type='checkbox']:checked"))
+        .map((input) => String(input.value || "").trim().toLowerCase())
+        .filter(Boolean);
     const writeAudiences = (audiences: string[]) => {
       const selected = new Set(audiences);
       panel().querySelectorAll<HTMLInputElement>(".admin-audience input").forEach((input) => {

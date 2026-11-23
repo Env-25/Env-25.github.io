@@ -10,6 +10,7 @@ export type AdminWorkspace =
   | "events"
   | "resources"
   | "orders"
+  | "hackathon"
   | "admin";
 
 async function request<T>(path = "", init: RequestInit = {}): Promise<T> {

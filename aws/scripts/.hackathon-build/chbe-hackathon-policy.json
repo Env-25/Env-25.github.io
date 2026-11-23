@@ -22,6 +22,12 @@
       "Effect": "Allow",
       "Action": ["cognito-idp:ListUsers"],
       "Resource": "arn:aws:cognito-idp:us-east-2:512392056041:userpool/us-east-2_HeZCWYUt3"
+    },
+    {
+      "Sid": "QueueEmail",
+      "Effect": "Allow",
+      "Action": ["sqs:SendMessage"],
+      "Resource": "arn:aws:sqs:us-east-2:512392056041:chbe-ses-send.fifo"
     }
   ]
 }

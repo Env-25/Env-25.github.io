@@ -18,6 +18,7 @@ LOCKER_CHANGES_TABLE="${LOCKER_CHANGES_TABLE:-locker-changes}"
 LOCKER_MANAGEMENT_TABLE="${LOCKER_MANAGEMENT_TABLE:-locker-management}"
 ADMIN_AUDIT_TABLE="${ADMIN_AUDIT_TABLE:-admin-audit}"
 ADMIN_PUBLISH_QUEUE_TABLE="${ADMIN_PUBLISH_QUEUE_TABLE:-admin-publish-queue}"
+HACKATHON_TABLE="${HACKATHON_TABLE:-hackathon-participants}"
 SES_FROM="${SES_FROM:-UBC CHBE Council Notifications <notifications@ubcchbecouncil.com>}"
 EMAIL_QUEUE_NAME="${EMAIL_QUEUE_NAME:-chbe-ses-send.fifo}"
 EMAIL_DLQ_NAME="${EMAIL_DLQ_NAME:-chbe-ses-send-dlq.fifo}"
@@ -133,6 +134,7 @@ cat > "$POLICY_PATH" <<EOF
       "arn:aws:dynamodb:$REGION:$ACCOUNT_ID:table/$LOCKER_MANAGEMENT_TABLE"
     ]},
     {"Sid":"PublishQueue","Effect":"Allow","Action":["dynamodb:GetItem","dynamodb:PutItem","dynamodb:UpdateItem","dynamodb:DeleteItem","dynamodb:Query"],"Resource":"arn:aws:dynamodb:$REGION:$ACCOUNT_ID:table/$ADMIN_PUBLISH_QUEUE_TABLE"},
+    {"Sid":"HackathonManage","Effect":"Allow","Action":["dynamodb:Scan","dynamodb:GetItem","dynamodb:PutItem","dynamodb:UpdateItem","dynamodb:DeleteItem"],"Resource":"arn:aws:dynamodb:$REGION:$ACCOUNT_ID:table/$HACKATHON_TABLE"},
     {"Sid":"InventoryDelete","Effect":"Allow","Action":"dynamodb:DeleteItem","Resource":"arn:aws:dynamodb:$REGION:$ACCOUNT_ID:table/$INVENTORY_TABLE"},
     {"Sid":"SelfInvokeDrain","Effect":"Allow","Action":"lambda:InvokeFunction","Resource":"arn:aws:lambda:$REGION:$ACCOUNT_ID:function:$LAMBDA_NAME"},
     {"Sid":"EmailQueue","Effect":"Allow","Action":["sqs:SendMessage","sqs:ReceiveMessage","sqs:DeleteMessage","sqs:GetQueueAttributes"],"Resource":"$EMAIL_QUEUE_ARN"},
@@ -175,6 +177,7 @@ variables = {
   "LOCKER_MANAGEMENT_TABLE": "$LOCKER_MANAGEMENT_TABLE",
   "ADMIN_AUDIT_TABLE": "$ADMIN_AUDIT_TABLE",
   "ADMIN_PUBLISH_QUEUE_TABLE": "$ADMIN_PUBLISH_QUEUE_TABLE",
+  "HACKATHON_TABLE": "$HACKATHON_TABLE",
   "SES_FROM": "$SES_FROM",
   "ORDERS_SES_FROM": "CHBE Orders <orders@ubcchbecouncil.com>",
   "EMAIL_QUEUE_URL": "$EMAIL_QUEUE_URL",

@@ -18,9 +18,14 @@ COGNITO_USER_POOL_ID="${COGNITO_USER_POOL_ID:-us-east-2_HeZCWYUt3}"
 COGNITO_CLIENT_ID="${COGNITO_CLIENT_ID:-285b5dv7j67uos6r1rcv572bo5}"
 HACKATHON_SIGNUP_ENABLED="${HACKATHON_SIGNUP_ENABLED:-true}"
 HACKATHON_REQUIRE_VERIFIED="${HACKATHON_REQUIRE_VERIFIED:-true}"
+EMAIL_QUEUE_NAME="${EMAIL_QUEUE_NAME:-chbe-ses-send.fifo}"
+SES_FROM="${SES_FROM:-UBC CHBE Hackathon <hackathon@ubcchbecouncil.com>}"
+SITE_URL="${SITE_URL:-https://ubcchbecouncil.com}"
 export ALLOWED_ORIGINS="${ALLOWED_ORIGINS:-https://ubcchbecouncil.com,https://www.ubcchbecouncil.com,https://chbe-site.akshajs.org,http://localhost:3001,http://localhost:4321}"
 
 ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text)"
+EMAIL_QUEUE_URL="$(aws sqs get-queue-url --region "$REGION" --queue-name "$EMAIL_QUEUE_NAME" --query QueueUrl --output text)"
+EMAIL_QUEUE_ARN="$(aws sqs get-queue-attributes --region "$REGION" --queue-url "$EMAIL_QUEUE_URL" --attribute-names QueueArn --query "Attributes.QueueArn" --output text)"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 LAMBDA_DIR="$(cd "$SCRIPT_DIR/../lambdas/hackathon" && pwd)"
 # Keep artifacts under the repo so Windows aws.exe can read paths from Git Bash
@@ -42,6 +47,8 @@ winpath() {
 echo "==> Account $ACCOUNT_ID  Region $REGION  Function $LAMBDA_NAME"
 echo "    Table: $HACKATHON_TABLE"
 echo "    User pool: $COGNITO_USER_POOL_ID"
+echo "    Email queue: $EMAIL_QUEUE_NAME"
+echo "    SES from: $SES_FROM"
 
 # --- DynamoDB table ---
 if ! aws dynamodb describe-table --region "$REGION" --table-name "$HACKATHON_TABLE" >/dev/null 2>&1; then
@@ -98,6 +105,12 @@ cat > "$POLICY_JSON" <<EOF
       "Effect": "Allow",
       "Action": ["cognito-idp:ListUsers"],
       "Resource": "arn:aws:cognito-idp:${REGION}:${ACCOUNT_ID}:userpool/${COGNITO_USER_POOL_ID}"
+    },
+    {
+      "Sid": "QueueEmail",
+      "Effect": "Allow",
+      "Action": ["sqs:SendMessage"],
+      "Resource": "${EMAIL_QUEUE_ARN}"
     }
   ]
 }
@@ -135,6 +148,7 @@ PY
 # --- Environment ---
 export HACKATHON_TABLE COGNITO_USER_POOL_ID COGNITO_CLIENT_ID
 export HACKATHON_SIGNUP_ENABLED HACKATHON_REQUIRE_VERIFIED
+export EMAIL_QUEUE_URL SES_FROM SITE_URL
 python - "$ENV_JSON" <<'PY'
 import json, os, sys
 vars = {
@@ -143,6 +157,9 @@ vars = {
     "COGNITO_CLIENT_ID": os.environ.get("COGNITO_CLIENT_ID", ""),
     "HACKATHON_SIGNUP_ENABLED": os.environ.get("HACKATHON_SIGNUP_ENABLED", "true"),
     "HACKATHON_REQUIRE_VERIFIED": os.environ.get("HACKATHON_REQUIRE_VERIFIED", "true"),
+    "EMAIL_QUEUE_URL": os.environ.get("EMAIL_QUEUE_URL", ""),
+    "SES_FROM": os.environ.get("SES_FROM", "UBC CHBE Hackathon <hackathon@ubcchbecouncil.com>"),
+    "SITE_URL": os.environ.get("SITE_URL", "https://ubcchbecouncil.com"),
 }
 json.dump({"Variables": vars}, open(sys.argv[1], "w"))
 PY

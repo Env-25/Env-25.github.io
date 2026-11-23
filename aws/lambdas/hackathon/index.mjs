@@ -11,6 +11,7 @@
  *
  * CORS is configured on the Function URL — do not set CORS headers here.
  */
+import { randomUUID } from "node:crypto";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
   DynamoDBDocumentClient,
@@ -23,12 +24,18 @@ import {
   CognitoIdentityProviderClient,
   ListUsersCommand,
 } from "@aws-sdk/client-cognito-identity-provider";
+import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import { CognitoJwtVerifier } from "aws-jwt-verify";
 
 const REGION = process.env.AWS_REGION || "us-east-2";
 const TABLE = process.env.HACKATHON_TABLE || "hackathon-participants";
 const USER_POOL_ID = process.env.COGNITO_USER_POOL_ID || "";
 const CLIENT_ID = process.env.COGNITO_CLIENT_ID || "";
+/** FIFO email queue drained by the chbe-admin consumer (same queue orders/contact use). */
+const EMAIL_QUEUE_URL = process.env.EMAIL_QUEUE_URL || "";
+const SES_FROM =
+  process.env.SES_FROM || "UBC CHBE Hackathon <hackathon@ubcchbecouncil.com>";
+const SITE_URL = (process.env.SITE_URL || "https://ubcchbecouncil.com").replace(/\/$/, "");
 
 /** Flip to false to close signups (page still loads, register calls are rejected). */
 const SIGNUP_ENABLED = process.env.HACKATHON_SIGNUP_ENABLED !== "false";
@@ -44,6 +51,7 @@ const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({ region: REGION }), 
   marshallOptions: { removeUndefinedValues: true },
 });
 const cognito = new CognitoIdentityProviderClient({ region: REGION });
+const sqs = new SQSClient({ region: REGION });
 
 const verifier =
   USER_POOL_ID && CLIENT_ID
@@ -117,6 +125,117 @@ function normalizeStudentNumber(raw) {
 
 function looksLikeEmail(email) {
   return typeof email === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function escapeHtml(s) {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+/** Registration confirmation email — matches the site's email template/branding. */
+function buildRegistrationEmailHtml({ name, teamNumber }) {
+  const participantUrl = `${SITE_URL}/hackathon/participant`;
+  const contactUrl = `${SITE_URL}/contact?topic=hackathon`;
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light" />
+  <title>CHBE Hackathon registration</title>
+</head>
+<body style="margin:0;padding:0;background-color:#fdf9ef;-webkit-text-size-adjust:100%;">
+  <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">You're registered for the CHBE Hackathon.</div>
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#fdf9ef;">
+    <tr>
+      <td align="center" style="padding:32px 16px;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width:560px;background-color:#ffffff;border:1px solid rgba(58,75,74,0.15);">
+          <tr>
+            <td align="center" style="background-color:#3a4b4a;padding:28px 24px 24px;">
+              <a href="${SITE_URL}" target="_blank" rel="noopener" style="text-decoration:none;">
+                <img src="${SITE_URL}/logos/logo-text-white.png" alt="CHBE" width="168" style="display:block;width:168px;max-width:70%;height:auto;border:0;" />
+              </a>
+              <p style="margin:14px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:rgba(253,249,239,0.65);">UBC CHBE Council</p>
+            </td>
+          </tr>
+          <tr><td style="height:4px;background-color:#72a691;font-size:0;line-height:0;">&nbsp;</td></tr>
+          <tr>
+            <td style="padding:36px 32px 8px;font-family:Arial,Helvetica,sans-serif;color:#3a4b4a;">
+              <h1 style="margin:0 0 12px;font-family:Georgia,'Times New Roman',serif;font-size:26px;font-weight:700;line-height:1.25;color:#3a4b4a;">You're registered!</h1>
+              <p style="margin:0 0 18px;font-size:15px;line-height:1.6;color:rgba(58,75,74,0.8);">
+                Hi ${escapeHtml(name || "there")}, you have registered for the <strong>CHBE Hackathon</strong>.
+              </p>
+              <p style="margin:0 0 6px;font-size:13px;color:rgba(58,75,74,0.65);">Your team number</p>
+              <p style="margin:0 0 20px;font-family:Georgia,'Times New Roman',serif;font-size:30px;font-weight:700;color:#4a8550;">#${escapeHtml(String(teamNumber))}</p>
+              <p style="margin:0 0 18px;font-size:14px;line-height:1.7;color:rgba(58,75,74,0.8);">
+                You can access the hackathon participant page any time to view your team info and, later, submission instructions.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:0 32px 28px;font-family:Arial,Helvetica,sans-serif;color:#3a4b4a;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td style="background-color:#3a4b4a;">
+                    <a href="${participantUrl}" target="_blank" rel="noopener" style="display:inline-block;padding:14px 22px;font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#fdf9ef;text-decoration:none;">Open participant page</a>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin:18px 0 0;font-size:14px;line-height:1.6;color:rgba(58,75,74,0.8);">
+                Please keep an eye out for any announcements in your inbox.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="background-color:#f7f3e8;border-top:1px solid rgba(58,75,74,0.12);padding:20px 32px;">
+              <p style="margin:0 0 6px;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.5;color:rgba(58,75,74,0.65);">UBC Chemical &amp; Biological Engineering Student Council</p>
+              <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.5;">
+                Questions? <a href="${contactUrl}" target="_blank" rel="noopener" style="color:#4a8550;text-decoration:underline;">Contact us</a>
+                · <a href="${SITE_URL}" target="_blank" rel="noopener" style="color:#4a8550;text-decoration:underline;">ubcchbecouncil.com</a>
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
+/** Queue a confirmation email via the shared FIFO queue (drained by chbe-admin). */
+async function sendRegistrationEmails(recipients, teamNumber) {
+  if (!EMAIL_QUEUE_URL) {
+    console.warn("EMAIL_QUEUE_URL unset — skipping registration emails.");
+    return;
+  }
+  await Promise.all(
+    recipients
+      .filter((r) => looksLikeEmail(r?.email))
+      .map(async (r) => {
+        const job = {
+          to: String(r.email).trim().toLowerCase(),
+          subject: `You're registered — CHBE Hackathon (Team #${teamNumber})`,
+          html: buildRegistrationEmailHtml({ name: r.name, teamNumber }),
+          source: SES_FROM,
+        };
+        if (Buffer.byteLength(JSON.stringify(job), "utf8") > 250 * 1024) {
+          console.error("Registration email job too large; skipping", job.to);
+          return;
+        }
+        await sqs.send(
+          new SendMessageCommand({
+            QueueUrl: EMAIL_QUEUE_URL,
+            MessageBody: JSON.stringify(job),
+            MessageGroupId: "ses",
+            MessageDeduplicationId: randomUUID(),
+          })
+        );
+      })
+  );
 }
 
 /** Look up a confirmed Cognito user by email. Returns { sub, email, name } or null. */
@@ -381,6 +500,18 @@ async function handleRegisterFirstYear(event, user) {
     return json(500, { error: "Could not complete registration. Try again." });
   }
 
+  try {
+    await sendRegistrationEmails(
+      [
+        { email: user.email, name: user.name },
+        { email: partner.email, name: partner.name },
+      ],
+      teamNumber
+    );
+  } catch (err) {
+    console.error("First-year confirmation email failed", err);
+  }
+
   return json(201, { ok: true, teamNumber, role: "first-year" });
 }
 
@@ -456,6 +587,12 @@ async function handleRegisterUpperYear(event, user) {
     }
     console.error("Upper-year register failed", err);
     return json(500, { error: "Could not complete registration. Try again." });
+  }
+
+  try {
+    await sendRegistrationEmails([{ email: user.email, name: user.name }], teamNumber);
+  } catch (err) {
+    console.error("Upper-year confirmation email failed", err);
   }
 
   return json(201, { ok: true, teamNumber, role: "upper-year" });
