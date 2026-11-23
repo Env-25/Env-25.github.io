@@ -1,0 +1,126 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import "../../styles/auth.css";
+import "../../styles/hackathon.css";
+---
+<BaseLayout title="CHBE Hackathon — UBC CHBE">
+  <section class="auth-hero">
+    <img src="/home/index-lower.jpg" alt="" class="auth-hero-bg" />
+    <div class="auth-hero-overlay"></div>
+    <div class="auth-hero-content">
+      <h1 class="auth-hero-title">CHBE Hackathon</h1>
+      <p class="auth-hero-sub">January 2027</p>
+    </div>
+  </section>
+
+  <section class="auth-section">
+    <div class="hack-intro">
+      <div class="hack-meta">
+        <span class="hack-meta-item">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+               fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="3" y="4" width="18" height="18" rx="2"/>
+            <line x1="16" y1="2" x2="16" y2="6"/>
+            <line x1="8" y1="2" x2="8" y2="6"/>
+            <line x1="3" y1="10" x2="21" y2="10"/>
+          </svg>
+          Jan 23 2027
+        </span>
+        <span class="hack-meta-item">
+          <span class="hack-meta-label">Mode</span> Online
+        </span>
+        <span class="hack-meta-item">
+          <span class="hack-meta-label">Deadline to sign up</span> TBD
+        </span>
+      </div>
+      <p class="hack-desc">Hackathon description</p>
+    </div>
+
+    <div class="hack-shell" style="max-width:900px;margin:0 auto;">
+      <!-- Already signed up -->
+      <div id="hackAlready" class="auth-status-panel" hidden>
+        <h2>You have already signed up</h2>
+        <p>
+          You can check your team and info here:
+          <a href="/hackathon/participant" class="form-link">hackathon participant page</a>.
+          <br />
+          If this is a mistake please
+          <a href="/contact" class="form-link">contact us</a> immediately.
+        </p>
+        <a class="form-submit" href="/hackathon/participant" style="text-decoration:none;">View my info</a>
+      </div>
+
+      <!-- Signup tracks -->
+      <div id="hackTracks">
+        <div class="hack-tracks">
+          <div class="hack-track-card">
+            <span class="hack-track-eyebrow">Track 1</span>
+            <h2 class="hack-track-title">I'm a first year</h2>
+            <p class="hack-track-desc">
+              First years sign up as a team of 2. Find your partner and sign up using the web form.
+            </p>
+            <a id="btnFirstYear" class="form-submit" href="/hackathon/register/first-year" style="text-decoration:none;">
+              Sign up
+            </a>
+          </div>
+
+          <div class="hack-track-card">
+            <span class="hack-track-eyebrow">Track 2</span>
+            <h2 class="hack-track-title">I'm a senior year</h2>
+            <p class="hack-track-desc">
+              For 2nd year and above. Sign up individually using the web form.
+            </p>
+            <a id="btnUpperYear" class="form-submit" href="/hackathon/register/upper-year" style="text-decoration:none;">
+              Sign up
+            </a>
+          </div>
+        </div>
+        <p id="hackSignedOutHint" class="hack-note" style="text-align:center;margin-top:1.5rem;" hidden>
+          You'll be asked to sign in before you can register.
+        </p>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  import { getSessionProfile } from "../../utils/auth";
+  import { isAuthConfigured } from "../../utils/auth-config";
+  import { getMyParticipant, isHackathonConfigured } from "../../utils/hackathon";
+
+  const already = document.getElementById("hackAlready")!;
+  const tracks = document.getElementById("hackTracks")!;
+  const btnFirst = document.getElementById("btnFirstYear") as HTMLAnchorElement;
+  const btnUpper = document.getElementById("btnUpperYear") as HTMLAnchorElement;
+  const signedOutHint = document.getElementById("hackSignedOutHint")!;
+
+  function showSignedOut() {
+    // Keep the tracks visible but route through sign-in first.
+    btnFirst.href = "/account/sign-in?next=/hackathon/register/first-year";
+    btnUpper.href = "/account/sign-in?next=/hackathon/register/upper-year";
+    signedOutHint.hidden = false;
+  }
+
+  (async () => {
+    if (!isAuthConfigured()) {
+      showSignedOut();
+      return;
+    }
+    const profile = await getSessionProfile();
+    if (!profile) {
+      showSignedOut();
+      return;
+    }
+    // Signed in — check if already registered.
+    if (!isHackathonConfigured()) return;
+    try {
+      const { participant } = await getMyParticipant();
+      if (participant) {
+        tracks.hidden = true;
+        already.hidden = false;
+      }
+    } catch {
+      /* leave tracks visible on error */
+    }
+  })();
+</script>

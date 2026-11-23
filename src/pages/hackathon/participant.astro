@@ -1,0 +1,159 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import "../../styles/auth.css";
+import "../../styles/hackathon.css";
+---
+<BaseLayout title="Hackathon Participant — UBC CHBE">
+  <section class="auth-hero">
+    <img src="/home/index-lower.jpg" alt="" class="auth-hero-bg" />
+    <div class="auth-hero-overlay"></div>
+    <div class="auth-hero-content">
+      <h1 class="auth-hero-title">Your Hackathon</h1>
+      <p class="auth-hero-sub">Submission &amp; Instructions</p>
+    </div>
+  </section>
+
+  <section class="auth-section">
+    <div class="auth-shell">
+
+      <!-- Sign in required -->
+      <div id="gate" class="auth-status-panel" hidden>
+        <h2>Sign in required</h2>
+        <p>Please sign in to view your hackathon info.</p>
+        <a class="form-submit" href="/account/sign-in?next=/hackathon/participant" style="text-decoration:none;">Sign in</a>
+      </div>
+
+      <!-- Not registered -->
+      <div id="notRegistered" class="auth-status-panel" hidden>
+        <h2>You haven't signed up yet</h2>
+        <p>Register for the CHBE Hackathon to see your team and info here.</p>
+        <a class="form-submit" href="/hackathon" style="text-decoration:none;">Go to hackathon page</a>
+      </div>
+
+      <!-- Loading -->
+      <div id="loading" class="auth-status-panel">
+        <h2>Loading…</h2>
+        <p>Fetching your hackathon info.</p>
+      </div>
+
+      <!-- Participant content -->
+      <div id="content" hidden>
+        <p class="auth-block-sub" style="margin-bottom:1.5rem;">
+          This page will be used for submission and instructions during the hackathon. Below is your info.
+        </p>
+
+        <div class="hack-team-badge">
+          <span class="hack-team-label">Your Team Number</span>
+          <span class="hack-team-number" id="teamNumber">—</span>
+        </div>
+
+        <h3 class="hack-subsection-title">Your info</h3>
+        <dl class="hack-info-list" id="yourInfo"></dl>
+
+        <div id="teammateBlock" hidden>
+          <h3 class="hack-subsection-title">Your teammate</h3>
+          <dl class="hack-info-list" id="teammateInfo"></dl>
+        </div>
+
+        <div class="hack-soon">
+          <h3>Submission opens later</h3>
+          <p>Instructions and project submission will appear here closer to the event. Keep checking back.</p>
+        </div>
+
+        <p class="hack-note" style="margin-top:1.5rem;">
+          Something look wrong? Please <a href="/contact">contact us</a> immediately.
+        </p>
+      </div>
+
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  import { getSessionProfile } from "../../utils/auth";
+  import { isAuthConfigured } from "../../utils/auth-config";
+  import {
+    getMyParticipant,
+    isHackathonConfigured,
+    type HackathonParticipant,
+  } from "../../utils/hackathon";
+
+  const gate = document.getElementById("gate")!;
+  const notRegistered = document.getElementById("notRegistered")!;
+  const loading = document.getElementById("loading")!;
+  const content = document.getElementById("content")!;
+  const teamNumberEl = document.getElementById("teamNumber")!;
+  const yourInfo = document.getElementById("yourInfo")!;
+  const teammateBlock = document.getElementById("teammateBlock")!;
+  const teammateInfo = document.getElementById("teammateInfo")!;
+
+  function esc(v: unknown) {
+    return String(v ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+  }
+
+  function row(label: string, value: string) {
+    if (!value) return "";
+    return `<div class="hack-info-row"><dt>${esc(label)}</dt><dd>${esc(value)}</dd></div>`;
+  }
+
+  function yearLabel(p: HackathonParticipant) {
+    if (p.role === "first-year") return "1st year";
+    if (p.academicYear === "other") return p.academicYearOther || "Other";
+    return p.academicYear ? `${p.academicYear} year` : "";
+  }
+
+  function render(p: HackathonParticipant) {
+    teamNumberEl.textContent = String(p.teamNumber);
+    yourInfo.innerHTML = [
+      row("Name", p.name),
+      row("Email", p.email),
+      row("Student #", p.studentNumber),
+      row("Track", p.role === "first-year" ? "First year (team of 2)" : "Senior year"),
+      row("Year", yearLabel(p)),
+    ].join("");
+
+    if (p.teammate) {
+      teammateBlock.hidden = false;
+      teammateInfo.innerHTML = [
+        row("Name", p.teammate.name),
+        row("Email", p.teammate.email),
+        row("Student #", p.teammate.studentNumber),
+      ].join("");
+    }
+  }
+
+  (async () => {
+    if (!isAuthConfigured()) {
+      loading.hidden = true;
+      gate.hidden = false;
+      return;
+    }
+    const profile = await getSessionProfile();
+    if (!profile) {
+      loading.hidden = true;
+      gate.hidden = false;
+      return;
+    }
+    if (!isHackathonConfigured()) {
+      loading.hidden = true;
+      notRegistered.hidden = false;
+      return;
+    }
+    try {
+      const { participant } = await getMyParticipant();
+      loading.hidden = true;
+      if (!participant) {
+        notRegistered.hidden = false;
+        return;
+      }
+      render(participant);
+      content.hidden = false;
+    } catch {
+      loading.hidden = true;
+      notRegistered.hidden = false;
+    }
+  })();
+</script>

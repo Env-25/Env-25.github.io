@@ -1,0 +1,205 @@
+---
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import "../../../styles/auth.css";
+import "../../../styles/hackathon.css";
+---
+<BaseLayout title="Senior-Year Hackathon Sign Up — UBC CHBE">
+  <section class="auth-hero">
+    <img src="/home/index-lower.jpg" alt="" class="auth-hero-bg" />
+    <div class="auth-hero-overlay"></div>
+    <div class="auth-hero-content">
+      <h1 class="auth-hero-title">Senior-Year Sign Up</h1>
+      <p class="auth-hero-sub">CHBE Hackathon · 2nd year and above</p>
+    </div>
+  </section>
+
+  <section class="auth-section">
+    <div class="auth-shell">
+
+      <!-- Sign in required -->
+      <div id="gate" class="auth-status-panel" hidden>
+        <h2>Sign in required</h2>
+        <p>Please sign in to register for the hackathon.</p>
+        <a class="form-submit" href="/account/sign-in?next=/hackathon/register/upper-year" style="text-decoration:none;">Sign in</a>
+      </div>
+
+      <!-- Already signed up -->
+      <div id="already" class="auth-status-panel" hidden>
+        <h2>You have already signed up</h2>
+        <p>
+          You can check your info on the
+          <a href="/hackathon/participant" class="form-link">hackathon participant page</a>.
+          If this is a mistake please <a href="/contact" class="form-link">contact us</a> immediately.
+        </p>
+        <a class="form-submit" href="/hackathon/participant" style="text-decoration:none;">View my info</a>
+      </div>
+
+      <!-- Success -->
+      <div id="success" class="auth-status-panel" hidden>
+        <h2>You're registered!</h2>
+        <p id="successMsg">Your registration is confirmed.</p>
+        <a class="form-submit" href="/hackathon/participant" style="text-decoration:none;">Go to participant page</a>
+      </div>
+
+      <!-- Form -->
+      <div id="formWrap" hidden>
+        <h2 class="auth-block-title">Register</h2>
+        <p class="auth-block-sub">Enter your details to sign up for the CHBE Hackathon.</p>
+
+        <form class="auth-form" id="upperYearForm" novalidate>
+          <div class="form-field">
+            <label class="form-label" for="studentNumber">Your student number <span class="required">*</span></label>
+            <input class="form-input" id="studentNumber" name="studentNumber" inputmode="numeric"
+                   placeholder="e.g. 12345678" autocomplete="off" required />
+            <p class="field-error" id="studentNumberError">Please enter a valid student number.</p>
+          </div>
+
+          <div class="form-field">
+            <label class="form-label" for="academicYear">Academic year <span class="required">*</span></label>
+            <select class="form-input form-select" id="academicYear" name="academicYear" required>
+              <option value="" disabled selected>Select your year…</option>
+              <option value="2nd">2nd year</option>
+              <option value="3rd">3rd year</option>
+              <option value="4th">4th year</option>
+              <option value="5th">5th year</option>
+              <option value="other">Other</option>
+            </select>
+            <p class="field-error" id="academicYearError">Please select your academic year.</p>
+          </div>
+
+          <div class="form-field" id="otherWrap" hidden>
+            <label class="form-label" for="academicYearOther">Please specify <span class="required">*</span></label>
+            <input class="form-input" id="academicYearOther" name="academicYearOther"
+                   placeholder="e.g. 6th year, co-op, exchange" autocomplete="off" />
+            <p class="field-error" id="academicYearOtherError">Please describe your academic year.</p>
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="form-submit" id="registerBtn">
+              <span class="btn-label">Register</span>
+              <span class="btn-spinner" aria-hidden="true"></span>
+            </button>
+          </div>
+
+          <p class="form-feedback form-feedback--error" id="formError" hidden></p>
+        </form>
+      </div>
+
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  import { getSessionProfile } from "../../../utils/auth";
+  import { isAuthConfigured } from "../../../utils/auth-config";
+  import {
+    getMyParticipant,
+    registerUpperYear,
+    isHackathonConfigured,
+  } from "../../../utils/hackathon";
+
+  const gate = document.getElementById("gate")!;
+  const already = document.getElementById("already")!;
+  const success = document.getElementById("success")!;
+  const successMsg = document.getElementById("successMsg")!;
+  const formWrap = document.getElementById("formWrap")!;
+  const form = document.getElementById("upperYearForm") as HTMLFormElement;
+
+  const studentNumber = document.getElementById("studentNumber") as HTMLInputElement;
+  const academicYear = document.getElementById("academicYear") as HTMLSelectElement;
+  const otherWrap = document.getElementById("otherWrap")!;
+  const academicYearOther = document.getElementById("academicYearOther") as HTMLInputElement;
+  const registerBtn = document.getElementById("registerBtn") as HTMLButtonElement;
+  const formError = document.getElementById("formError")!;
+
+  function setBusy(busy: boolean) {
+    registerBtn.classList.toggle("loading", busy);
+    registerBtn.disabled = busy;
+  }
+
+  function markError(el: HTMLInputElement | HTMLSelectElement, invalid: boolean) {
+    el.classList.toggle("error", invalid);
+    const err = el.closest(".form-field")?.querySelector(".field-error");
+    if (err) err.classList.toggle("visible", invalid);
+    return !invalid;
+  }
+
+  academicYear.addEventListener("change", () => {
+    const isOther = academicYear.value === "other";
+    otherWrap.hidden = !isOther;
+    markError(academicYear, false);
+  });
+
+  [studentNumber, academicYearOther].forEach((el) => {
+    el.addEventListener("input", () => {
+      el.classList.remove("error");
+      el.closest(".form-field")?.querySelector(".field-error")?.classList.remove("visible");
+      formError.hidden = true;
+    });
+  });
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    formError.hidden = true;
+
+    let ok = markError(studentNumber, studentNumber.value.trim() === "");
+    ok = markError(academicYear, academicYear.value === "") && ok;
+    if (academicYear.value === "other") {
+      ok = markError(academicYearOther, academicYearOther.value.trim() === "") && ok;
+    }
+    if (!ok) return;
+
+    if (!isHackathonConfigured()) {
+      formError.textContent = "The hackathon service is not configured yet.";
+      formError.hidden = false;
+      return;
+    }
+
+    setBusy(true);
+    try {
+      const res = await registerUpperYear({
+        studentNumber: studentNumber.value.trim(),
+        academicYear: academicYear.value,
+        academicYearOther: academicYearOther.value.trim(),
+      });
+      formWrap.hidden = true;
+      successMsg.textContent = `Your registration is confirmed — you are team #${res.teamNumber}.`;
+      success.hidden = false;
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch (e: any) {
+      if (e?.code === "ALREADY_REGISTERED") {
+        formWrap.hidden = true;
+        already.hidden = false;
+        return;
+      }
+      formError.textContent = e?.message || "Could not complete registration.";
+      formError.hidden = false;
+    } finally {
+      setBusy(false);
+    }
+  });
+
+  (async () => {
+    if (!isAuthConfigured()) {
+      gate.hidden = false;
+      return;
+    }
+    const profile = await getSessionProfile();
+    if (!profile) {
+      gate.hidden = false;
+      return;
+    }
+    if (isHackathonConfigured()) {
+      try {
+        const { participant } = await getMyParticipant();
+        if (participant) {
+          already.hidden = false;
+          return;
+        }
+      } catch {
+        /* fall through to form */
+      }
+    }
+    formWrap.hidden = false;
+  })();
+</script>

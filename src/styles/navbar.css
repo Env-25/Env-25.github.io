@@ -96,6 +96,20 @@
 .nav-links a:hover        { color: #fff; }
 .nav-links a:hover::after { width: 100%; }
 
+/* ── Hackathon boxed nav link ── */
+.nav-links a.nav-hackathon {
+  padding: 0.4rem 0.85rem;
+  border: 1.5px solid rgba(255, 255, 255, 0.4);
+  color: #fff;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+.nav-links a.nav-hackathon:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.75);
+}
+/* The box has its own border, so suppress the shared underline animation. */
+.nav-links a.nav-hackathon::after { display: none; }
+
 /* ── Account pill (desktop) ── */
 .nav-account {
   display: inline-flex;

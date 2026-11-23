@@ -15,6 +15,8 @@ export const AUTH_CONFIG = {
   adminApiUrl: import.meta.env.PUBLIC_ADMIN_API_URL as string | undefined,
   /** Public contact form API (Turnstile + SES queue). */
   contactApiUrl: import.meta.env.PUBLIC_CONTACT_API_URL as string | undefined,
+  /** Hackathon registration API (Cognito-protected). */
+  hackathonApiUrl: import.meta.env.PUBLIC_HACKATHON_API_URL as string | undefined,
   resendCooldownSec: 60,
   emailChangeCooldownDays: 7,
 };

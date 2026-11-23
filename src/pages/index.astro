@@ -1,5 +1,6 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
+import HackathonPopup from "../components/HackathonPopup.astro";
 import "../styles/home.css";
 
 // Flip to false to hide. On other pages: <BaseLayout title="..." notice="Your message">
@@ -9,6 +10,8 @@ const notice = SHOW_NOTICE
   : undefined;
 ---
 <BaseLayout title="UBC CHBE Council" notice={notice}>
+
+  <HackathonPopup />
 
   <!-- ── Hero ── -->
   <section class="hero">

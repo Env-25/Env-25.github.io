@@ -1,0 +1,209 @@
+---
+// Announcement popup shown on every home-page visit.
+// When the hackathon page is ready, enable the "Learn more" button by
+// removing `disabled` / `aria-disabled` and setting href="/hackathon".
+---
+<div class="hack-popup-overlay" id="hackPopup" role="dialog" aria-modal="true"
+     aria-labelledby="hackPopupTitle" hidden>
+  <div class="hack-popup-backdrop" id="hackPopupBackdrop"></div>
+  <div class="hack-popup-card">
+    <button type="button" class="hack-popup-close" id="hackPopupClose" aria-label="Close announcement">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+           fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <line x1="18" y1="6" x2="6" y2="18"/>
+        <line x1="6" y1="6" x2="18" y2="18"/>
+      </svg>
+    </button>
+
+    <span class="hack-popup-eyebrow">Announcement</span>
+    <h2 class="hack-popup-title" id="hackPopupTitle">CHBE Hackathon</h2>
+    <p class="hack-popup-text">
+      The CHBE Council is hosting a hackathon in January. More details to follow —
+      keep checking the website, we'll add details soon.
+    </p>
+
+    <div class="hack-popup-actions">
+      <!-- Greyed out for now. Enable + set href="/hackathon" when ready. -->
+      <a class="hack-popup-btn" href="#" aria-disabled="true" tabindex="-1"
+         id="hackPopupLearnMore">Learn more</a>
+      <button type="button" class="hack-popup-dismiss" id="hackPopupDismiss">Dismiss</button>
+    </div>
+  </div>
+</div>
+
+<style>
+  .hack-popup-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 3000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+  }
+  .hack-popup-overlay[hidden] {
+    display: none;
+  }
+  .hack-popup-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(20, 30, 30, 0.6);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  .hack-popup-overlay.open .hack-popup-backdrop {
+    opacity: 1;
+  }
+  .hack-popup-card {
+    position: relative;
+    z-index: 1;
+    width: min(460px, 100%);
+    background: var(--clr-cream);
+    border: 1.5px solid rgba(58, 75, 74, 0.2);
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.3);
+    padding: 2.5rem 2.25rem 2.25rem;
+    text-align: center;
+    transform: translateY(14px) scale(0.98);
+    opacity: 0;
+    transition: transform 0.32s cubic-bezier(0.2, 0.7, 0.3, 1), opacity 0.32s ease;
+  }
+  .hack-popup-overlay.open .hack-popup-card {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+  .hack-popup-close {
+    position: absolute;
+    top: 0.85rem;
+    right: 0.85rem;
+    display: inline-flex;
+    padding: 0.35rem;
+    background: none;
+    border: none;
+    color: rgba(58, 75, 74, 0.55);
+    cursor: pointer;
+    transition: color 0.2s;
+  }
+  .hack-popup-close:hover {
+    color: var(--clr-dark-teal);
+  }
+  .hack-popup-eyebrow {
+    display: inline-block;
+    font-family: "Telegraf", sans-serif;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--clr-forest);
+    margin-bottom: 0.65rem;
+  }
+  .hack-popup-title {
+    font-family: "RocaTwo-Bl", sans-serif;
+    font-size: 2rem;
+    line-height: 1.05;
+    color: var(--clr-dark-teal);
+    margin-bottom: 0.85rem;
+  }
+  .hack-popup-text {
+    font-family: "Telegraf", sans-serif;
+    font-size: 0.95rem;
+    line-height: 1.65;
+    color: rgba(58, 75, 74, 0.78);
+    margin-bottom: 1.75rem;
+  }
+  .hack-popup-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    justify-content: center;
+  }
+  .hack-popup-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 46px;
+    padding: 0 1.75rem;
+    font-family: "Telegraf", sans-serif;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    background: var(--clr-forest);
+    color: #fff;
+    border: 2px solid var(--clr-forest);
+    text-decoration: none;
+    transition: background 0.2s, color 0.2s;
+  }
+  .hack-popup-btn[aria-disabled="true"] {
+    background: rgba(58, 75, 74, 0.18);
+    border-color: rgba(58, 75, 74, 0.18);
+    color: rgba(58, 75, 74, 0.45);
+    pointer-events: none;
+    cursor: not-allowed;
+  }
+  .hack-popup-dismiss {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 46px;
+    padding: 0 1.5rem;
+    font-family: "Telegraf", sans-serif;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    background: transparent;
+    color: var(--clr-dark-teal);
+    border: 1.5px solid rgba(58, 75, 74, 0.35);
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+  }
+  .hack-popup-dismiss:hover {
+    background: rgba(58, 75, 74, 0.06);
+    border-color: var(--clr-dark-teal);
+  }
+
+  @media (max-width: 480px) {
+    .hack-popup-card {
+      padding: 2.25rem 1.5rem 1.75rem;
+    }
+    .hack-popup-actions {
+      flex-direction: column;
+    }
+    .hack-popup-btn,
+    .hack-popup-dismiss {
+      width: 100%;
+    }
+  }
+</style>
+
+<script>
+  const overlay = document.getElementById("hackPopup");
+  if (overlay) {
+    const backdrop = document.getElementById("hackPopupBackdrop");
+    const closeBtn = document.getElementById("hackPopupClose");
+    const dismissBtn = document.getElementById("hackPopupDismiss");
+
+    function openPopup() {
+      overlay!.hidden = false;
+      // next frame so the transition runs
+      requestAnimationFrame(() => overlay!.classList.add("open"));
+    }
+
+    function closePopup() {
+      overlay!.classList.remove("open");
+      window.setTimeout(() => {
+        overlay!.hidden = true;
+      }, 320);
+    }
+
+    backdrop?.addEventListener("click", closePopup);
+    closeBtn?.addEventListener("click", closePopup);
+    dismissBtn?.addEventListener("click", closePopup);
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && !overlay!.hidden) closePopup();
+    });
+
+    // Shows on every home-page visit, after a short beat.
+    window.setTimeout(openPopup, 650);
+  }
+</script>

@@ -1,0 +1,246 @@
+---
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import "../../../styles/auth.css";
+import "../../../styles/hackathon.css";
+---
+<BaseLayout title="First-Year Hackathon Sign Up — UBC CHBE">
+  <section class="auth-hero">
+    <img src="/home/index-lower.jpg" alt="" class="auth-hero-bg" />
+    <div class="auth-hero-overlay"></div>
+    <div class="auth-hero-content">
+      <h1 class="auth-hero-title">First-Year Sign Up</h1>
+      <p class="auth-hero-sub">CHBE Hackathon · Team of 2</p>
+    </div>
+  </section>
+
+  <section class="auth-section">
+    <div class="auth-shell">
+
+      <!-- Sign in required -->
+      <div id="gate" class="auth-status-panel" hidden>
+        <h2>Sign in required</h2>
+        <p>Please sign in to register for the hackathon.</p>
+        <a class="form-submit" href="/account/sign-in?next=/hackathon/register/first-year" style="text-decoration:none;">Sign in</a>
+      </div>
+
+      <!-- Already signed up -->
+      <div id="already" class="auth-status-panel" hidden>
+        <h2>You have already signed up</h2>
+        <p>
+          You can check your info on the
+          <a href="/hackathon/participant" class="form-link">hackathon participant page</a>.
+          If this is a mistake please <a href="/contact" class="form-link">contact us</a> immediately.
+        </p>
+        <a class="form-submit" href="/hackathon/participant" style="text-decoration:none;">View my info</a>
+      </div>
+
+      <!-- Success -->
+      <div id="success" class="auth-status-panel" hidden>
+        <h2>You're registered!</h2>
+        <p id="successMsg">Your team is confirmed.</p>
+        <a class="form-submit" href="/hackathon/participant" style="text-decoration:none;">Go to participant page</a>
+      </div>
+
+      <!-- Form -->
+      <div id="formWrap" hidden>
+        <h2 class="auth-block-title">Register your team</h2>
+        <p class="auth-block-sub">
+          First years compete in teams of 2. Enter your details and your partner's.
+          Your partner must already have a CHBE account (same email) and must not already be on a team.
+        </p>
+
+        <form class="auth-form" id="firstYearForm" novalidate>
+          <div class="form-field">
+            <label class="form-label" for="studentNumber">Your student number <span class="required">*</span></label>
+            <input class="form-input" id="studentNumber" name="studentNumber" inputmode="numeric"
+                   placeholder="e.g. 12345678" autocomplete="off" required />
+            <p class="field-error" id="studentNumberError">Please enter a valid student number.</p>
+          </div>
+
+          <div class="form-field">
+            <label class="form-label" for="partnerStudentNumber">Partner's student number <span class="required">*</span></label>
+            <input class="form-input" id="partnerStudentNumber" name="partnerStudentNumber" inputmode="numeric"
+                   placeholder="e.g. 87654321" autocomplete="off" required />
+            <p class="field-error" id="partnerStudentNumberError">Please enter a valid student number.</p>
+          </div>
+
+          <div class="form-field">
+            <label class="form-label" for="partnerEmail">Partner's email <span class="required">*</span></label>
+            <input class="form-input" id="partnerEmail" name="partnerEmail" type="email"
+                   placeholder="partner@student.ubc.ca" autocomplete="off" required />
+            <p class="form-hint">This must match the email your partner used to create their CHBE account.</p>
+            <p class="field-error" id="partnerEmailError">Please enter a valid email.</p>
+          </div>
+
+          <div id="partnerStatus" class="hack-partner-status" hidden></div>
+
+          <div class="form-actions">
+            <button type="button" class="form-secondary" id="confirmBtn">
+              <span class="btn-label">Confirm partner</span>
+              <span class="btn-spinner" aria-hidden="true"></span>
+            </button>
+            <button type="submit" class="form-submit" id="registerBtn" disabled>
+              <span class="btn-label">Register team</span>
+              <span class="btn-spinner" aria-hidden="true"></span>
+            </button>
+          </div>
+
+          <p class="form-feedback form-feedback--error" id="formError" hidden></p>
+        </form>
+      </div>
+
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  import { getSessionProfile } from "../../../utils/auth";
+  import { isAuthConfigured } from "../../../utils/auth-config";
+  import {
+    getMyParticipant,
+    validatePartner,
+    registerFirstYear,
+    isHackathonConfigured,
+  } from "../../../utils/hackathon";
+
+  const gate = document.getElementById("gate")!;
+  const already = document.getElementById("already")!;
+  const success = document.getElementById("success")!;
+  const successMsg = document.getElementById("successMsg")!;
+  const formWrap = document.getElementById("formWrap")!;
+  const form = document.getElementById("firstYearForm") as HTMLFormElement;
+
+  const studentNumber = document.getElementById("studentNumber") as HTMLInputElement;
+  const partnerStudentNumber = document.getElementById("partnerStudentNumber") as HTMLInputElement;
+  const partnerEmail = document.getElementById("partnerEmail") as HTMLInputElement;
+  const partnerStatus = document.getElementById("partnerStatus")!;
+  const confirmBtn = document.getElementById("confirmBtn") as HTMLButtonElement;
+  const registerBtn = document.getElementById("registerBtn") as HTMLButtonElement;
+  const formError = document.getElementById("formError")!;
+
+  let confirmedEmail: string | null = null;
+
+  function setBusy(btn: HTMLButtonElement, busy: boolean) {
+    btn.classList.toggle("loading", busy);
+    btn.disabled = busy;
+  }
+
+  function showStatus(kind: "ok" | "err", msg: string) {
+    partnerStatus.hidden = false;
+    partnerStatus.className = `hack-partner-status hack-partner-status--${kind}`;
+    partnerStatus.textContent = msg;
+  }
+
+  function resetConfirmation() {
+    confirmedEmail = null;
+    registerBtn.disabled = true;
+    partnerStatus.hidden = true;
+    partnerStatus.textContent = "";
+  }
+
+  function validField(el: HTMLInputElement) {
+    let invalid = el.value.trim() === "";
+    if (!invalid && el.type === "email") {
+      invalid = !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(el.value.trim());
+    }
+    el.classList.toggle("error", invalid);
+    const err = el.closest(".form-field")?.querySelector(".field-error");
+    if (err) err.classList.toggle("visible", invalid);
+    return !invalid;
+  }
+
+  [studentNumber, partnerStudentNumber, partnerEmail].forEach((el) => {
+    el.addEventListener("input", () => {
+      el.classList.remove("error");
+      el.closest(".form-field")?.querySelector(".field-error")?.classList.remove("visible");
+      // Any change invalidates a prior partner confirmation.
+      resetConfirmation();
+      formError.hidden = true;
+    });
+  });
+
+  confirmBtn.addEventListener("click", async () => {
+    formError.hidden = true;
+    const ok = [validField(studentNumber), validField(partnerStudentNumber), validField(partnerEmail)].every(Boolean);
+    if (!ok) return;
+    if (!isHackathonConfigured()) {
+      showStatus("err", "The hackathon service is not configured yet.");
+      return;
+    }
+    setBusy(confirmBtn, true);
+    try {
+      const res = await validatePartner(partnerEmail.value.trim().toLowerCase());
+      confirmedEmail = partnerEmail.value.trim().toLowerCase();
+      registerBtn.disabled = false;
+      const who = res.partner?.name ? ` (${res.partner.name})` : "";
+      showStatus("ok", `Partner verified${who}. You can now register your team.`);
+    } catch (e: any) {
+      resetConfirmation();
+      showStatus("err", e?.message || "Could not verify your partner.");
+    } finally {
+      setBusy(confirmBtn, false);
+    }
+  });
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    formError.hidden = true;
+    const ok = [validField(studentNumber), validField(partnerStudentNumber), validField(partnerEmail)].every(Boolean);
+    if (!ok) return;
+
+    const email = partnerEmail.value.trim().toLowerCase();
+    if (confirmedEmail !== email) {
+      showStatus("err", "Please confirm your partner before registering.");
+      return;
+    }
+
+    setBusy(registerBtn, true);
+    try {
+      const res = await registerFirstYear({
+        studentNumber: studentNumber.value.trim(),
+        partnerStudentNumber: partnerStudentNumber.value.trim(),
+        partnerEmail: email,
+      });
+      formWrap.hidden = true;
+      successMsg.textContent = `Your team is confirmed — you are team #${res.teamNumber}. Your partner is now on your team too.`;
+      success.hidden = false;
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch (e: any) {
+      if (e?.code === "ALREADY_REGISTERED") {
+        formWrap.hidden = true;
+        already.hidden = false;
+        return;
+      }
+      formError.textContent = e?.message || "Could not complete registration.";
+      formError.hidden = false;
+      // A race/partner conflict means confirmation is stale.
+      resetConfirmation();
+    } finally {
+      setBusy(registerBtn, false);
+    }
+  });
+
+  (async () => {
+    if (!isAuthConfigured()) {
+      gate.hidden = false;
+      return;
+    }
+    const profile = await getSessionProfile();
+    if (!profile) {
+      gate.hidden = false;
+      return;
+    }
+    if (isHackathonConfigured()) {
+      try {
+        const { participant } = await getMyParticipant();
+        if (participant) {
+          already.hidden = false;
+          return;
+        }
+      } catch {
+        /* fall through to form */
+      }
+    }
+    formWrap.hidden = false;
+  })();
+</script>

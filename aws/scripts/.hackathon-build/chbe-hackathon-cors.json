@@ -1,0 +1,1 @@
+{"AllowOrigins": ["https://ubcchbecouncil.com", "https://www.ubcchbecouncil.com", "https://chbe-site.akshajs.org", "http://localhost:3001", "http://localhost:4321"], "AllowMethods": ["GET", "POST"], "AllowHeaders": ["content-type", "authorization"], "MaxAge": 86400}

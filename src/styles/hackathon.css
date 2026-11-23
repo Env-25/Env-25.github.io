@@ -1,0 +1,229 @@
+/* hackathon.css — CHBE Hackathon pages (builds on auth.css) */
+
+/* ── Intro / title block ── */
+.hack-intro {
+  max-width: 760px;
+  margin: 0 auto 3.25rem;
+  text-align: center;
+}
+.hack-title {
+  font-family: "RocaTwo-Bl", sans-serif;
+  font-size: clamp(2.25rem, 5vw, 3.5rem);
+  font-weight: 700;
+  line-height: 1.05;
+  color: var(--clr-dark-teal);
+  margin-bottom: 1.5rem;
+}
+
+/* ── Meta row (date / mode / deadline) ── */
+.hack-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.75rem 1rem;
+  margin-bottom: 1.75rem;
+}
+.hack-meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.95rem;
+  background: #fff;
+  border: 1.5px solid rgba(58, 75, 74, 0.15);
+  font-family: "Telegraf", sans-serif;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--clr-dark-teal);
+}
+.hack-meta-item svg {
+  flex-shrink: 0;
+  color: var(--clr-forest);
+}
+.hack-meta-item .hack-meta-label {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: rgba(58, 75, 74, 0.55);
+  margin-right: 0.15rem;
+}
+
+.hack-desc {
+  font-family: "Telegraf", sans-serif;
+  font-size: 1rem;
+  line-height: 1.75;
+  color: rgba(58, 75, 74, 0.8);
+}
+
+/* ── Two signup tracks ── */
+.hack-tracks {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+  max-width: 900px;
+  margin: 0 auto;
+}
+.hack-track-card {
+  display: flex;
+  flex-direction: column;
+  padding: 2.25rem 1.9rem;
+  background: #fff;
+  border: 1.5px solid rgba(58, 75, 74, 0.15);
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+}
+.hack-track-card:hover {
+  border-color: var(--clr-teal);
+  box-shadow: 0 14px 34px rgba(58, 75, 74, 0.1);
+  transform: translateY(-2px);
+}
+.hack-track-eyebrow {
+  font-family: "Telegraf", sans-serif;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--clr-forest);
+  margin-bottom: 0.6rem;
+}
+.hack-track-title {
+  font-family: "RocaTwo-Bl", sans-serif;
+  font-size: 1.6rem;
+  color: var(--clr-dark-teal);
+  margin-bottom: 0.75rem;
+}
+.hack-track-desc {
+  font-family: "Telegraf", sans-serif;
+  font-size: 0.9rem;
+  line-height: 1.65;
+  color: rgba(58, 75, 74, 0.72);
+  margin-bottom: 1.75rem;
+  flex: 1;
+}
+.hack-track-card .form-submit {
+  align-self: stretch;
+  text-decoration: none;
+}
+
+/* ── Participant info ── */
+.hack-team-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 1.75rem;
+  margin-bottom: 2rem;
+  background: var(--clr-dark-teal);
+  color: var(--clr-cream);
+  text-align: center;
+}
+.hack-team-badge .hack-team-label {
+  font-family: "Telegraf", sans-serif;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(253, 249, 239, 0.7);
+}
+.hack-team-badge .hack-team-number {
+  font-family: "RocaTwo-Bl", sans-serif;
+  font-size: 3rem;
+  line-height: 1;
+}
+
+.hack-info-list {
+  display: flex;
+  flex-direction: column;
+  border: 1.5px solid rgba(58, 75, 74, 0.15);
+  background: #fff;
+}
+.hack-info-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.95rem 1.15rem;
+  border-bottom: 1px solid rgba(58, 75, 74, 0.1);
+  font-family: "Telegraf", sans-serif;
+  font-size: 0.9rem;
+}
+.hack-info-row:last-child {
+  border-bottom: none;
+}
+.hack-info-row dt {
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+  color: rgba(58, 75, 74, 0.55);
+  align-self: center;
+}
+.hack-info-row dd {
+  color: var(--clr-dark-teal);
+  text-align: right;
+  word-break: break-word;
+}
+
+.hack-subsection-title {
+  font-family: "RocaTwo-Bl", sans-serif;
+  font-size: 1.15rem;
+  color: var(--clr-dark-teal);
+  margin: 2rem 0 0.75rem;
+}
+
+.hack-note {
+  font-family: "Telegraf", sans-serif;
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: rgba(58, 75, 74, 0.7);
+}
+.hack-note a {
+  color: var(--clr-teal);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* Submission placeholder */
+.hack-soon {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  border: 1.5px dashed rgba(58, 75, 74, 0.3);
+  background: rgba(114, 166, 145, 0.08);
+  text-align: center;
+}
+.hack-soon h3 {
+  font-family: "RocaTwo-Bl", sans-serif;
+  font-size: 1.05rem;
+  color: var(--clr-dark-teal);
+  margin-bottom: 0.4rem;
+}
+.hack-soon p {
+  font-family: "Telegraf", sans-serif;
+  font-size: 0.85rem;
+  color: rgba(58, 75, 74, 0.7);
+  line-height: 1.6;
+}
+
+/* Partner confirmation banner (first-year form) */
+.hack-partner-status {
+  font-family: "Telegraf", sans-serif;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  padding: 0.8rem 1rem;
+  border: 1.5px solid transparent;
+}
+.hack-partner-status--ok {
+  color: var(--clr-forest);
+  background: rgba(74, 133, 80, 0.1);
+  border-color: rgba(74, 133, 80, 0.35);
+}
+.hack-partner-status--err {
+  color: #a83232;
+  background: rgba(168, 50, 50, 0.07);
+  border-color: rgba(168, 50, 50, 0.25);
+}
+
+@media (max-width: 720px) {
+  .hack-tracks {
+    grid-template-columns: 1fr;
+  }
+}

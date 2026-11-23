@@ -1,0 +1,27 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "HackathonTable",
+      "Effect": "Allow",
+      "Action": [
+        "dynamodb:GetItem",
+        "dynamodb:PutItem",
+        "dynamodb:UpdateItem",
+        "dynamodb:Query",
+        "dynamodb:TransactWriteItems",
+        "dynamodb:DescribeTable"
+      ],
+      "Resource": [
+        "arn:aws:dynamodb:us-east-2:512392056041:table/hackathon-participants",
+        "arn:aws:dynamodb:us-east-2:512392056041:table/hackathon-participants/index/*"
+      ]
+    },
+    {
+      "Sid": "CognitoLookup",
+      "Effect": "Allow",
+      "Action": ["cognito-idp:ListUsers"],
+      "Resource": "arn:aws:cognito-idp:us-east-2:512392056041:userpool/us-east-2_HeZCWYUt3"
+    }
+  ]
+}

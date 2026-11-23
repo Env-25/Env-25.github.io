@@ -12,6 +12,7 @@
     "aws:setup-orders": "bash aws/scripts/setup-orders.sh",
     "aws:setup-admin": "bash aws/scripts/setup-admin.sh",
     "aws:create-admin-groups": "bash aws/scripts/create-admin-groups.sh",
+    "aws:setup-hackathon": "bash aws/scripts/setup-hackathon.sh",
     "aws:seed-inventory": "node aws/scripts/seed-inventory.mjs"
   },
   "dependencies": {
