@@ -107,6 +107,140 @@
   text-decoration: none;
 }
 
+/* ── Prize + perk widgets ── */
+.hack-widgets {
+  max-width: 900px;
+  margin: 0 auto 3.5rem;
+}
+.hack-widget-head {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+.hack-widget-title {
+  font-family: "RocaTwo-Bl", sans-serif;
+  font-size: clamp(1.6rem, 3.5vw, 2.2rem);
+  color: var(--clr-dark-teal);
+  line-height: 1.1;
+}
+
+.hack-prizes {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+}
+.hack-prize {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 1.9rem 1rem 1.6rem;
+  background: #fff;
+  border: 1.5px solid rgba(58, 75, 74, 0.15);
+  border-top: 5px solid var(--clr-teal);
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+}
+.hack-prize:hover {
+  box-shadow: 0 14px 34px rgba(58, 75, 74, 0.12);
+  transform: translateY(-3px);
+}
+.hack-prize--first {
+  border-top-color: #d4a537;
+  background: linear-gradient(180deg, rgba(212, 165, 55, 0.12), #fff 70%);
+}
+.hack-prize--second {
+  border-top-color: #9aa5a8;
+}
+.hack-prize--third {
+  border-top-color: #b87a4b;
+}
+.hack-prize--council {
+  background: var(--clr-dark-teal);
+  border-color: var(--clr-dark-teal);
+  border-top-color: var(--clr-teal);
+  color: var(--clr-cream);
+}
+.hack-prize--council svg {
+  color: var(--clr-teal);
+  margin-bottom: 0.5rem;
+}
+.hack-prize-rank {
+  font-family: "RocaTwo-Bl", sans-serif;
+  font-size: 2rem;
+  line-height: 1;
+  color: var(--clr-dark-teal);
+}
+.hack-prize-label {
+  font-family: "Telegraf", sans-serif;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(58, 75, 74, 0.55);
+  margin-bottom: 0.9rem;
+}
+.hack-prize--council .hack-prize-label {
+  color: rgba(253, 249, 239, 0.75);
+  margin-bottom: 0.6rem;
+}
+.hack-prize-amount {
+  font-family: "RocaTwo-Bl", sans-serif;
+  font-size: 2.6rem;
+  line-height: 1;
+  color: var(--clr-forest);
+}
+.hack-prize-amount--sm {
+  font-size: 1.25rem;
+  line-height: 1.2;
+  color: var(--clr-cream);
+}
+.hack-prize-per {
+  margin-top: 0.4rem;
+  font-family: "Telegraf", sans-serif;
+  font-size: 0.78rem;
+  color: rgba(58, 75, 74, 0.65);
+}
+.hack-prize--council .hack-prize-per {
+  color: rgba(253, 249, 239, 0.65);
+}
+
+.hack-perks {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+}
+.hack-perk {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 1.6rem 1rem;
+  background: rgba(114, 166, 145, 0.1);
+  border: 1.5px solid rgba(58, 75, 74, 0.15);
+  transition: border-color 0.2s, background 0.2s, transform 0.2s;
+}
+.hack-perk:hover {
+  border-color: var(--clr-teal);
+  background: rgba(114, 166, 145, 0.18);
+  transform: translateY(-2px);
+}
+.hack-perk svg {
+  color: var(--clr-forest);
+}
+.hack-perk-title {
+  font-family: "RocaTwo-Bl", sans-serif;
+  font-size: 1.15rem;
+  color: var(--clr-dark-teal);
+}
+
+@media (max-width: 820px) {
+  .hack-prizes,
+  .hack-perks {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
 /* ── Participant info ── */
 .hack-team-badge {
   display: flex;
